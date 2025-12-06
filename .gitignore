@@ -1,0 +1,13 @@
+ssrn/secrets.json
+*.pdf
+*.csv
+*.png
+*paper_results*
+*big_data*
+*__pycache__*
+*.json
+*.pickle
+*.pkl
+*logging_accuracy*
+*.txt
+*ArXiv_BERT*
