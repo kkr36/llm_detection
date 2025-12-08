@@ -120,6 +120,16 @@ def get_PUDataSplits(data_obj, pos_size, alpha, beta, data_type=None):
                 pos_data=unlabel_pos_data, neg_data=unlabel_neg_data, \
                 index=np.array(range(unlabel_size)),data_type=data_type)
 
+def get_PUDataSplits1(data_obj, data_type=None): # put all the mirrors in posdata; put all arxiv abstracts in unlabeled data as negatives
+
+    return  PosData(transform=data_obj.transform, \
+                    target_transform=data_obj.target_transform, \
+                    data=data_obj.p_data, index=np.array(range(len(data_obj.p_data))), data_type=data_type), \
+            UnlabelData(transform=data_obj.transform, \
+                target_transform=data_obj.target_transform, \
+                pos_data=data_obj.p_data[:0], neg_data=data_obj.n_data, \
+                index=np.array(range(len(data_obj.n_data))),data_type=data_type)
+
 def get_PUDataSplits2(data_obj, pos_size, alpha, beta, data_type=None): 
 
     unlabel_size = int((1-beta)*pos_size/beta)
@@ -150,7 +160,7 @@ def get_PNDataSplits(data_obj, pos_size, neg_size, data_type=None):
                 index=np.array(range(pos_size + neg_size)),data_type=data_type)
 
 
-def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year): 
+def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence): 
 
     p_trainloader=None
     u_trainloader=None
@@ -491,18 +501,23 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         net = net.to(device)
     
     elif data_type=="ArXiv_BERT": 
-        train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet' # TODO figure out year
-        val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
+        # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet' # TODO figure out year
+        # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
 
-        # data_path = val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._20000.parquet'
+        data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
-        # train_texts, train_labels = read_arxiv_split2(data_path, "train") # should have 15k each
-        # test_texts, test_labels = read_arxiv_split2(data_path, "val") # should have 5k each
-        train_texts, train_labels = read_arxiv_split(train_path) # should have 15k each
-        test_texts, test_labels = read_arxiv_split(val_path) # should have 5k each
+        train_texts, train_labels = read_arxiv_split2(data_path, "train") # should have 15k each
+        test_texts, test_labels = read_arxiv_split2(data_path, "val") # should have 5k each
+        # import pdb; pdb.set_trace()
 
-        train_texts = [' '.join(text) for text in train_texts]
-        test_texts = [' '.join(text) for text in test_texts]
+        if sentence:
+            train_texts, train_labels = split_into_sentences(train_texts, train_labels)
+            test_texts, test_labels = split_into_sentences(test_texts, test_labels)
+        # train_texts, train_labels = read_arxiv_split(train_path) # should have 15k each
+        # test_texts, test_labels = read_arxiv_split(val_path) # should have 5k each
+
+        # train_texts = [' '.join(text) for text in train_texts]
+        # test_texts = [' '.join(text) for text in test_texts]
         # import pdb; pdb.set_trace()
 
         transform = initialize_bert_transform('distilbert-base-uncased')
@@ -513,8 +528,11 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         np_train, nn_train = len(train_dataset.p_data), len(train_dataset.n_data)
         np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
 
-        p_traindata, u_traindata = get_PUDataSplits(train_dataset, pos_size=int(np_train*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
-        p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        # p_traindata, u_traindata = get_PUDataSplits(train_dataset, pos_size=int(np_train*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        # p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        p_traindata, u_traindata = get_PUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
+
         # import pdb; pdb.set_trace()
 
         X = p_traindata.targets
@@ -570,14 +588,16 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
     u_validloader=None
     
     if data_type=="ArXiv_BERT": # lol this is all we support for now
-        val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._20000.parquet'
+        # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._20000.parquet'
+
+        val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
         test_texts, test_labels = read_arxiv_split2(val_path, "val")
         if sentence:
             test_sentences, new_test_labels = split_into_sentences(test_texts, test_labels)
             # import pdb; pdb.set_trace()
             test_texts, test_labels = test_sentences, new_test_labels
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # test_texts = [' '.join(text) for text in test_texts]
 
         transform = initialize_bert_transform('distilbert-base-uncased')
@@ -602,7 +622,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
 
     return p_validloader, u_validloader, p_validdata, u_validdata    
 
-def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year): 
+def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence): 
 
     u_trainloader=None
     u_validloader=None
@@ -820,17 +840,20 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         net = net.to(device)
 
     elif data_type=="ArXiv_BERT": 
-        train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet'
-        val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
-        # data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._20000.parquet'
+        # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet'
+        # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
+        data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs.10000_fronthalf.parquet'
 
-        # train_texts, train_labels = read_arxiv_split2(data_path, "train")
-        # test_texts, test_labels = read_arxiv_split2(data_path, "val")
+        train_texts, train_labels = read_arxiv_split2(data_path, "train")
+        test_texts, test_labels = read_arxiv_split2(data_path, "val")
+        if sentence:
+            train_texts, train_labels = split_into_sentences(train_texts, train_labels)
+            test_texts, test_labels = split_into_sentences(test_texts, test_labels)
 
-        train_texts, train_labels = read_arxiv_split(train_path)
-        test_texts, test_labels = read_arxiv_split(val_path)
-        train_texts = [' '.join(text) for text in train_texts]
-        test_texts = [' '.join(text) for text in test_texts]
+        # train_texts, train_labels = read_arxiv_split(train_path)
+        # test_texts, test_labels = read_arxiv_split(val_path)
+        # train_texts = [' '.join(text) for text in train_texts]
+        # test_texts = [' '.join(text) for text in test_texts]
 
         # import pdb; pdb.set_trace()
 
@@ -842,8 +865,10 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         np_train, nn_train = len(train_dataset.p_data), len(train_dataset.n_data)
         np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
         
-        u_traindata = get_PUDataSplits2(train_dataset, pos_size=int(np_train*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
-        u_validdata = get_PUDataSplits2(test_dataset, pos_size=int(np_test*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        # u_traindata = get_PUDataSplits2(train_dataset, pos_size=int(np_train*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        # u_validdata = get_PUDataSplits2(test_dataset, pos_size=int(np_test*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        u_traindata = get_PNDataSplits(train_dataset, pos_size = np_train, neg_size = nn_train)
+        u_validdata = get_PNDataSplits(train_dataset, pos_size = np_test, neg_size = nn_test)
 
         u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, \
             shuffle=True)
