@@ -45,6 +45,7 @@ parser.add_argument('--data-dir', type=str, default='/share/garg/arxiv_kaggle', 
 parser.add_argument('--optimizer', type=str, default='SGD', help='Optimizer used')
 parser.add_argument('--year', type=int, default=2010, help='year of arxiv data to take in')
 parser.add_argument('--sentence', default=True, action='store_false', help='sentence level analysis')
+parser.add_argument('--ft', default=False, action='store_true', help='whether to train on ft or zero shot')
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
 args = parser.parse_args()
@@ -77,10 +78,11 @@ data_dir = args.data_dir
 estimate_alpha = args.estimate_alpha
 year = args.year
 sentence = args.sentence
+ft = args.ft
 # val_alphas = [0.01,.05,.1,.2,.3,.5]
 val_alphas = [0, .1, .2, .3, .5][:1]
-val_years = list(range(2010,2026))
-# val_years = [2013, 2016, 2019, 2022, 2025]
+# val_years = list(range(2010,2026))
+val_years = [2010, 2012, 2014, 2016, 2018, 2020, 2023, 2025]
 
 if train_method == "TEDn": 
     use_alpha=True
@@ -92,7 +94,7 @@ if not os.path.exists(log_dir):
 
 timestr = time.strftime("%Y%m%d-%H%M%S")
 
-file_name = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, year, net_type, args.seed, epochs, warm_start_epochs, args.lr, args.wd, alpha, beta)   + "_" + timestr
+file_name = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}{}".format(train_method, year, net_type, args.seed, epochs, warm_start_epochs, args.lr, args.wd, alpha, beta, "_ft" if ft else "")   + "_" + timestr
 
 outfile= open(file_name, 'w')
 
@@ -101,25 +103,28 @@ outfile= open(file_name, 'w')
 varied_vals = {}
 
 if train_method=='PN': 
-    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year)
+    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft)
     # import pdb; pdb.set_trace()
 
 else:
     p_trainloader, u_trainloader, p_validloader, u_validloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
-        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year)
+        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence,ft)
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)
     valid_pos_size= len(p_validdata)
     valid_unlabeled_size= len(u_validdata)
 
-for valyear in val_years:
-    varied_vals[valyear] = {}
-    for valalpha in tqdm(val_alphas):
-        # continue
-        p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-            get_dataset_val(data_dir, data_type,net_type, device, valalpha, beta, batch_size, valyear, sentence)
-        varied_vals[valyear][valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
-
+if "ArXiv" in data_type:
+    for valyear in val_years:
+        varied_vals[valyear] = {}
+        for valalpha in tqdm(val_alphas):
+            # continue
+            p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
+                get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, valyear, sentence)
+            varied_vals[valyear][valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
+elif data_type=="paramveer":
+    varied_vals['ft'] = get_dataset_val2(data_dir, data_type,net_type, device, None, None, batch_size, None, None, ft=True)
+    varied_vals['ai'] = get_dataset_val2(data_dir, data_type,net_type, device, None, None, batch_size, None, None, ft=False)
 
 if device.startswith('cuda'):
     net = torch.nn.DataParallel(net)
@@ -279,7 +284,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
             outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
             outfile.flush()
 
-    if estimate_alpha:
+    if estimate_alpha and data_type=="ArXiv_BERT":
         for valyear in val_years:
             for valalpha in tqdm(val_alphas):
                 (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valyear][valalpha]
@@ -291,6 +296,16 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
                 outfile.write("{} {}, {}, {}, {}\n".format(valyear, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate))
                 plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
+    elif estimate_alpha and data_type=="paramveer":
+        for key in varied_vals:
+                (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[key]
+                pos_probs = p_probs(net, device, p_validloader)
+                unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+                # import pdb; pdb.set_trace()
+                our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+                scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+                EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+                outfile.write("{}, {}, {}, {}\n".format(key, our_mpe_estimate, scott_mpe_estimator, EN_estimate))
 
 elif train_method=='uPU': 
 
@@ -333,7 +348,7 @@ elif train_method=="PN":
         outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
         outfile.flush()
 
-    if estimate_alpha:
+    if estimate_alpha and data_type=="ArXiv_BERT":
         for valalpha in tqdm(val_alphas):
             for valyear in val_years:
                 (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valyear][valalpha]
@@ -346,7 +361,17 @@ elif train_method=="PN":
                 EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
                 outfile.write("{}, {}, {}, {}, {}, {}\n".format(valyear, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate))
                 plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}_PN.pdf")
-
+    elif estimate_alpha and data_type=="paramveer":
+        for key in varied_vals:
+                (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[key]
+                pos_probs = p_probs(net, device, p_validloader)
+                unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+                # import pdb; pdb.set_trace()
+                naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
+                our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+                scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+                EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+                outfile.write("{}, {}, {}, {}, {}\n".format(key, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate))
 
 elif train_method=="TiCE" or train_method=="KM": 
     print("here")

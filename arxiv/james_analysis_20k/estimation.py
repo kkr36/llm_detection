@@ -176,11 +176,12 @@ def estimate_text_distribution(human_data, ai_data,save_file_path="Word.parquet"
 
 if __name__ == "__main__":
     # for year in [2011, 2012, 2013]:
-    years = [2020, 2023, 2025]
+    # years = [2020, 2023, 2025]
+    years = [2010, 2012, 2014, 2016, 2018, 2020]
     for year in tqdm(years):
         train_start_year = year
         train_end_year = year
-        subsample_size = 20000
+        subsample_size = 20000//2
         category = "cs."
 
         # if os.path.exists(f"/share/garg/arxiv_kaggle/train/arxiv_tokenized_{train_start_year}_{train_end_year}_logprob_{category}_{subsample_size}.parquet"):
