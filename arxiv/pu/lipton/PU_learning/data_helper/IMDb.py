@@ -3,6 +3,74 @@ import numpy as np
 import torch
 from transformers import BertTokenizerFast, DistilBertTokenizerFast
 import pandas as pd
+import json
+import spacy
+from tqdm import tqdm
+
+nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
+nlp.enable_pipe("senter")
+
+def read_paramveer(split_dir, split="train", ft=False):
+    with open(split_dir, 'r') as f:
+        data = json.load(f)
+
+    ai_data, ai_labels = [], []
+    human_data, human_labels = [], []
+    ft_data, ft_labels = [], []
+
+    for excerpt in data:
+        human_writing = excerpt['MFA']
+        ai_writing = excerpt['AI']
+        for human_sample in human_writing.values():
+            doc = nlp(human_sample)
+            sentences = [sent.text.strip() for sent in doc.sents]
+            human_data.extend(sentences)  # extend instead of append
+            human_labels.extend([0 for _ in range(len(sentences))])
+        for ai_sample in ai_writing.values():
+            doc = nlp(ai_sample)
+            sentences = [sent.text.strip() for sent in doc.sents]
+            ai_data.extend(sentences)  # extend instead of append
+            ai_labels.extend([1 for _ in range(len(sentences))])
+        # import pdb; pdb.set_trace()
+        if 'GPT4_Finetuned' in excerpt:
+            ft_writing = excerpt['GPT4_Finetuned']
+            doc = nlp(ft_writing)
+            sentences = [sent.text.strip() for sent in doc.sents]
+            ft_data.extend(sentences)  # extend instead of append
+            ft_labels.extend([1 for _ in range(len(sentences))])
+        else:
+            print(f"{excerpt['writer']} no ft example")
+    
+    
+    n_ai = len(ai_data)
+    n_human = len(human_data)
+    n_ft = len(ft_data)
+
+    if split=="train":
+        ai_data, ai_labels = ai_data[:int(n_ai * .7)], ai_labels[:int(n_ai * .7)]
+        human_data, human_labels = human_data[:int(n_human * .8)], human_labels[:int(n_human * .8)]
+        ft_data, ft_labels = ft_data[:int(n_ft * .8)], ft_labels[:int(n_ft * .8)]
+
+    elif split=="val":
+        ai_data, ai_labels = ai_data[int(n_ai * .8):], ai_labels[int(n_ai * .8):]
+        human_data, human_labels = human_data[int(n_human * .8):], human_labels[int(n_human * .8):]
+        ft_data, ft_labels = ft_data[int(n_ft * .8):], ft_labels[int(n_ft * .8):]
+
+    elif split=="test":
+        pos_ai_data = ai_data[int(n_ai*.7):int(n_ai*.8)]
+        u_ai_data = ai_data[int(n_ai*.8):]
+        ft_data = ft_data[int(n_ft * .8):]
+
+        if ft:
+            return ft_data + pos_ai_data, [0 for _ in range(len(ft_data))] + [1 for _ in range(len(pos_ai_data))]
+        else:
+            return u_ai_data + pos_ai_data, [0 for _ in range(len(u_ai_data))] + [1 for _ in range(len(pos_ai_data))]
+    
+    # train/val
+    if ft:
+        return ft_data + human_data, ft_labels + human_labels
+    else:
+        return ai_data + human_data, ai_labels + human_labels
 
 def read_imdb_split(split_dir):
     split_dir = Path(split_dir)

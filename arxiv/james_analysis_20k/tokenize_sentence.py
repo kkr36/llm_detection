@@ -41,17 +41,18 @@ def tokenize(text):
     return sentence_list
 
 if __name__ == "__main__":
-    years = [2020, 2023, 2025]
+    # years = [2020, 2023, 2025]
+    years = [2010, 2012, 2014, 2016, 2018, 2020]
     # years = [2024]
     # years = [2014, 2015, 2016, 2017, 2018, 2019]
     # years = list(range(2010,2026))
-    subsample_size = 20000
+    subsample_size = 20000//2
     # subsample_size = 2500
     category = 'cs.'
     for year in tqdm(years):
         # load data
         tokenized = defaultdict(list)
-        arxiv_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_ai_{category}_{subsample_size}.parquet"
+        arxiv_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_ai_{category}_{subsample_size}_fronthalf.parquet"
         arxiv_data = pd.read_parquet(arxiv_path)
 
         llm_writing = []

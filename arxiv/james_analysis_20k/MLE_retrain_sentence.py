@@ -220,17 +220,18 @@ def df_to_val_set(df, alpha=None):
     human_subset['inference_sentence'] = human_subset['human_sentence']
     ai_subset['inference_sentence'] = ai_subset['ai_sentence']
     res = pd.concat([human_subset[["inference_sentence"]], ai_subset[["inference_sentence"]]])
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     return res
 
 if __name__ == "__main__":
     # val_years = range(2010,2026,1)
     # val_years = [2020]
     category = "cs."
-    subsample_size = 20000
+    subsample_size = 20000//2
+    train_years = [2010, 2012, 2014, 2016, 2018, 2020]
     # train_years = [2010, 2011, 2012, 2013, 2020, 2024]
     # train_years = list(range(2010,2026))
-    train_years = [2020, 2023, 2025]
+    # train_years = [2020, 2023, 2025]
     # import pdb; pdb.set_trace()
     sols = []
 
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         # val_path = f"/share/garg/arxiv_kaggle/val/arxiv_tokenized_{train_year}_val_{category}_{subsample_size}.parquet"
 
         val_data = pd.read_parquet(f"/share/garg/arxiv_kaggle/train/arxiv_tokenized_{train_year}_ai_{category}_{subsample_size}_sentence.parquet")
-        val_data = df_to_val_set(val_data, .2)
+        val_data = df_to_val_set(val_data, 0)
 
         solution, half_width = mle.inference(val_data,True)
         print(f"{train_year}: {solution} += {half_width}")
@@ -255,5 +256,5 @@ if __name__ == "__main__":
     # plt.legend(title="Train Year", loc="best")
     plt.xlabel("Year")
     plt.ylabel("Pct predicted AI")
-    plt.savefig(f"mle_retrain.pdf",format='pdf')
+    plt.savefig(f"mle_retrain_sentence.pdf",format='pdf')
     plt.clf()
