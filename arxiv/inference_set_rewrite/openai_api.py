@@ -67,10 +67,15 @@ def oss_query(context, prompt, max_retries=5, base_delay=1.0):
 
 
 from openai import OpenAI
+import json
+with open("/home/kkr36/creds.json", "r") as f:
+    keys = json.load(f)
+
+aws_key = keys["aws_key"]
 
 client = OpenAI(
     base_url="https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1", 
-    api_key="ABSKQmVkcm9ja0FQSUtleS01cXp4LWF0LTc2NzM5NzgzMDIxMDpwbzlEVTZpelRzaElneVdCMXpzMS9kRGJkV0E4blhPNUpiako2TkZSVFNqOWNFYTdPNUZicVZ5bWtpbz0=" # Replace with actual API key
+    api_key=aws_key # Replace with actual API key
 )
 
 def openai_oss_query(context, prompt):

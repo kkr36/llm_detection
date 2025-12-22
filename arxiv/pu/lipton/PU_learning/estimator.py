@@ -17,6 +17,15 @@ from models import *
 from helper import * 
 from model_helper import * 
 
+def individual_predict(net, device, input):
+    input = torch.from_numpy(input)
+    net.eval()
+    with torch.no_grad():
+        input = input.to(device)
+        output = net(input)
+        probs = torch.nn.functional.softmax(output, dim=-1)[:,0] 
+    return output, probs
+
 def p_probs(net, device, p_loader): 
     net.eval()
     pp_probs = None
