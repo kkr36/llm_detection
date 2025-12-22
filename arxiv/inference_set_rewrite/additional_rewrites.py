@@ -56,46 +56,45 @@ def rewrite_abstract(prompt_model, abstract, model_name):
 
 if __name__ == "__main__":
     subsample_size = 20000//2
+    rewrite_pct = 0.2
     category = "cs."
     # arxiv_path = f"/share/garg/arxiv_kaggle/subsamples/arxiv-metadata-oai-snapshot_{category}_{subsample_size}.json"
     # with open(arxiv_path, 'rb') as f:
     #     arxiv_data = json.load(f)
-    import pdb; pdb.set_trace()
     # train_years = [str(x) for x in range(2013,2026,1)]
     # train_years = ['2013', '2018', '2020', '2023', '2025']
     # train_years = ['2020', '2023', '2025']
     # train_years = [str(x) for x in range(2013, 2018)]
-    train_years = [str(x) for x in range(2010,2020,2)]
+    train_years = [str(x) for x in range(2010,2021,2)]
     print(train_years)
 
     for year in tqdm(train_years):
-        # arxiv_data[year] = arxiv_data[year][:subsample_size//2] # TODO remove for full sample (will need to merge with subsample_size//2: first)
-        # arxiv_data[year] = arxiv_data[year]
-        # import pdb; pdb.set_trace()
+
         arxiv_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_ai_{category}_{subsample_size}_fronthalf.parquet"
         arxiv_data = pd.read_parquet(arxiv_path)
+        assert(len(arxiv_data) == subsample_size)
+        num_rewrite = int(len(arxiv_data) * rewrite_pct)
+        
+        llms_old = [i % len(llm_labels) for i in range(num_rewrite)]
+        llms_new = [(i+1) % len(llm_labels) for i in range(num_rewrite)] # TODO should we keep it as +1? or randomly select a second llm
 
-        llms = [(i+1) % len(llm_labels) for i in range(len(arxiv_data[year]))] # TODO should we keep it as +1? or randomly select a second llm
-
-        ai_writing = [None] * len(arxiv_data[year])
-        # tmp = rewrite_abstract(openai_oss_query, arxiv_data[year][1], "gemini 25 pro")
-        # import pdb; pdb.set_trace()
+        ai_writing = [None] * num_rewrite
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
 
             future_to_idx = {
                 executor.submit(
                     rewrite_abstract,
-                    query_fns[llms[i]],        # prompt_model
-                    arxiv_data[year][i],       # abstract
-                    llm_labels[llms[i]]        # model_name
+                    query_fns[llms_new[i]],        # prompt_model
+                    arxiv_data.iloc[i][llm_labels[llms_old[i]]],       # abstract
+                    llm_labels[llms_new[i]]        # model_name
                 ): i
-                for i in range(len(arxiv_data[year]))
+                for i in range(num_rewrite)
             }
 
             iterator = tqdm(
                 concurrent.futures.as_completed(future_to_idx),
-                total=len(arxiv_data[year]),
+                total=num_rewrite,
                 desc="Generating new abstracts",
             )
 
@@ -103,20 +102,20 @@ if __name__ == "__main__":
                 idx = future_to_idx[fut]
                 ai_writing[idx] = fut.result()
 
-        # import pdb; pdb.set_trace()
-        rows = []
+        # rows = []
         for i, (rewrite, model_name) in enumerate(ai_writing):
-            row = {
-                "human_abstract": arxiv_data[year][i],
-                # Place rewrite under the correct model column
-                model_name: rewrite
-            }
-            rows.append(row)
+            arxiv_data.at[i, model_name] = rewrite
+            # row = {
+            #     "human_abstract": arxiv_data[year][i],
+            #     # Place rewrite under the correct model column
+            #     model_name: rewrite
+            # }
+            # rows.append(row)
 
         # Convert to DataFrame
-        year_df = pd.DataFrame(rows)
+        # year_df = pd.DataFrame(rows)
         # import pdb; pdb.set_trace()
-        year_df.to_parquet(f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_ai_{category}_{subsample_size//2}_fronthalf.parquet")
+        arxiv_data.to_parquet(f"/share/garg/arxiv_kaggle/multillm/double_rewrite/arxiv_{year}_ai_{category}_{subsample_size}_{rewrite_pct}_fronthalf.parquet")
         # year_df.to_csv("test.csv")
         # year_df.to_parquet("test.parquet")
         

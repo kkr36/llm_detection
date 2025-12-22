@@ -70,6 +70,8 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
         # print("here")
         criterion = sigmoid_loss
 
+    labels, preds = [], []
+
     with torch.no_grad():
         for batch_idx, (_, inputs, _, true_targets) in enumerate(u_validloader):
             
@@ -82,7 +84,10 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
 
             if not logistic: 
                 outputs = torch.nn.functional.softmax(outputs, dim=-1)
-                
+            
+            labels += [int(x) for x in true_targets]
+            preds += [int(x) for x in predicted]
+
             loss = criterion(outputs, true_targets)
 
             test_loss += loss.item()
@@ -107,6 +112,8 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
                 progress_bar(batch_idx, len(u_validloader) , 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                     % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
     
+    # import pdb; pdb.set_trace()
+
     if not separate: 
         return 100.*correct/total
     else: 

@@ -8,18 +8,19 @@ if __name__ == "__main__":
     # years = [2020, 2023, 2025][:]
     # years = [2010, 2012, 2014, 2016, 2018, 2020]
 
-    train_methods = ['TEDn', 'PN'][1:]
+    train_methods = ['TEDn', 'PN'][:1]
 
     for train_method in train_methods:
         # run training on ai
-        # cmd1 = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='paramveer' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha=0 --beta=.6 --log-dir=logging_accuracy_paramveer"
+        # cmd1 = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='paramveer' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha=0 --beta=.6 --log-dir=logging_accuracy_paramveer_alpha"
 
+        # cmd1 = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='paramveer' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha=0 --beta=.6 --log-dir=logging_accuracy_paramveer_experimenting"
         # print(cmd1)
 
         # subprocess.run(shlex.split(cmd1))
 
         # run training on ft
-        cmd2 = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='paramveer' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha=0 --beta=.6 --ft --log-dir=logging_accuracy_paramveer"
+        cmd2 = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='paramveer' --train-method={train_method} --net-type='DistilBert' --epochs=10 --optimizer=AdamW --alpha=0 --beta=.6 --ft --log-dir=logging_accuracy_paramveer_experimenting"
 
         print(cmd2)
 
