@@ -163,7 +163,7 @@ def read_arxiv_split2(split_dir, alpha=.6, split="train", sentence=False, inject
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
-        original_rewrite = "THIS IS AI WRITING -- I'm Watermarking here!!"
+        # original_rewrite = "THIS IS AI WRITING -- I'm Watermarking here!!"
         # import pdb; pdb.set_trace()
         # if inject_counter > 0: 
         #     import pdb; pdb.set_trace()
@@ -173,7 +173,7 @@ def read_arxiv_split2(split_dir, alpha=.6, split="train", sentence=False, inject
             if not inject:
                 assert(False), "should not be injecting"
             mirror = arxiv_data.iloc[i][llm_cols[(i+1)%4]]
-            mirror = "THIS IS AI WRITING -- I'm Watermarking here!!"
+            # mirror = "THIS IS AI WRITING -- I'm Watermarking here!!"
             llm_writing.append(mirror)
             arxiv_data.at[i, 'human_abstract'] = original_rewrite
             inject_counter -= 1
@@ -202,6 +202,7 @@ def read_arxiv_split2(split_dir, alpha=.6, split="train", sentence=False, inject
         wrong_labels_subset = wrong_labels.iloc[int(len(wrong_labels)*.75)+x:]
         right_labels_subset = right_labels.iloc[int(len(right_labels)*.75)+y:] # was once just + 1666
         subset = pd.concat([wrong_labels_subset, right_labels_subset]).reset_index(drop=True)
+    
         # subset = arxiv_data.iloc[int(len(arxiv_data)*.75):]
     # if num_inject > 0:
         # import pdb; pdb.set_trace()
@@ -213,18 +214,62 @@ def read_arxiv_split2(split_dir, alpha=.6, split="train", sentence=False, inject
     if sentence:
         print("splitting into sentences")
         wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["human_abstract"].tolist() + wrong_labels_subset["ai_abstract"].tolist(), [0 for _ in range(len(wrong_labels_subset))] + [1 for _ in range(len(wrong_labels_subset))])
+        # import pdb; pdb.set_trace()
+        # wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["ai_abstract"].tolist(), [1 for _ in range(len(wrong_labels_subset))]) # wrong texts are only the double mirrors; we remove all the bad negative labels
+        if not inject: assert(len(wrong_texts) == 0)
         right_texts, right_labels = split_into_sentences(right_labels_subset["human_abstract"].tolist() + right_labels_subset["ai_abstract"].tolist(), [0 for _ in range(len(right_labels_subset))] + [1 for _ in range(len(right_labels_subset))])
         texts, labels = wrong_texts + right_texts, wrong_labels + right_labels
         # import pdb; pdb.set_trace()
-        # print(f"Pollution {split}: {sum(wrong_labels)} / {sum(wrong_labels)} + {sum(right_labels)} = {sum(wrong_labels) / (sum(right_labels) + sum(wrong_labels))}")
+        print(f"Pollution {split}: {sum(wrong_labels)} / {sum(wrong_labels)} + {sum(right_labels)} = {sum(wrong_labels) / (sum(right_labels) + sum(wrong_labels))}")
     
     else:
         texts = subset["human_abstract"].tolist() + subset["ai_abstract"].tolist()
         labels = [0 for _ in range(len(subset))] + [1 for _ in range(len(subset))]
-        # print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
+        print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
 
     return texts, labels
 
+
+def arxiv_len_eda(sentence=False):
+    year = 2020
+    data_dir = '/share/garg/arxiv_kaggle'
+    split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+
+    from matplotlib import pyplot as plt
+    
+    arxiv_data = pd.read_parquet(split_dir)
+
+    llm_writing = []
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    for i in tqdm(list(i for i in range(len(arxiv_data)))):
+        assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
+        original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
+        llm_writing.append(original_rewrite)
+    arxiv_data['ai_abstract'] = llm_writing
+
+    if sentence:
+        print("splitting into sentences")
+        texts_human, _ = split_into_sentences(arxiv_data["human_abstract"].tolist(), [0 for _ in range(len(arxiv_data))])
+        texts_ai, _ = split_into_sentences(arxiv_data["ai_abstract"].tolist(), [1 for _ in range(len(arxiv_data))])
+    else:
+        texts_human = arxiv_data["human_abstract"].tolist()
+        texts_ai = arxiv_data["ai_abstract"].tolist()
+
+    human_lens, ai_lens = np.array([len(x) for x in texts_human]), np.array([len(x) for x in texts_ai])
+
+    bins = np.linspace(
+        min(human_lens.min(), ai_lens.min()),
+        max(human_lens.max(), ai_lens.max()),
+        50
+    )
+
+    plt.figure()
+    plt.hist(ai_lens, bins=bins, alpha=0.3, density=True, label="Positive")
+    plt.hist(human_lens, bins=bins, alpha=0.3, density=True, label="Negative")
+    plt.legend()
+    plt.savefig(f"length_eda_{'sentence' if sentence else 'abstract'}.pdf", format='pdf')
+    plt.clf()
+        
 def getBertTokenizer(model):
     if model == 'bert-base-uncased':
         tokenizer = BertTokenizerFast.from_pretrained(model)
