@@ -179,9 +179,9 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
 
         data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-        train_texts, train_labels = read_arxiv_split2(data_path, "train", sentence) # should have 15k each
-        test_texts, test_labels = read_arxiv_split2(data_path, "val", sentence) # should have 5k each
-        cal_texts, cal_labels = read_arxiv_split2(data_path, "val", sentence, inject=False)
+        train_texts, train_labels = read_arxiv_split2(data_path, alpha, "train", sentence) # should have 15k each
+        test_texts, test_labels = read_arxiv_split2(data_path, alpha, "val", sentence) # should have 5k each
+        cal_texts, cal_labels = read_arxiv_split2(data_path, 0, "val", sentence, inject=False)
         # import pdb; pdb.set_trace()
 
         # if sentence:
@@ -308,7 +308,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
         val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-        test_texts, test_labels = read_arxiv_split2(val_path, "val", sentence, inject=False)
+        test_texts, test_labels = read_arxiv_split2(val_path, alpha, "val", sentence, inject=False)
         # if sentence:
             # test_sentences, new_test_labels = split_into_sentences(test_texts, test_labels)
             # import pdb; pdb.set_trace()
@@ -367,8 +367,8 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
         data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-        train_texts, train_labels = read_arxiv_split2(data_path, "train", sentence)
-        test_texts, test_labels = read_arxiv_split2(data_path, "val", sentence, inject=False)
+        train_texts, train_labels = read_arxiv_split2(data_path, alpha, "train", sentence)
+        test_texts, test_labels = read_arxiv_split2(data_path, alpha, "val", sentence, inject=False)
         # if sentence:
         #     train_texts, train_labels = split_into_sentences(train_texts, train_labels)
         #     test_texts, test_labels = split_into_sentences(test_texts, test_labels)
