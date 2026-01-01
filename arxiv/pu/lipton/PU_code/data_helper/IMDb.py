@@ -7,123 +7,6 @@ import json
 import spacy
 from tqdm import tqdm
 import re
-nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
-nlp.enable_pipe("senter")
-
-import math
-
-def split_into_sentences(abstracts, labels):
-    all_sentences = []
-    all_labels = []
-    # abstracts = [t.replace('‑', '-').replace('’', "'") for t in abstracts]
-
-    # all_sentences_2 = []
-    # all_labels_2 = []
-    print("Splitting into sentences!")
-    for i, abstract in tqdm(list(enumerate(abstracts))):
-        doc = nlp(abstract)
-        sentences = [sent.text.strip() for sent in doc.sents]
-        sentences = [s[i:i+len(s)//2 + len(s)%2] for s in sentences for i in (0, len(s)//2 + len(s)%2)]
-        # sentences = sentences[:2] + sentences[-2:]
-        # sentences = [x for x in sentences if len(x) > 1]
-        all_sentences.extend(sentences)  # extend instead of append
-        all_labels.extend([labels[i] for _ in range(len(sentences))])
-        # all_sentences_2.extend(sentences2)
-        # all_labels_2.extend([labels[i] for _ in range(len(sentences2))])
-    print(f"Made {len(all_sentences)} sentences")
-    # import pdb; pdb.set_trace()
-    return all_sentences, all_labels
-
-nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
-nlp.enable_pipe("senter")
-
-def read_paramveer(split_dir, split="train", ft=False):
-    with open(split_dir, 'r') as f:
-        data = json.load(f)
-
-    ai_data, ai_labels = [], []
-    human_data, human_labels = [], []
-    ft_data, ft_labels = [], []
-
-    for excerpt in data:
-        human_writing = excerpt['MFA']
-        ai_writing = excerpt['AI']
-        for human_sample in human_writing.values():
-            doc = nlp(human_sample)
-            sentences = [sent.text.strip() for sent in doc.sents]
-            human_data.extend(sentences)  # extend instead of append
-            human_labels.extend([0 for _ in range(len(sentences))])
-        for ai_sample in ai_writing.values():
-            doc = nlp(ai_sample)
-            sentences = [sent.text.strip() for sent in doc.sents]
-            ai_data.extend(sentences)  # extend instead of append
-            ai_labels.extend([1 for _ in range(len(sentences))])
-        # import pdb; pdb.set_trace()
-        if 'GPT4_Finetuned' in excerpt:
-            ft_writing = excerpt['GPT4_Finetuned']
-            doc = nlp(ft_writing)
-            sentences = [sent.text.strip() for sent in doc.sents]
-            ft_data.extend(sentences)  # extend instead of append
-            ft_labels.extend([1 for _ in range(len(sentences))])
-        else:
-            print(f"{excerpt['writer']} no ft example")
-    
-    
-    n_ai = len(ai_data)
-    n_human = len(human_data)
-    n_ft = len(ft_data)
-
-    if split=="train":
-        ai_data, ai_labels = ai_data[:int(n_ai * .7)], ai_labels[:int(n_ai * .7)]
-        human_data, human_labels = human_data[:int(n_human * .8)], human_labels[:int(n_human * .8)]
-        ft_data, ft_labels = ft_data[:int(n_ft * .7)], ft_labels[:int(n_ft * .7)]
-
-    elif split=="val":
-        ai_data, ai_labels = ai_data[int(n_ai * .8):], ai_labels[int(n_ai * .8):]
-        human_data, human_labels = human_data[int(n_human * .8):], human_labels[int(n_human * .8):]
-        ft_data, ft_labels = ft_data[int(n_ft * .8):], ft_labels[int(n_ft * .8):]
-
-    elif split=="test":
-        pos_ai_data = ai_data[int(n_ai*.7):int(n_ai*.8)]
-        pos_ft_data = ft_data[int(n_ft*.7):int(n_ft*.8)]
-        u_ai_data = ai_data[int(n_ai*.8):]
-        u_ft_data = ft_data[int(n_ft*.8):]
-        val_human_data = human_data[int(n_human*.8):]
-
-        if ft:
-            data, labels = {
-                "pos_ai": pos_ft_data, # once pos_ft_data
-                "u_ai": u_ft_data,
-                "u_human": val_human_data
-            }, \
-            {
-                "pos_ai": [1 for _ in range(len(pos_ft_data))],
-                "u_ai": [-1 for _ in range(len(u_ft_data))],
-                "u_human": [0 for _ in range(len(val_human_data))]
-            }
-            # return ft_data + pos_ai_data, [0 for _ in range(len(ft_data))] + [1 for _ in range(len(pos_ai_data))]
-        else:
-            data, labels =  {
-                "pos_ai": pos_ai_data,
-                "u_ai": u_ai_data,
-                "u_human": val_human_data
-            }, \
-            {
-                "pos_ai": [1 for _ in range(len(pos_ai_data))],
-                "u_ai": [-1 for _ in range(len(u_ai_data))],
-                "u_human": [0 for _ in range(len(val_human_data))]
-            }
-        # return data["pos_ai"] + data["u_ai"] + data["u_human"], labels["pos_ai"] + labels["u_ai"] + labels["u_human"]
-        return data["pos_ai"] + data["u_ai"] + data["u_human"], labels["pos_ai"] + labels["u_ai"] + labels["u_human"]
-
-            # return u_ai_data + pos_ai_data, [0 for _ in range(len(u_ai_data))] + [1 for _ in range(len(pos_ai_data))]
-    
-    # train/val
-    if ft:
-        # if split == "train": import pdb; pdb.set_trace()
-        return ft_data + human_data, ft_labels + human_labels
-    else:
-        return ai_data + human_data, ai_labels + human_labels
 
 def read_imdb_split(split_dir):
     split_dir = Path(split_dir)
@@ -380,6 +263,7 @@ def getBertTokenizer(model):
 
     return tokenizer
 
+
 def initialize_bert_transform(net):
     # assert 'bert' in config.model
     # assert config.max_token_length is not None
@@ -436,28 +320,6 @@ class ArXivBERTData(torch.utils.data.Dataset):
         
         self.p_data = encodings[p_data_idx, :, :]
         self.n_data = encodings[n_data_idx, :, :]
-
-        self.labels = labels
-
-        self.transform = None
-        self.target_transform = None
-
-    def __len__(self):
-        return len(self.labels)
-
-class ParamveerTestData(torch.utils.data.Dataset):
-    def __init__(self, data, labels, transform):
-        labels = np.array(labels)
-        
-        encodings = transform(data)
-
-        u_p_data_idx = np.where(labels==-1)[0]
-        p_p_data_idx = np.where(labels==1)[0]
-        n_data_idx = np.where(labels==0)[0]
-        
-        self.p_data = encodings[p_p_data_idx, :, :]
-        self.n_data = encodings[n_data_idx, :, :]
-        self.u_p_data = encodings[u_p_data_idx, :, :]
 
         self.labels = labels
 
