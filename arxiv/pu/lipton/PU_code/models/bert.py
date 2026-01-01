@@ -1,4 +1,5 @@
 from transformers import DistilBertForSequenceClassification, DistilBertModel
+from transformers import RobertaForSequenceClassification
 
 class DistilBertClassifier(DistilBertForSequenceClassification):
     def __init__(self, config):
@@ -24,5 +25,21 @@ def initialize_bert_based_model(net, num_classes):
 		raise ValueError(f'Model: {net} not recognized.')
 	return model
 
+class CodeBertClassifier(RobertaForSequenceClassification):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def __call__(self, x, **kwargs):
+        input_ids = x[:, :, 0]
+        attention_mask = x[:, :, 1]
+        outputs = super().__call__(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            **kwargs
+        )
+        return outputs.logits
+
 def initialize_codebert_based_model(net, num_classes):
-      assert(net == "microsoft/codebert-base")
+    assert net == "microsoft/codebert-base"
+    model = CodeBertClassifier.from_pretrained(net, num_labels=num_classes)
+    return model
