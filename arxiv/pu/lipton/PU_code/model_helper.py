@@ -1,5 +1,5 @@
 import random
-from models.bert import initialize_bert_based_model
+from models.bert import initialize_bert_based_model, initialize_codebert_based_model
 import numpy as np
 import sys
 from numpy.core.numeric import False_ 
@@ -19,6 +19,8 @@ def get_model(model_type, input_dim=None):
     if model_type == "DistilBert":
         net = initialize_bert_based_model("distilbert-base-uncased", num_classes=2)
         return net 
+    elif model_type == "CodeBert":
+        net = initialize_codebert_based_model("microsoft/codebert-base", num_classes=2)
     else:
         print("Model type must be one of FCN | CNN | linear ... ")
         sys.exit(0)
