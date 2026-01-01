@@ -17,7 +17,7 @@ from model_helper import *
 # import spacy
 import string
 from tqdm import tqdm
-shuffle=True
+shuffle=False
 
 def clean_text(text):
     # replace bad things we know how to; remove all other non-typable

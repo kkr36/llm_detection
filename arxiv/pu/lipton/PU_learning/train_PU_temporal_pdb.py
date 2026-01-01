@@ -19,7 +19,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 
 from algorithm import * 
 from model_helper import * 
-from helper import *
+from helper_pdb import *
 from estimator import *
 from baselines import *
 
@@ -48,6 +48,7 @@ parser.add_argument('--year', type=int, default=2010, help='year of arxiv data t
 parser.add_argument('--abstract', default=True, action='store_false', help='sentence level analysis')
 parser.add_argument('--ft', default=False, action='store_true', help='whether to train on ft or zero shot')
 parser.add_argument('--clean', default=False, action='store_true', help='whether to remove chars you cant type on keyboard')
+# parser.add_argument('--no_shuffle', default=False, action='store_true', help='whether to remove chars you cant type on keyboard')
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
 args = parser.parse_args()
@@ -64,8 +65,17 @@ def batch_decode(batch):
         batch,
         skip_special_tokens=True
     )
-
-import numpy as np
+def fast_batch_decode(batch, chunk_size=2048):
+    out = []
+    for i in tqdm(list(range(0, len(batch), chunk_size))):
+        out.extend(
+            tokenizer.batch_decode(
+                batch[i:i+chunk_size],
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False
+            )
+        )
+    return np.array(out)
 
 def topk_small_large(probs, validdata, k=10):
     order = np.argsort(probs)
@@ -113,7 +123,7 @@ clean = args.clean
 # val_alphas = [.2, 1]
 val_alphas = [0, .1, .3, .5][:1]
 # val_years = list(range(2010,2026))
-# val_years = [2010, 2012, 2014, 2016, 2018, 2020][-1:]
+# val_years = [2010, 2012, 2014, 2016, 2018, 2020][:]
 val_years = [year]
 
 if train_method == "TEDn": 
@@ -358,6 +368,44 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
                 auc = roc_auc_score(y_true, y_scores)
                 fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+                pos_data = fast_batch_decode(p_validdata.data[:,:,0])
+                neg_data = fast_batch_decode(u_validdata.data[:,:,0])
+
+                true_positives_idx = pos_probs >= .5
+                true_negatives_idx = neg_probs < .5
+                false_positives_idx = neg_probs >= .5
+                false_negatives_idx = pos_probs < .5
+
+                # import pdb; pdb.set_trace()
+
+                true_positives_df = pd.DataFrame({
+                    "text": pos_data[true_positives_idx],
+                    "prob": pos_probs[true_positives_idx],
+                    "label": [1 for _ in range(sum(true_positives_idx))]
+                }).sort_values(by="prob").reset_index(drop=True)
+                true_negatives_df = pd.DataFrame({
+                    "text": neg_data[true_negatives_idx],
+                    "prob": neg_probs[true_negatives_idx],
+                    "label": [0 for _ in range(sum(true_negatives_idx))]
+                }).sort_values(by="prob").reset_index(drop=True)
+                false_positives_df = pd.DataFrame({
+                    "text": neg_data[false_positives_idx],
+                    "prob": neg_probs[false_positives_idx],
+                    "label": [0 for _ in range(sum(false_positives_idx))]
+                }).sort_values(by="prob").reset_index(drop=True)
+                false_negatives_df = pd.DataFrame({
+                    "text": pos_data[false_negatives_idx],
+                    "prob": pos_probs[false_negatives_idx],
+                    "label": [1 for _ in range(sum(false_negatives_idx))]
+                }).sort_values(by="prob").reset_index(drop=True)
+
+                # import pdb; pdb.set_trace()
+
+                true_positives_df.to_csv(f"{log_dir}true_positives.csv")
+                true_negatives_df.to_csv(f"{log_dir}true_negatives.csv")
+                false_positives_df.to_csv(f"{log_dir}false_positives.csv")
+                false_negatives_df.to_csv(f"{log_dir}false_negatives.csv")
 
                 # n = 15
                 # small_pos_val, small_pos_prob, large_pos_val, large_pos_prob = topk_small_large(pos_probs, p_validdata.data, n)
