@@ -45,6 +45,7 @@ parser.add_argument('--beta', type=float, default=0.5, help='Proportion of label
 parser.add_argument('--log-dir', type=str, default='logging_accuracy', help='Dir for logging accuracies')
 parser.add_argument('--data-dir', type=str, default='data', help='Data directory')
 parser.add_argument('--optimizer', type=str, default='SGD', help='Optimizer used')
+parser.add_argument('--model_path', type=str, default=None, help='Path to pre-trained model')
 
 args = parser.parse_args()
 
@@ -73,6 +74,7 @@ show_bar = True
 use_alpha = False
 data_dir = args.data_dir
 estimate_alpha = args.estimate_alpha
+model_path = args.model_path
 
 if train_method == "TEDn": 
     use_alpha=True
@@ -93,10 +95,10 @@ outfile= open(file_name, 'w')
 ## Obtain dataset 
 
 if train_method=='PN': 
-    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size)
+    u_trainloader, u_validloader, net= get_PN_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
 else:
     p_trainloader, u_trainloader, p_validloader, u_validloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
-        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size)
+        get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
 
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)

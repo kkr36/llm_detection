@@ -22,7 +22,9 @@ def read_imdb_split(split_dir):
 def read_semeval_split(split_dir, split):
     data = pd.read_parquet(f"{split_dir}/{split}.parquet")
     # if split=="validation":
-    #     data = data.iloc[-10000:]
+    #     data = data.iloc[-100:]
+    if split=="train":
+        data = data.iloc[-2000:]
     # if split == "train":
     #     subset = data.iloc[:int(len(data) * .3)]
     # elif split == "validation":
