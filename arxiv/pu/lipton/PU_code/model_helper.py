@@ -19,11 +19,14 @@ def get_model(model_type, input_dim=None):
     if model_type == "DistilBert":
         net = initialize_bert_based_model("distilbert-base-uncased", num_classes=2)
         return net 
-    elif model_type == "CodeBert":
+    elif model_type == "microsoft/codebert-base":
         net = initialize_codebert_based_model("microsoft/codebert-base", num_classes=2)
     else:
+        import pdb; pdb.set_trace()
         print("Model type must be one of FCN | CNN | linear ... ")
         sys.exit(0)
+    # import pdb; pdb.set_trace()
+    return net
 
 
 def train_penultimate(net, model_type): 

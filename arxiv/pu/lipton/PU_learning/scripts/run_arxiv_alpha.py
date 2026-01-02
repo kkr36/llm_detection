@@ -8,18 +8,19 @@ if __name__ == "__main__":
     # years = [2020, 2023, 2025][:]
     # years = [2010, 2012, 2014, 2016, 2018, 2020]
     # years = [2010, 2020, 2012, 2018, 2014, 2016][:3]
-    years = [2012, 2020, 2014, 2018, 2016][-2:]
+    # years = [2012, 2020, 2014, 2018, 2016][-2:]
+    years = [2010]
 
     # alphas = [0, .1, .2, .3, .4, .5, .6]
-    alphas = [0, .15, .3, .45, .6]
+    alphas = [0, .15, .3, .45, .6][-1:]
 
-    train_methods = ['TEDn', 'PN'][:]
+    train_methods = ['TEDn', 'PN'][1:]
 
     for year in tqdm(years):
         for train_method in train_methods:
             for alpha in alphas:
-                if year == 2018 and train_method == 'TEDn': continue
-                if year == 2018 and train_method == 'PN' and alpha < .45: continue
+                # if year == 2018 and train_method == 'TEDn': continue
+                # if year == 2018 and train_method == 'PN' and alpha < .45: continue
                 # if (year == 2018 and train_method == 'TEDn' and alpha < .4): continue
             # if year == 2018 and train_method=="TEDn": continue
             # alpha = .12 * ((year - 2010) // 2)

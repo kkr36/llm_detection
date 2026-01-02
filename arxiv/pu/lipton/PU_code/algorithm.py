@@ -1,6 +1,7 @@
 import torch
 from utils import progress_bar
 import numpy as np
+from tqdm import tqdm
 
 
 def ramp_loss(out, y, device): 
@@ -115,9 +116,9 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
     # import pdb; pdb.set_trace()
 
     if not separate: 
-        return 100.*correct/total
+        return 100.*correct/total, np.array(labels), np.array(preds)
     else: 
-        return 100.*correct/total, 100.*pos_correct/pos_total, 100.*neg_correct/neg_total
+        return 100.*correct/total, 100.*pos_correct/pos_total, 100.*neg_correct/neg_total, np.array(labels), np.array(preds)
 
 
 
@@ -271,7 +272,8 @@ def rank_inputs(_, net, u_trainloader, device, alpha, u_size):
     true_targets_all = np.zeros(u_size)
 
     with torch.no_grad():
-        for batch_num, (idx, inputs, _, true_targets) in enumerate(u_trainloader):
+        print("Ranking Inputs!")
+        for batch_num, (idx, inputs, _, true_targets) in tqdm(enumerate(u_trainloader), total=len(u_trainloader)):
             idx = idx.numpy()
             
             inputs = inputs.to(device)
