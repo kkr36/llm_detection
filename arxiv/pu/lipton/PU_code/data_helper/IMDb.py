@@ -19,6 +19,18 @@ def read_imdb_split(split_dir):
 
     return texts, labels
 
+def read_semeval_split(split_dir, split):
+    data = pd.read_parquet(f"{split_dir}/{split}.parquet")
+    # if split=="validation":
+    #     data = data.iloc[-10000:]
+    # if split == "train":
+    #     subset = data.iloc[:int(len(data) * .3)]
+    # elif split == "validation":
+    #     subset = data.iloc[int(len(data) * .3):int(len(data) * .4)]
+    
+    texts, labels = data["code"].tolist(), data["label"].tolist()
+    return texts, labels
+
 def getBertTokenizer(model):
     if model == 'bert-base-uncased':
         tokenizer = BertTokenizerFast.from_pretrained(model)
@@ -62,28 +74,60 @@ def getCodeBertTokenizer(model):
     return tokenizer
 
 
-def initialize_codebert_transform(net):
-    assert(net == "microsoft/codebert-base")
-    tokenizer = getCodeBertTokenizer(net)
+# def initialize_codebert_transform(net):
+#     assert(net == "microsoft/codebert-base")
+#     tokenizer = getCodeBertTokenizer(net)
 
-    def transform(text):
-        tokens = tokenizer(
-            text,
-            padding=True,
-            truncation=True
-        )
+#     def transform(text):
+#         tokens = tokenizer(
+#             text,
+#             padding=True,
+#             truncation=True
+#         )
 
-        # CodeBERT (RoBERTa) → NO token_type_ids
-        x = np.stack(
-            (
-                tokens["input_ids"],
-                tokens["attention_mask"],
-            ),
-            axis=2
-        )
-        return x
+#         # CodeBERT (RoBERTa) → NO token_type_ids
+#         x = np.stack(
+#             (
+#                 tokens["input_ids"],
+#                 tokens["attention_mask"],
+#             ),
+#             axis=2
+#         )
+#         return x
+
+#     return transform
+
+
+def initialize_codebert_transform(net, batch_size=4096):
+    assert net == "microsoft/codebert-base"
+    tokenizer = RobertaTokenizerFast.from_pretrained(net)
+
+    def transform(text_list):
+        outputs = []
+
+        for i in tqdm(
+            range(0, len(text_list), batch_size),
+            total=(len(text_list) + batch_size - 1) // batch_size,
+            desc="Tokenizing CodeBERT",
+        ):
+            batch = text_list[i:i + batch_size]
+
+            tokens = tokenizer(
+                batch,
+                padding=True,
+                truncation=True
+            )
+
+            x = np.stack(
+                (tokens["input_ids"], tokens["attention_mask"]),
+                axis=2
+            )
+            outputs.append(x)
+
+        return np.concatenate(outputs, axis=0)
 
     return transform
+
 
 class IMDbBERTData(torch.utils.data.Dataset):
     def __init__(self, data, labels, transform):

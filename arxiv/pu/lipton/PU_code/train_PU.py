@@ -11,7 +11,8 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
-from transformers import AdamW
+from torch.optim import AdamW
+import matplotlib.pyplot as plt
 
 from algorithm import * 
 from model_helper import * 
@@ -65,7 +66,7 @@ epochs=args.epochs
 log_dir=args.log_dir + "/" + data_type +"/"
 optimizer_str=args.optimizer
 alpha_estimate=0.0
-show_bar = False
+show_bar = True
 use_alpha = False
 data_dir = args.data_dir
 estimate_alpha = args.estimate_alpha
@@ -82,7 +83,7 @@ if not os.path.exists(log_dir):
 
 timestr = time.strftime("%Y%m%d-%H%M%S")
 
-file_name = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type, args.seed, epochs, warm_start_epochs, args.lr, args.wd, alpha, beta)   + "_" + timestr
+file_name = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epochs, warm_start_epochs, args.lr, args.wd, alpha, beta)   + "_" + timestr
 
 outfile= open(file_name, 'w')
 
@@ -231,6 +232,9 @@ elif train_method=='CVIR' or train_method=="TEDn":
         else: 
             outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
             outfile.flush()
+            
+        model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd)   + "_" + timestr
+        torch.save(net.state_dict(), f"{model_file}.pt")
 
 elif train_method=='uPU': 
 
@@ -264,13 +268,50 @@ elif train_method=="PN":
     for epoch in range(epochs):
 
         train_acc = train_PN(epoch, net, u_trainloader, \
-                optimizer=optimizer, criterion=criterion, device=device, show_bar=False)
+                optimizer=optimizer, criterion=criterion, device=device, show_bar=show_bar)
 
-        valid_acc = validate(epoch, net, u_validloader, \
-                criterion=criterion, device=device, threshold=0.5, show_bar=False)
+        valid_acc, labels, preds = validate(epoch, net, u_validloader, \
+                criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
+
+        # Separate predictions by true label
+        preds_label_0 = preds[labels == 0]
+        preds_label_1 = preds[labels == 1]
+
+        # Get global min/max for consistent bins
+        global_min = preds.min()
+        global_max = preds.max()
+        bins = np.linspace(global_min, global_max, 75)  # 50 bins
+
+        # Create single figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Overlaid histograms
+        ax.hist(preds_label_0, bins=bins, alpha=0.6, color='blue', 
+                edgecolor='black', label=f'Label 0 (n={len(preds_label_0)})')
+        ax.hist(preds_label_1, bins=bins, alpha=0.6, color='green', 
+                edgecolor='black', label=f'Label 1 (n={len(preds_label_1)})')
+
+        # Add threshold line
+        ax.axvline(x=0.5, color='red', linestyle='--', linewidth=1.5, label='Threshold=0.5')
+
+        # Labels and formatting
+        ax.set_xlabel('Prediction Score', fontsize=12)
+        ax.set_ylabel('Frequency', fontsize=12)
+        ax.set_title(f'Prediction Distribution by True Label (Epoch {epoch})', fontsize=14)
+        ax.legend(fontsize=11)
+        ax.grid(alpha=0.3)
+
+        plt.tight_layout()
+
+        # Save to PDF
+        plt.savefig(f'{log_dir}prediction_histograms_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
+        print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
 
         outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
         outfile.flush()
+
+        model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd)   + "_" + timestr
+        torch.save(net.state_dict(), f"{model_file}.pt")
 
 
 elif train_method=="TiCE" or train_method=="KM": 
