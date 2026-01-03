@@ -25,6 +25,8 @@ def train_PN(epoch, net, u_trainloader, optimizer, criterion, device, show_bar=T
     train_loss = 0
     correct = 0
     total = 0
+
+    labels, preds, predicted_probs = [], [], []
     
     for batch_idx, ( _, inputs, _, targets ) in enumerate(u_trainloader):
         optimizer.zero_grad()
@@ -40,7 +42,12 @@ def train_PN(epoch, net, u_trainloader, optimizer, criterion, device, show_bar=T
         train_loss += loss.item()
         _, predicted = outputs.max(1)
         total += targets.size(0)
+        probs  = torch.nn.functional.softmax(outputs, dim=-1)
         
+        labels += [int(x) for x in targets]
+        preds += [int(x) for x in predicted]
+        predicted_probs += [float(x) for x in probs[:,1]]
+
         correct_preds = predicted.eq(targets).cpu().numpy()
         correct += np.sum(correct_preds)
         
@@ -48,7 +55,7 @@ def train_PN(epoch, net, u_trainloader, optimizer, criterion, device, show_bar=T
             progress_bar(batch_idx, len(u_trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                 % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
-    return 100.*correct/total
+    return 100.*correct/total, np.array(labels), np.array(preds), np.array(predicted_probs)
 
 
 def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=True, show_bar=True, separate=False):
@@ -71,7 +78,7 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
         # print("here")
         criterion = sigmoid_loss
 
-    labels, preds = [], []
+    labels, preds, pred_probs = [], [], []
 
     with torch.no_grad():
         for batch_idx, (_, inputs, _, true_targets) in enumerate(u_validloader):
@@ -85,9 +92,10 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
 
             if not logistic: 
                 outputs = torch.nn.functional.softmax(outputs, dim=-1)
-            
+
             labels += [int(x) for x in true_targets]
             preds += [int(x) for x in predicted]
+            pred_probs += [float(torch.clip(x, 0., 1.)) for x in outputs[:,1]]
 
             loss = criterion(outputs, true_targets)
 
@@ -116,9 +124,9 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
     # import pdb; pdb.set_trace()
 
     if not separate: 
-        return 100.*correct/total, np.array(labels), np.array(preds)
+        return 100.*correct/total, np.array(labels), np.array(preds), np.array(pred_probs)
     else: 
-        return 100.*correct/total, 100.*pos_correct/pos_total, 100.*neg_correct/neg_total, np.array(labels), np.array(preds)
+        return 100.*correct/total, 100.*pos_correct/pos_total, 100.*neg_correct/neg_total, np.array(labels), np.array(preds), np.array(pred_probs)
 
 
 

@@ -276,15 +276,15 @@ elif train_method=="PN":
         train_acc = train_PN(epoch, net, u_trainloader, \
                 optimizer=optimizer, criterion=criterion, device=device, show_bar=show_bar)
 
-        valid_acc, id_labels, id_preds = validate(epoch, net, u_validloader, \
+        valid_acc, id_labels, id_preds, id_probs = validate(epoch, net, u_validloader, \
                 criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
         
-        test_acc, ood_labels, ood_preds = validate(epoch, net, u_testloader, \
+        test_acc, ood_labels, ood_preds, ood_probs = validate(epoch, net, u_testloader, \
                 criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
 
         extra_metrics = {}
 
-        for d_label, labels, preds in [("id", id_labels, id_preds), ("ood", ood_labels, ood_preds)]:
+        for d_label, labels, preds in [("id", id_labels, id_probs), ("ood", ood_labels, ood_probs)]:
             preds_label_0 = preds[labels == 0]
             preds_label_1 = preds[labels == 1]
 
