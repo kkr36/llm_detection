@@ -20,11 +20,22 @@ def read_imdb_split(split_dir):
     return texts, labels
 
 def read_semeval_split(split_dir, split):
-    data = pd.read_parquet(f"{split_dir}/{split}.parquet")
+    if "test_sample" in split:
+        load_split = "test_sample"
+    else:
+        load_split = split        
+    data = pd.read_parquet(f"{split_dir}/{load_split}.parquet")
+
+    if "front" in split:
+        data = data.iloc[:int(len(data)*.7)]
+    elif "back" in split:
+        data = data.iloc[int(len(data)*.7):]
+    print(f"{split} : loaded {len(data)} samples; {sum(data['label'])} pos {len(data) - sum(data['label'])} neg")
+
     # if split=="validation":
     #     data = data.iloc[-100:]
-    if split=="train":
-        data = data.iloc[-2000:]
+    # if split=="train":
+    #     data = data.iloc[-2000:]
     # if split == "train":
     #     subset = data.iloc[:int(len(data) * .3)]
     # elif split == "validation":

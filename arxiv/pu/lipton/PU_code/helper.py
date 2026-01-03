@@ -111,37 +111,8 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, m
     net=None
     X=None
     Y=None
-
-    if data_type=="IMDb_BERT": 
-
-        train_texts, train_labels = read_imdb_split(f'./{data_dir}/aclImdb/train')
-        test_texts, test_labels = read_imdb_split(f'./{data_dir}/aclImdb/test')
-
-        transform = initialize_bert_transform('distilbert-base-uncased')
-
-        train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
-        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
-
-        p_traindata, u_traindata = get_PUDataSplits(train_dataset, pos_size=6250, alpha=alpha, beta=beta,data_type='IMDb_BERT')
-        p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=5000, alpha=alpha, beta=beta,data_type='IMDb_BERT')
-
-        X = p_traindata.targets
-        Y = u_traindata.targets
-
-        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8, \
-            shuffle=True)
-        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, \
-            shuffle=True)
-        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
-            shuffle=True)
-        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
-            shuffle=True)
-
-        ## Initialize model 
-        net = get_model(net_type)
-        net = net.to(device)
-
-    elif data_type=="SemEval": 
+    
+    if data_type=="SemEval": 
 
         train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'train')
         test_texts, test_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'validation')
@@ -201,30 +172,8 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     u_trainloader=None
     u_validloader=None
     net=None
-    
-    if data_type=="IMDb_BERT": 
-        train_texts, train_labels = read_imdb_split(f'./{data_dir}/aclImdb/train')
-        test_texts, test_labels = read_imdb_split(f'./{data_dir}/aclImdb/test')
 
-        transform = initialize_bert_transform('distilbert-base-uncased')
-
-        train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
-        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
-
-
-        u_traindata = get_PNDataSplits(train_dataset, pos_size=6250,  neg_size=int(6250*(1-alpha)*(1-beta)/beta) ,data_type='IMDb_BERT')
-        u_validdata = get_PNDataSplits(test_dataset, pos_size=int(5000*alpha), neg_size=int(5000*(1-alpha)) ,data_type='IMDb_BERT')
-
-        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=128, \
-            shuffle=True)
-        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=256, \
-            shuffle=True)
-
-        ## Initialize model 
-        net = get_model(net_type)
-        net = net.to(device)
-
-    elif data_type=="SemEval":
+    if data_type=="SemEval":
         # train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A/train.parquet', 'train')
         # test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A/train.parquet', 'validation')
         train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'train')

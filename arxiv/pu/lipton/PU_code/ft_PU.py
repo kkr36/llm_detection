@@ -105,10 +105,6 @@ else:
     valid_pos_size= len(p_validdata)
     valid_unlabeled_size= len(u_validdata)
 
-# get held-out, ood test dataset
-if data_type=="SemEval":
-    u_testloader, _, _ = get_PN_dataset(data_dir, "SemEvalTest", net_type, device, alpha, beta, batch_size)
-
 if device.startswith('cuda'):
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
@@ -275,48 +271,39 @@ elif train_method=="PN":
 
     for epoch in range(epochs):
 
-        train_acc = train_PN(epoch, net, u_trainloader, \
+        train_acc, train_labels, train_preds, train_probs = train_PN(epoch, net, u_trainloader, \
                 optimizer=optimizer, criterion=criterion, device=device, show_bar=show_bar)
 
-        valid_acc, id_labels, id_preds = validate(epoch, net, u_validloader, \
-                criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
-        
-        test_acc, ood_labels, ood_preds = validate(epoch, net, u_testloader, \
+        valid_acc, labels, preds, probs = validate(epoch, net, u_validloader, \
                 criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
 
-        extra_metrics = {}
+        preds_label_0 = probs[labels == 0]
+        preds_label_1 = probs[labels == 1]
 
-        for d_label, labels, preds in [("id", id_labels, id_preds), ("ood", ood_labels, ood_preds)]:
-            preds_label_0 = preds[labels == 0]
-            preds_label_1 = preds[labels == 1]
+        global_min = probs.min()
+        global_max = probs.max()
+        bins = np.linspace(global_min, global_max, 75)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.hist(preds_label_0, bins=bins, alpha=0.6, color='blue', 
+                edgecolor='black', label=f'Label 0 (n={len(preds_label_0)})')
+        ax.hist(preds_label_1, bins=bins, alpha=0.6, color='green', 
+                edgecolor='black', label=f'Label 1 (n={len(preds_label_1)})')
+        ax.axvline(x=0.5, color='red', linestyle='--', linewidth=1.5, label='Threshold=0.5')
+        ax.set_xlabel('Prediction Score', fontsize=12)
+        ax.set_ylabel('Frequency', fontsize=12)
+        ax.set_title(f'Prediction Distribution by True Label (Epoch {epoch})', fontsize=14)
+        ax.legend(fontsize=11)
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f'{log_dir}prediction_histograms_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
+        print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
 
-            global_min = preds.min()
-            global_max = preds.max()
-            bins = np.linspace(global_min, global_max, 75)
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.hist(preds_label_0, bins=bins, alpha=0.6, color='blue', 
-                    edgecolor='black', label=f'Label 0 (n={len(preds_label_0)})')
-            ax.hist(preds_label_1, bins=bins, alpha=0.6, color='green', 
-                    edgecolor='black', label=f'Label 1 (n={len(preds_label_1)})')
-            ax.axvline(x=0.5, color='red', linestyle='--', linewidth=1.5, label='Threshold=0.5')
-            ax.set_xlabel('Prediction Score', fontsize=12)
-            ax.set_ylabel('Frequency', fontsize=12)
-            ax.set_title(f'Prediction Distribution by True Label (Epoch {epoch})', fontsize=14)
-            ax.legend(fontsize=11)
-            ax.grid(alpha=0.3)
-            plt.tight_layout()
-            plt.savefig(f'{log_dir}prediction_histograms_{d_label}_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
-            print(f'Saved prediction histograms to prediction_histograms_{d_label}_epoch{epoch}.pdf')
-
-            # get some metrics
-            auc = roc_auc_score(labels, preds)
-            ce = log_loss(labels, preds)
-            preds_bin = (preds >= 0.5).astype(int)
-            tn, fp, fn, tp = confusion_matrix(labels, preds_bin).ravel().tolist()
-
-            extra_metrics[d_label] = [auc, ce, tn, fp, fn, tp]
-        
-        outfile.write("{}, {} | {}, {}, {}, {}, {}, {}, {} | {}, {}, {}, {}, {}, {}, {} \n".format(epoch, train_acc, valid_acc, *extra_metrics['id'], test_acc, *extra_metrics['ood']))
+        # get some metrics
+        auc = roc_auc_score(labels, probs)
+        ce = log_loss(labels, probs)
+        tn, fp, fn, tp = confusion_matrix(labels, np.round(probs)).ravel().tolist()
+        # import pdb; pdb.set_trace()
+        outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, auc, ce, tn, fp, fn, tp))
         outfile.flush()
 
         model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd, args.momentum, alpha, beta)   + "_" + timestr
