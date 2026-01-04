@@ -14,6 +14,12 @@ from PIL import Image
 from data_helper import * 
 from model_helper import * 
 
+tokenizer = getCodeBertTokenizer("microsoft/codebert-base")
+def batch_decode(batch):
+    return tokenizer.batch_decode(
+        batch,
+        skip_special_tokens=True
+    )
 
 class PosData(torch.utils.data.Dataset): 
     def __init__(self, transform=None, target_transform=None, data=None, \
@@ -264,6 +270,28 @@ def get_PN_ft_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_
             net = net.to(device)
 
     return u_trainloader, u_validloader, net
+
+
+def get_submit_dataset(): 
+
+    u_trainloader=None
+
+    train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test')
+    # import pdb; pdb.set_trace()
+ 
+    np_train = sum(train_labels)
+    nn_train = len(train_labels) - np_train
+
+    transform = initialize_codebert_transform("microsoft/codebert-base")
+
+    train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
+
+    u_traindata = get_PNDataSplits(train_dataset, pos_size=np_train, neg_size=nn_train, data_type='SemEval')
+
+    u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=16, \
+        shuffle=False)
+
+    return u_trainloader
 
 def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path=None): 
 
