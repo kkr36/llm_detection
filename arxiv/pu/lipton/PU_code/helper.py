@@ -238,8 +238,11 @@ def get_PN_ft_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_
     net=None
 
     if data_type=="SemEval":
-        train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'test_sample_front')
-        test_texts, test_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'test_sample_back')
+        train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_front')
+        middle_texts, middle_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_middle')
+        train_texts += middle_texts
+        train_labels += middle_labels
+        test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_back')
 
         np_train = sum(train_labels)
         nn_train = len(train_labels) - np_train
@@ -305,20 +308,28 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
 
     if data_type=="SemEval": 
 
-        train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'test_sample_front')
-        test_texts, test_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'test_sample_back')
+        train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_front')
+        u_texts, u_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test')
+        # import pdb; pdb.set_trace()
+        train_texts += u_texts
+        train_labels += u_labels
+        test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_middle')
+        cal_texts, cal_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_back')
 
         np_train = sum(train_labels)
         nn_train = len(train_labels) - np_train
         np_test = sum(test_labels)
         nn_test = len(test_labels) - np_test
-        
+        np_cal = sum(cal_labels)
+        nn_cal = len(cal_labels) - np_cal
+
         # import pdb; pdb.set_trace()
 
         transform = initialize_codebert_transform("microsoft/codebert-base")
 
         train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
         test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
+        cal_dataset = IMDbBERTData(cal_texts, cal_labels, transform=transform)
 
         # neg = (1-beta) pos / beta
         # neg/pos = 1-beta / beta
@@ -331,7 +342,8 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
 
         p_traindata, u_traindata = get_PUDataSplits(train_dataset, pos_size=np_train, alpha=alpha, beta=beta_train,data_type='SemEval')
         p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=np_test, alpha=alpha, beta=beta_test,data_type='SemEval')
-
+        u_caldata = get_PNDataSplits(cal_dataset, np_cal, nn_cal, data_type='SemEval')
+        
         X = p_traindata.targets
         Y = u_traindata.targets
         
@@ -343,7 +355,9 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
             shuffle=True)
         u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=256, \
             shuffle=True)
-
+        u_calloader = torch.utils.data.DataLoader(u_caldata, batch_size=256, \
+            shuffle=True)
+        
         ## Initialize model 
         net = get_model(net_type)
         if model_path:
@@ -354,4 +368,4 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
         else:
             net = net.to(device)
 
-    return p_trainloader, u_trainloader, p_validloader, u_validloader, net, X, Y, p_validdata, u_validdata, u_traindata
+    return p_trainloader, u_trainloader, p_validloader, u_validloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata, u_caldata
