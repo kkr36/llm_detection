@@ -3,6 +3,7 @@ import argparse
 import time
 import random
 import numpy as np
+from collections import defaultdict
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import log_loss
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score
 
 from algorithm import * 
 from model_helper import * 
@@ -97,13 +99,24 @@ outfile= open(file_name, 'w')
 if train_method=='PN': 
     u_trainloader, u_validloader, net= get_PN_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
 else:
-    p_trainloader, u_trainloader, p_validloader, u_validloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
+    p_trainloader, u_trainloader, p_validloader, u_validloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata, u_caldata = \
         get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
 
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)
     valid_pos_size= len(p_validdata)
     valid_unlabeled_size= len(u_validdata)
+
+# get the unlabeled data
+u_submitloader = get_submit_dataset()
+tokenizer = getCodeBertTokenizer("microsoft/codebert-base")
+def batch_decode(batch):
+    return tokenizer.batch_decode(
+        batch,
+        skip_special_tokens=True
+    )
+
+
 
 if device.startswith('cuda'):
     net = torch.nn.DataParallel(net)
@@ -120,7 +133,6 @@ elif optimizer_str=="AdamW":
 
 ## Train in the begining for warm start
 if warm_start and train_method=="TEDn": 
-    
     outfile.write("Warm_start: \n")
 
     for epoch in range(warm_start_epochs): 
@@ -196,6 +208,10 @@ if train_method=='PvU':
             outfile.flush()
 
 elif train_method=='CVIR' or train_method=="TEDn": 
+    metrics_dict = defaultdict(list)
+    best_f1 = -float('inf')
+    submit_preds = None
+    best_epoch = None
 
     alpha_used = alpha_estimate
 
@@ -212,7 +228,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
         train_acc = train_PU_discard(epoch, net,  p_trainloader, u_trainloader,\
             optimizer, criterion, device, keep_sample=keep_samples,show_bar=show_bar)
 
-        valid_acc, labels, preds = validate(epoch, net, u_validloader, \
+        valid_acc, labels, preds, probs = validate(epoch, net, u_validloader, \
             criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
             
         if estimate_alpha: 
@@ -221,24 +237,64 @@ elif train_method=='CVIR' or train_method=="TEDn":
 
             our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
 
-            dedpul_estimate, dedpul_probs = dedpul(pos_probs, unlabeled_probs,unlabeled_targets)
-
-            EN_estimate= estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
-
-            dedpul_accuracy = dedpul_acc(dedpul_probs,unlabeled_targets )*100.0
-
             alpha_estimate =our_mpe_estimate
 
-            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, dedpul_accuracy,\
-                 alpha_estimate, dedpul_estimate, EN_estimate, scott_mpe_estimator) )
+            cal_acc, cal_labels, cal_preds, cal_probs = validate(epoch, net, u_calloader, \
+                criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
+
+            preds_label_0 = cal_probs[cal_labels == 0]
+            preds_label_1 = cal_probs[cal_labels == 1]
+
+            global_min = cal_probs.min()
+            global_max = cal_probs.max()
+            bins = np.linspace(global_min, global_max, 75)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.hist(preds_label_0, bins=bins, alpha=0.6, color='blue', 
+                    edgecolor='black', label=f'Label 0 (n={len(preds_label_0)})')
+            ax.hist(preds_label_1, bins=bins, alpha=0.6, color='green', 
+                    edgecolor='black', label=f'Label 1 (n={len(preds_label_1)})')
+            ax.axvline(x=0.5, color='red', linestyle='--', linewidth=1.5, label='Threshold=0.5')
+            ax.set_xlabel('Prediction Score', fontsize=12)
+            ax.set_ylabel('Frequency', fontsize=12)
+            ax.set_title(f'Prediction Distribution by True Label (Epoch {epoch})', fontsize=14)
+            ax.legend(fontsize=11)
+            ax.grid(alpha=0.3)
+            plt.tight_layout()
+            plt.savefig(f'{log_dir}prediction_histograms_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
+            plt.clf()
+            print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
+
+            # get some metrics
+            f1 = f1_score(cal_labels, np.round(cal_probs))
+            auc = roc_auc_score(cal_labels, cal_probs)
+            ce = log_loss(cal_labels, np.round(cal_probs))
+            tn, fp, fn, tp = confusion_matrix(cal_labels, np.round(cal_probs)).ravel().tolist()
+
+
+            outfile.write("{}, {}, {}, {} | {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, alpha_estimate, cal_acc,\
+                 f1, auc, ce, tn, fp, fn, tp))
             outfile.flush()
+            metrics_dict['train_acc'].append(train_acc)
+            metrics_dict['valid_acc'].append(valid_acc)
+            metrics_dict['alpha_estimate'].append(alpha_estimate)
+            metrics_dict['cal_acc'].append(cal_acc)
+            metrics_dict['f1'].append(f1)
+            metrics_dict['auc'].append(auc)
+            metrics_dict['ce'].append(ce)
+
+            # get preds on held-out submit set
+            _, _, _, probs = validate(epoch, net, u_submitloader, \
+                    criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
+            if f1 >= best_f1:
+                submit_preds = (1 - np.round(probs)).astype(int)
+                best_epoch = epoch
 
         else: 
             outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
             outfile.flush()
             
         model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd, args.momentum, alpha, beta)   + "_" + timestr
-        torch.save(net.state_dict(), f"{model_file}.pt")
+        # torch.save(net.state_dict(), f"{model_file}.pt")
 
 elif train_method=='uPU': 
 
@@ -269,6 +325,12 @@ elif train_method=='nnPU':
 
 elif train_method=="PN": 
 
+    best_f1 = -float('inf')
+    submit_preds = None
+    best_epoch = None
+
+    metrics_dict = defaultdict(list)
+
     for epoch in range(epochs):
 
         train_acc, train_labels, train_preds, train_probs = train_PN(epoch, net, u_trainloader, \
@@ -296,19 +358,32 @@ elif train_method=="PN":
         ax.grid(alpha=0.3)
         plt.tight_layout()
         plt.savefig(f'{log_dir}prediction_histograms_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
+        plt.clf()
         print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
 
         # get some metrics
+        f1 = f1_score(labels, np.round(probs))
         auc = roc_auc_score(labels, probs)
         ce = log_loss(labels, probs)
         tn, fp, fn, tp = confusion_matrix(labels, np.round(probs)).ravel().tolist()
         # import pdb; pdb.set_trace()
-        outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, auc, ce, tn, fp, fn, tp))
+        outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, f1, auc, ce, tn, fp, fn, tp))
         outfile.flush()
 
         model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd, args.momentum, alpha, beta)   + "_" + timestr
-        torch.save(net.state_dict(), f"{model_file}.pt")
+        # torch.save(net.state_dict(), f"{model_file}.pt")
+        metrics_dict['train_acc'].append(train_acc)
+        metrics_dict['valid_acc'].append(valid_acc)
+        metrics_dict['f1'].append(f1)
+        metrics_dict['auc'].append(auc)
+        metrics_dict['ce'].append(ce)
 
+        # get preds on held-out submit set
+        _, _, _, probs = validate(epoch, net, u_submitloader, \
+                criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
+        if f1 >= best_f1:
+            submit_preds = (1 - np.round(probs)).astype(int)
+            best_epoch = epoch
 
 elif train_method=="TiCE" or train_method=="KM": 
     print("here")
@@ -325,3 +400,20 @@ elif train_method=="TiCE" or train_method=="KM":
         print(TiCE_estimate(X,Y,data_type))
 
 outfile.close()
+
+# plot metrics over epochs
+if not os.path.exists(f"{log_dir}epoch_figs"):
+    os.makedirs(f"{log_dir}epoch_figs")
+for metric_name in metrics_dict:
+    metrics = metrics_dict[metric_name]
+    plt.plot([i for i in range(len(metrics))], metrics)
+    plt.xlabel("epoch")
+    plt.ylabel(metric_name)
+    plt.tight_layout()
+    plt.savefig(f"{log_dir}epoch_figs/{metric_name}.pdf", format="pdf", bbox_inches="tight")
+    plt.clf()
+
+# save best preds to csv
+submit_data = pd.read_parquet('/share/garg/kkr36/Task_A/test.parquet')
+submit_data['label'] = submit_preds
+submit_data[["ID", "label"]].to_csv(f"{log_dir}final_preds_{epoch}.csv", index=False)

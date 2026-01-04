@@ -2,7 +2,15 @@ import torch
 from utils import progress_bar
 import numpy as np
 from tqdm import tqdm
+from itertools import cycle
+from data_helper import *
 
+tokenizer = getCodeBertTokenizer("microsoft/codebert-base")
+def batch_decode(batch):
+    return tokenizer.batch_decode(
+        batch,
+        skip_special_tokens=True
+    )
 
 def ramp_loss(out, y, device): 
     loss = torch.max(torch.min(1 - torch.mul(2*y -1, out),\
@@ -84,6 +92,8 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
         for batch_idx, (_, inputs, _, true_targets) in enumerate(u_validloader):
             
             inputs , true_targets = inputs.to(device), true_targets.to(device)
+            # if batch_idx==0:
+            #     import pdb; pdb.set_trace()
             outputs = net(inputs)
             
 
@@ -122,6 +132,7 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
                     % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
     
     # import pdb; pdb.set_trace()
+    print("hi")
 
     if not separate: 
         return 100.*correct/total, np.array(labels), np.array(preds), np.array(pred_probs)
@@ -219,8 +230,25 @@ def train_PU_discard(epoch, net,  p_trainloader, u_trainloader, optimizer, crite
     train_loss = 0
     correct = 0
     total = 0
+    # import pdb; pdb.set_trace()
 
-    for batch_idx, ( p_data, u_data ) in enumerate(zip(p_trainloader, u_trainloader)):
+    # Determine which loader is shorter
+    len_p = len(p_trainloader)
+    len_u = len(u_trainloader)
+
+    if len_p > len_u:
+        # Cycle the shorter one (u_trainloader)
+        loader_iter = zip(p_trainloader, cycle(u_trainloader))
+    elif len_u > len_p:
+        # Cycle the shorter one (p_trainloader)
+        loader_iter = zip(cycle(p_trainloader), u_trainloader)
+    else:
+        # Same length, no cycling needed
+        loader_iter = zip(p_trainloader, u_trainloader)
+
+    for batch_idx, (p_data, u_data) in enumerate(loader_iter):
+
+    # for batch_idx, ( p_data, u_data ) in enumerate(zip(p_trainloader, u_trainloader)):
         
         optimizer.zero_grad()
         
@@ -266,8 +294,14 @@ def train_PU_discard(epoch, net,  p_trainloader, u_trainloader, optimizer, crite
         correct_preds = predicted.eq(targets).cpu().numpy()
         correct += np.sum(correct_preds)
 
+        # if show_bar:
+        #     progress_bar(batch_idx, len(p_trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        #         % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+
+        max_batches = max(len(p_trainloader), len(u_trainloader))
+
         if show_bar:
-            progress_bar(batch_idx, len(p_trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            progress_bar(batch_idx, max_batches, 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                 % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
     return 100.*correct/total
