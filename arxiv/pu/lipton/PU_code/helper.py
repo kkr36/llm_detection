@@ -275,11 +275,11 @@ def get_PN_ft_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_
     return u_trainloader, u_validloader, net
 
 
-def get_submit_dataset(): 
+def get_submit_dataset(seed): 
 
     u_trainloader=None
 
-    train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test')
+    train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'submit', seed=seed)
     # import pdb; pdb.set_trace()
  
     np_train = sum(train_labels)
@@ -308,13 +308,16 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
 
     if data_type=="SemEval": 
 
-        train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_front')
-        u_texts, u_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test')
+        train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'test_sample_front', seed=alpha)
+        u_texts, u_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'unlabeled_front', seed=alpha)
         # import pdb; pdb.set_trace()
         train_texts += u_texts
         train_labels += u_labels
-        test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_middle')
-        cal_texts, cal_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_back')
+        test_texts, test_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'test_sample_back', seed=alpha)
+        u_test_texts, u_test_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'unlabeled_back', seed=alpha)
+        test_texts += u_test_texts
+        test_labels += u_test_labels
+        cal_texts, cal_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'submit', seed=alpha)
 
         np_train = sum(train_labels)
         nn_train = len(train_labels) - np_train

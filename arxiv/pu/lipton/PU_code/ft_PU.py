@@ -107,8 +107,10 @@ else:
     valid_pos_size= len(p_validdata)
     valid_unlabeled_size= len(u_validdata)
 
+# import pdb; pdb.set_trace()
+
 # get the unlabeled data
-u_submitloader = get_submit_dataset()
+u_submitloader = get_submit_dataset(alpha)
 tokenizer = getCodeBertTokenizer("microsoft/codebert-base")
 def batch_decode(batch):
     return tokenizer.batch_decode(
@@ -131,6 +133,28 @@ elif optimizer_str=="Adam":
 elif optimizer_str=="AdamW": 
     optimizer = AdamW(net.parameters(), lr=args.lr)
 
+
+# 1️⃣ Freeze ALL base model parameters
+# import pdb; pdb.set_trace()
+# for p in net.module.roberta.parameters():
+#     p.requires_grad = False
+
+# for p in net.module.roberta.embeddings.word_embeddings.parameters():
+#     p.requires_grad = False
+# 2️⃣ Ensure classifier head is trainable
+# for p in net.module.classifier.parameters():
+#     p.requires_grad = True
+
+# 3️⃣ Optimizer ONLY sees classifier parameters
+# optimizer = torch.optim.AdamW(
+#     filter(lambda p: p.requires_grad, net.parameters()),
+#     lr=2e-4
+# )
+
+# for name, p in net.named_parameters():
+#     if p.requires_grad:
+#         print("TRAINING:", name)
+
 ## Train in the begining for warm start
 if warm_start and train_method=="TEDn": 
     outfile.write("Warm_start: \n")
@@ -149,18 +173,19 @@ if warm_start and train_method=="TEDn":
 
             our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
 
-            dedpul_estimate, dedpul_probs = dedpul(pos_probs, unlabeled_probs,unlabeled_targets)
+            # dedpul_estimate, dedpul_probs = dedpul(pos_probs, unlabeled_probs,unlabeled_targets)
 
             EN_estimate= estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
             scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
 
-            dedpul_accuracy = dedpul_acc(dedpul_probs,unlabeled_targets )*100.0
+            # dedpul_accuracy = dedpul_acc(dedpul_probs,unlabeled_targets )*100.0
 
             alpha_estimate =our_mpe_estimate
+            # alpha_estimate=.2
 
         if estimate_alpha:
-            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, dedpul_accuracy,\
-                 alpha_estimate, dedpul_estimate, EN_estimate, scott_mpe_estimator) )
+            outfile.write("{}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc,\
+                 alpha_estimate, EN_estimate, scott_mpe_estimator) )
             outfile.flush()
 
         else: 
@@ -235,43 +260,55 @@ elif train_method=='CVIR' or train_method=="TEDn":
             pos_probs = p_probs(net, device, p_validloader)
             unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
 
+            # import pdb; pdb.set_trace()
+
             our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
 
-            alpha_estimate =our_mpe_estimate
+            # alpha_estimate =our_mpe_estimate
+            alpha_estimate=.2
 
             cal_acc, cal_labels, cal_preds, cal_probs = validate(epoch, net, u_calloader, \
                 criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
 
-            preds_label_0 = cal_probs[cal_labels == 0]
-            preds_label_1 = cal_probs[cal_labels == 1]
-
-            global_min = cal_probs.min()
-            global_max = cal_probs.max()
-            bins = np.linspace(global_min, global_max, 75)
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.hist(preds_label_0, bins=bins, alpha=0.6, color='blue', 
-                    edgecolor='black', label=f'Label 0 (n={len(preds_label_0)})')
-            ax.hist(preds_label_1, bins=bins, alpha=0.6, color='green', 
-                    edgecolor='black', label=f'Label 1 (n={len(preds_label_1)})')
-            ax.axvline(x=0.5, color='red', linestyle='--', linewidth=1.5, label='Threshold=0.5')
-            ax.set_xlabel('Prediction Score', fontsize=12)
-            ax.set_ylabel('Frequency', fontsize=12)
-            ax.set_title(f'Prediction Distribution by True Label (Epoch {epoch})', fontsize=14)
-            ax.legend(fontsize=11)
-            ax.grid(alpha=0.3)
-            plt.tight_layout()
-            plt.savefig(f'{log_dir}prediction_histograms_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
-            plt.clf()
-            print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
+            for probs, labels, name in [(cal_probs, cal_labels, "submit_set"), (np.array(probs.tolist() + (1-pos_probs).tolist()), np.array([1 for _ in range(len(preds))] + [0 for _ in range(len(pos_probs))]), "val")]:
+                if not os.path.exists(f"{log_dir}{name}"):
+                    os.makedirs(f"{log_dir}{name}")
+                preds_label_0 = probs[labels == 0]
+                # preds_label_0 = preds_label_0[preds_label_0 < .05]
+                preds_label_1 = probs[labels == 1]
+                if epoch == 5: import pdb; pdb.set_trace()
+                # preds_label_1 = preds_label_1[preds_label_1 < .05]
+                # import pdb; pdb.set_trace()
+                try:
+                    global_min = min(preds_label_0.min(), preds_label_1.min())
+                except:
+                    import pdb; pdb.set_trace()
+                global_max = max(preds_label_0.max(), preds_label_1.max())
+                bins = np.linspace(global_min, global_max, 100)
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.hist(preds_label_0, bins=bins, alpha=0.6, color='blue', 
+                        edgecolor='black', label=f'Label 0 (n={len(preds_label_0)})')
+                ax.hist(preds_label_1, bins=bins, alpha=0.6, color='green', 
+                        edgecolor='black', label=f'Label 1 (n={len(preds_label_1)})')
+                # ax.axvline(x=0.5, color='red', linestyle='--', linewidth=1.5, label='Threshold=0.5')
+                ax.set_xlabel('Prediction Score', fontsize=12)
+                ax.set_ylabel('Frequency', fontsize=12)
+                ax.set_title(f'Prediction Distribution by True Label (Epoch {epoch})', fontsize=14)
+                ax.legend(fontsize=11)
+                ax.grid(alpha=0.3)
+                plt.tight_layout()
+                plt.savefig(f'{log_dir}{name}/prediction_histograms_epoch{epoch}.pdf', dpi=300, bbox_inches='tight', format='pdf')
+                plt.clf()
+                print(f'Saved prediction histograms to {name}/prediction_histograms_epoch{epoch}.pdf')
 
             # get some metrics
-            f1 = f1_score(cal_labels, np.round(cal_probs))
+            f1 = f1_score(cal_labels, np.round(cal_probs), average='macro')
             auc = roc_auc_score(cal_labels, cal_probs)
             ce = log_loss(cal_labels, np.round(cal_probs))
             tn, fp, fn, tp = confusion_matrix(cal_labels, np.round(cal_probs)).ravel().tolist()
 
 
-            outfile.write("{}, {}, {}, {} | {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, alpha_estimate, cal_acc,\
+            outfile.write("{}, {}, {}, {} | {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, our_mpe_estimate, cal_acc,\
                  f1, auc, ce, tn, fp, fn, tp))
             outfile.flush()
             metrics_dict['train_acc'].append(train_acc)
@@ -414,6 +451,6 @@ for metric_name in metrics_dict:
     plt.clf()
 
 # save best preds to csv
-submit_data = pd.read_parquet('/share/garg/kkr36/Task_A/test.parquet')
-submit_data['label'] = submit_preds
-submit_data[["ID", "label"]].to_csv(f"{log_dir}final_preds_{epoch}.csv", index=False)
+submit_data = pd.read_parquet('/home/ubuntu/data/Task_A/test.parquet')
+submit_data['pred'] = submit_preds
+submit_data[["ID", "pred", "label"]].to_csv(f"{log_dir}final_preds_{epoch}.csv", index=False)

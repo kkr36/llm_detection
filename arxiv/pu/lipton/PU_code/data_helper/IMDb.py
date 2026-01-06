@@ -19,29 +19,54 @@ def read_imdb_split(split_dir):
 
     return texts, labels
 
-def read_semeval_split(split_dir, split):
-    if "test_sample" in split:
-        load_split = "test_sample"
-    else:
-        load_split = split        
-    data = pd.read_parquet(f"{split_dir}/{load_split}.parquet")
+def read_semeval_split(split_dir, split, seed):
 
-    if "front" in split:
-        data = data.iloc[:int(len(data)*.7)]
-    elif "back" in split:
-        data = data.iloc[int(len(data)*.7):]
-    print(f"{split} : loaded {len(data)} samples; {sum(data['label'])} pos {len(data) - sum(data['label'])} neg")
+    if "train" in split:
+        data = pd.read_parquet(f"{split_dir}/validation.parquet").sample(frac=1, random_state=42)
+        data = data.sort_values(by="label", ascending=False, kind="mergesort").reset_index(drop=True)
+        # import pdb; pdb.set_trace()
 
-    # if split=="validation":
-    #     data = data.iloc[-100:]
-    # if split=="train":
-    #     data = data.iloc[-2000:]
-    # if split == "train":
-    #     subset = data.iloc[:int(len(data) * .3)]
-    # elif split == "validation":
-    #     subset = data.iloc[int(len(data) * .3):int(len(data) * .4)]
-    
-    texts, labels = data["code"].tolist(), data["label"].tolist()
+        if "front" in split:
+            data = data.iloc[:110]
+            assert((data['label'] == 1).all())
+            texts = data['code'].tolist()
+            labels = [1 for _ in range(110)]
+        elif "back" in split:
+            data = data.iloc[110:220]
+            assert((data['label'] == 1).all())
+            texts = data['code'].tolist()
+            labels = [1 for _ in range(110)]
+
+    elif "test_sample" in split or "submit" in split:
+        data = pd.read_parquet(f"{split_dir}/test_sample.parquet").sample(frac=1, random_state=42)
+        data = data.sort_values(by="label", ascending=False, kind="mergesort").reset_index(drop=True)
+        # import pdb; pdb.set_trace()
+
+        if "front" in split:
+            data = data.iloc[:110]
+            assert((data['label'] == 1).all())
+            texts = data['code'].tolist()
+            labels = [1 for _ in range(110)]
+        elif "back" in split:
+            data = data.iloc[110:220]
+            assert((data['label'] == 1).all())
+            texts = data['code'].tolist()
+            labels = [1 for _ in range(110)]
+        elif "submit" in split:
+            # data = data.iloc[140:]
+            texts, labels = data['code'].tolist(), data['label'].tolist()
+
+    elif "unlabeled" in split:
+        data = pd.read_parquet(f"{split_dir}/test.parquet").sample(frac=1, random_state=42).reset_index(drop=True)
+        if "front" in split:
+            data = data.iloc[:700]
+        elif "back" in split:
+            data = data.iloc[700:]
+        texts, labels = data['code'].tolist(), [0 for _ in range(len(data))]
+    try:
+        print(texts[0][0])
+    except:
+        import pdb; pdb.set_trace()
     return texts, labels
 
 def getBertTokenizer(model):
