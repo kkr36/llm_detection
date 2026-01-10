@@ -153,10 +153,11 @@ def remove_first_last_sentence(paragraph):
         return ""  # or paragraph, depending on your preference
     return " ".join(sentences[1:-1])
 
-def read_arxiv_split2(year, alpha=None, split="train", sentence=False, inject=True):
-
-    data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
-    
+def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inject=True):
+    # import os
+    # if not(os.path.exists(split_dir)):
+    # year = int(re.search(r"\d{4}", split_dir).group(0))
+    # pct_inject = 0 if (year < 2014 or inject is False) else 0.05 * (year - 2012) / 2
     pct_inject = .2
     if not inject: pct_inject = 0
     
