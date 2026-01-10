@@ -194,8 +194,6 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     Y=None
     
     if data_type=="ArXiv_BERT": 
-        # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet' # TODO figure out year
-        # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
 
         data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
@@ -210,31 +208,12 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
             cal_texts = clean_text(cal_texts)
             print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
 
-
-        # import pdb; pdb.set_trace()
-
-        # if sentence:
-        #     train_texts, train_labels = split_into_sentences(train_texts, train_labels)
-        #     test_texts, test_labels = split_into_sentences(test_texts, test_labels)
-        #     cal_texts, cal_labels = split_into_sentences(cal_texts, cal_labels)
-        # train_texts, train_labels = read_arxiv_split(train_path) # should have 15k each
-        # test_texts, test_labels = read_arxiv_split(val_path) # should have 5k each
-
-        # train_texts = [' '.join(text) for text in train_texts]
-        # test_texts = [' '.join(text) for text in test_texts]
-        # import pdb; pdb.set_trace()
-
         transform = initialize_bert_transform('distilbert-base-uncased')
 
         train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
         test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
         cal_dataset = IMDbBERTData(cal_texts, cal_labels, transform=transform)
 
-        # np_train, nn_train = len(train_dataset.p_data), len(train_dataset.n_data)
-        # np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
-
-        # p_traindata, u_traindata = get_PUDataSplits(train_dataset, pos_size=int(np_train*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
-        # p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test*(1-alpha)), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
         p_traindata, u_traindata = get_PUDataSplits1(train_dataset, data_type=data_type)
         p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
         p_caldata, u_caldata = get_PUDataSplits1(cal_dataset, data_type=data_type)
@@ -263,10 +242,10 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
 
     elif "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
-        data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
+        data_path = f"{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet" if llm != "all" else f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
-        train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence) # should have 15k each
-        test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence) # should have 5k each
+        train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence, alpha) # should have 15k each
+        test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence, alpha) # should have 5k each
         if clean:
             orig_train_len = sum([len(x) for x in train_texts])
             train_texts = clean_text(train_texts)
@@ -333,37 +312,6 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata
 
 
-
-def get_dataset_val(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence): # TODO fix
-    p_validloader=None
-    u_validloader=None
-    
-    if data_type=="ArXiv_BERT":
-        val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
-
-        test_texts, test_labels = read_arxiv_split(val_path)
-        test_texts = [' '.join(text) for text in test_texts]
-
-        transform = initialize_bert_transform('distilbert-base-uncased')
-
-        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
-
-        # import pdb; pdb.set_trace()
-
-        np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
-        # import pdb; pdb.set_trace()
-
-        p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test*.5), alpha=alpha, beta=beta,data_type=data_type)
-
-        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
-            shuffle=shuffle)
-        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
-            shuffle=shuffle)
-
-    # import pdb; pdb.set_trace()
-
-    return p_validloader, u_validloader, p_validdata, u_validdata
-
 def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False): # TODO fix
     p_validloader=None
     u_validloader=None
@@ -409,7 +357,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
         val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
-        test_texts, test_labels = read_arxiv_split_llm(val_path, llm, "val", sentence)
+        test_texts, test_labels = read_arxiv_split_llm(val_path, llm, "val", sentence, alpha)
         if clean:
             print("cleaning test set?")
             orig_len = sum([len(x) for x in test_texts])

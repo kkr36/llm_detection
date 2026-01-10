@@ -382,8 +382,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 pos_lens = [sum(x[:,1]) for x in p_validdata.data]
                 neg_lens = [sum(x[:,1]) for x in u_validdata.data]
 
-                plt.scatter(pos_lens, pos_probs, label="LLM-written")
-                plt.scatter(neg_lens, neg_probs, label="Human-written")
+                plt.scatter(pos_lens, pos_probs, label="Positives")
+                plt.scatter(neg_lens, neg_probs, label="Negatives")
                 plt.xlabel("Length")
                 plt.ylabel("P(LLM)")
                 plt.legend()

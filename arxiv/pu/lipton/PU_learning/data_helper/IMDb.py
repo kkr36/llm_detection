@@ -153,14 +153,12 @@ def remove_first_last_sentence(paragraph):
         return ""  # or paragraph, depending on your preference
     return " ".join(sentences[1:-1])
 
-def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inject=True):
-    # import os
-    # if not(os.path.exists(split_dir)):
-    # year = int(re.search(r"\d{4}", split_dir).group(0))
-    # pct_inject = 0 if (year < 2014 or inject is False) else 0.05 * (year - 2012) / 2
+def read_arxiv_split2(year, alpha=None, split="train", sentence=False, inject=True):
+
+    data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+    
     pct_inject = .2
     if not inject: pct_inject = 0
-    # pct_inject = 0 # TODO remove
     
     arxiv_data = pd.read_parquet(split_dir)
     # tmp = arxiv_data.copy(deep=True)
@@ -248,17 +246,24 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # import pdb; pdb.set_trace()
     return texts, labels
 
-def read_arxiv_split_llm(split_dir, llm, split, sentence):
+def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=True):
     llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
     assert(llm in llm_cols or llm=="all")
     
     arxiv_data = pd.read_parquet(split_dir)
+
+    # import pdb; pdb.set_trace()
+
     if llm=="all":
         llm_subset=None
         # import pdb; pdb.set_trace()
-        for llm2 in llm_cols:
+        # abs_per_llm = int(len(arxiv_data) / len(llm_cols))
+        for i, llm2 in enumerate(llm_cols):
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
-            tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)]
+            # tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)]
+            # start_idx = int(i*abs_per_llm)
+            # tmp_subset = tmp_subset.iloc[:750]
+            print(len(tmp_subset))
             tmp_subset["llm_writing"] = tmp_subset[llm2]
             if llm_subset is None:
                 llm_subset = tmp_subset
@@ -267,26 +272,41 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence):
     else:
         llm_subset = arxiv_data[arxiv_data[llm].notna() & (arxiv_data[llm] != "")].reset_index(drop=True) # isolate llm writing
 
-    # train/val split
-    if llm != "all":
-        if split=="train":
-            llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
-        elif split=="val":
-            llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+    # shuffle
+    llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
 
-        texts = llm_subset[llm].tolist() + llm_subset["human_abstract"].tolist()
-        labels = [1 for _ in range(len(llm_subset))] + [0 for _ in range(len(llm_subset))]
+    # import pdb; pdb.set_trace()
+
+    # train/val split
+    # if llm != "all":
+    if split=="train":
+        llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
+    elif split=="val":
+        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+
+    llm_texts = llm_subset[llm if llm != "all" else "llm_writing"].tolist()
+    human_texts = llm_subset['human_abstract'].tolist()
+    assert(len(llm_texts) == len(human_texts))
+
+    # replace alpha % of (human, llm) with (llm, human) writing --> unlabeled
+    if flip:
+        human_texts_alpha = human_texts[int(len(human_texts)*.8):] # TODO THIS 0.6 IS HARDCODED TO SEE IF FLIPPED LABELED WORKS WELL WHEN MAJORITY OF UNLABELED IS STILL HUMAN
+        llm_texts_alpha = human_texts[:int(len(human_texts)*alpha)] + llm_texts[int(len(llm_texts)*alpha):]
+        print(f"alpha level {len(llm_texts[:int(len(llm_texts)*alpha)]) / len(llm_texts_alpha)}")
+        # import pdb; pdb.set_trace()
+
+        texts, labels = llm_texts_alpha + human_texts_alpha, [0 for _ in range(len(llm_texts_alpha))] + [1 for _ in range(len(human_texts_alpha))]
     else:
-        if split=="train":
-            texts = llm_subset["llm_writing"].tolist() + llm_subset["human_abstract"].tolist()
-            labels = [1 for _ in range(len(llm_subset))] + [0 for _ in range(len(llm_subset))]
-        elif split=="val":
-            texts = llm_subset["llm_writing"].dropna().sample(n=1000, random_state=42).tolist() + llm_subset["human_abstract"].dropna().sample(n=1000, random_state=42).tolist()
-            labels = [1 for _ in range(1000)] + [0 for _ in range(1000)]
+        llm_texts_alpha = llm_texts[int(len(llm_texts)*alpha):]
+        human_texts_alpha = llm_texts[:int(len(llm_texts)*alpha)] + human_texts[int(len(human_texts)*alpha):]
+        print(f"alpha level {len(llm_texts[:int(len(llm_texts)*alpha)]) / len(human_texts_alpha)}")
+        texts, labels = llm_texts_alpha + human_texts_alpha, [1 for _ in range(len(llm_texts_alpha))] + [0 for _ in range(len(human_texts_alpha))]
+    # import pdb; pdb.set_trace()
 
     # sentence check
     if sentence:
         final_texts, final_labels = split_into_sentences(texts, labels)
+        # print(f"alpha post sentence = {np.mean(final_labels)}")
     else:
         final_texts, final_labels = texts, labels
 
