@@ -105,7 +105,10 @@ def validate(epoch, net, u_validloader, criterion, device, threshold, logistic=T
 
             labels += [int(x) for x in true_targets]
             preds += [int(x) for x in predicted]
-            pred_probs += [float(torch.clip(x, 0., 1.)) for x in outputs[:,1]]
+            # pred_probs += [float(torch.clip(x, 0., 1.)) for x in outputs[:,1]]
+
+            probs = torch.softmax(outputs, dim=-1)
+            pred_probs += probs[:,1].detach().cpu().tolist()
 
             loss = criterion(outputs, true_targets)
 

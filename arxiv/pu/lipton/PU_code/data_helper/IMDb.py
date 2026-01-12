@@ -22,6 +22,12 @@ def read_imdb_split(split_dir):
 def read_semeval_split(split_dir, split, seed):
 
     if "train" in split:
+        # data = pd.read_parquet(f"{split_dir}/test.parquet").sample(frac=1, random_state=42).reset_index(drop=True)
+        # if "front" in split:
+        #     data = data.iloc[:700]
+        # elif "back" in split:
+        #     data = data.iloc[700:]
+        # texts, labels = data['code'].tolist(), [1 for _ in range(len(data))]
         data = pd.read_parquet(f"{split_dir}/validation.parquet").sample(frac=1, random_state=42)
         data = data.sort_values(by="label", ascending=False, kind="mergesort").reset_index(drop=True)
         # import pdb; pdb.set_trace()
@@ -36,6 +42,9 @@ def read_semeval_split(split_dir, split, seed):
             assert((data['label'] == 1).all())
             texts = data['code'].tolist()
             labels = [1 for _ in range(110)]
+        else:
+            data = data.iloc[:2000]
+            texts, labels = data['code'].tolist(), data['label'].tolist()
 
     elif "test_sample" in split or "submit" in split:
         data = pd.read_parquet(f"{split_dir}/test_sample.parquet").sample(frac=1, random_state=42)

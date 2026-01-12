@@ -259,24 +259,30 @@ elif train_method=='CVIR' or train_method=="TEDn":
         if estimate_alpha: 
             pos_probs = p_probs(net, device, p_validloader)
             unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
-
             # import pdb; pdb.set_trace()
 
-            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            # get stats for train set also
+            pos_probs_train = p_probs(net, device, p_trainloader)
+            _, _, _, unlabeled_probs_train = validate(epoch, net, u_trainloader, \
+                criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
+            # import pdb; pdb.set_trace()
+            train_probs, train_labels = np.array(unlabeled_probs_train.tolist() + (1-pos_probs_train).tolist()), np.array([1 for _ in range(len(unlabeled_probs_train))] + [0 for _ in range(len(pos_probs_train))])
 
+            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            # import pdb; pdb.set_trace()
             # alpha_estimate =our_mpe_estimate
-            alpha_estimate=.2
+            # alpha_estimate=.2
 
             cal_acc, cal_labels, cal_preds, cal_probs = validate(epoch, net, u_calloader, \
                 criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
 
-            for probs, labels, name in [(cal_probs, cal_labels, "submit_set"), (np.array(probs.tolist() + (1-pos_probs).tolist()), np.array([1 for _ in range(len(preds))] + [0 for _ in range(len(pos_probs))]), "val")]:
+            for probs, labels, name in [(train_probs, train_labels, "train"), (cal_probs, cal_labels, "submit_set"), (np.array(probs.tolist() + (1-pos_probs).tolist()), np.array([1 for _ in range(len(preds))] + [0 for _ in range(len(pos_probs))]), "val")]:
                 if not os.path.exists(f"{log_dir}{name}"):
                     os.makedirs(f"{log_dir}{name}")
                 preds_label_0 = probs[labels == 0]
                 # preds_label_0 = preds_label_0[preds_label_0 < .05]
                 preds_label_1 = probs[labels == 1]
-                if epoch == 5: import pdb; pdb.set_trace()
+                # if epoch == 5: import pdb; pdb.set_trace()
                 # preds_label_1 = preds_label_1[preds_label_1 < .05]
                 # import pdb; pdb.set_trace()
                 try:
@@ -313,7 +319,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
             outfile.flush()
             metrics_dict['train_acc'].append(train_acc)
             metrics_dict['valid_acc'].append(valid_acc)
-            metrics_dict['alpha_estimate'].append(alpha_estimate)
+            metrics_dict['alpha_estimate'].append(our_mpe_estimate)
             metrics_dict['cal_acc'].append(cal_acc)
             metrics_dict['f1'].append(f1)
             metrics_dict['auc'].append(auc)
@@ -451,6 +457,6 @@ for metric_name in metrics_dict:
     plt.clf()
 
 # save best preds to csv
-submit_data = pd.read_parquet('/home/ubuntu/data/Task_A/test.parquet')
-submit_data['pred'] = submit_preds
-submit_data[["ID", "pred", "label"]].to_csv(f"{log_dir}final_preds_{epoch}.csv", index=False)
+# submit_data = pd.read_parquet('/home/ubuntu/data/Task_A/test.parquet')
+# submit_data['pred'] = submit_preds
+# submit_data[["ID", "pred", "label"]].to_csv(f"{log_dir}final_preds_{epoch}.csv", index=False)

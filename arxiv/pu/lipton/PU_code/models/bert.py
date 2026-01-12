@@ -78,12 +78,11 @@ def initialize_codebert_based_model(net, num_classes):
 
     #     return torch.cat(all_vecs).numpy()
     
-    # unlabeled_text = pd.read_parquet("/home/ubuntu/data/Task_A/test.parquet")["code"].tolist()
-    # labeled_text = pd.read_parquet("/home/ubuntu/data/Task_A/test_sample.parquet")["code"].tolist()
-    # texts = unlabeled_text + labeled_text # TODO concat the unlabeled / labeled test set
-    # print("embedding")
-    # X_train_emb = embed_texts(texts)
-
+    # # unlabeled_text = pd.read_parquet("/home/ubuntu/data/Task_A/test.parquet")["code"].tolist()
+    # # labeled_text = pd.read_parquet("/home/ubuntu/data/Task_A/test_sample.parquet")["code"].tolist()
+    # # texts = unlabeled_text + labeled_text # TODO concat the unlabeled / labeled test set
+    # # print("embedding")
+    # # X_train_emb = embed_texts(texts)
 
     # emb = model.roberta.embeddings.word_embeddings.weight.detach().cpu().numpy() # might have to use this instead of X_train_emb
     # print(emb.shape)
