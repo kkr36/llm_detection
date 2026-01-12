@@ -44,7 +44,7 @@ parser.add_argument('--beta', type=float, default=0.5, help='Proportion of label
 parser.add_argument('--log-dir', type=str, default='logging_accuracy_one_year', help='Dir for logging accuracies')
 parser.add_argument('--data-dir', type=str, default='/share/garg/arxiv_kaggle', help='Data directory')
 parser.add_argument('--optimizer', type=str, default='SGD', help='Optimizer used')
-parser.add_argument('--year', type=int, default=2010, help='year of arxiv data to take in')
+parser.add_argument('--year', type=int, default=None, help='year of arxiv data to take in')
 parser.add_argument('--abstract', default=True, action='store_false', help='sentence level analysis')
 parser.add_argument('--ft', default=False, action='store_true', help='whether to train on ft or zero shot')
 parser.add_argument('--clean', default=False, action='store_true', help='whether to remove chars you cant type on keyboard')
@@ -111,7 +111,7 @@ clean = args.clean
 # val_alphas = [0, .1, .25, .5]
 # val_alphas = [1, .9, .75, .5, .05]
 # val_alphas = [.2, 1]
-val_alphas = [0, .1, .3, .5][:1]
+val_alphas = [0, .1, .3, .5, .8]
 # val_years = list(range(2010,2026))
 # val_years = [2010, 2012, 2014, 2016, 2018, 2020][-1:]
 val_years = [year]
@@ -172,6 +172,11 @@ elif "llm_type_" in data_type:
         p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
             get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, 0, beta, batch_size, year, sentence, ft, clean)
         varied_vals[llm] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
+elif "Arxiv_year" in data_type:
+    for valalpha in val_alphas:
+        p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
+            get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, None, sentence, ft, clean)
+        varied_vals[valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 
 if device.startswith('cuda'):
     net = torch.nn.DataParallel(net)
@@ -480,6 +485,64 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
                 EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
                 outfile.write("{}, {}, {}, {}, {}\n".format(key, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate))
+    elif estimate_alpha and "Arxiv_year" in data_type:
+        for valalpha in varied_vals:
+            (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valalpha]
+            pos_probs = p_probs(net, device, p_validloader) # for me right now, preds over garbage watermark
+            pos_prob = np.mean(pos_probs)
+            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader) # for me right now, preds over actual abstracts
+            preds = np.argmax(unlabeled_probs, axis=1)
+            neg_probs = 1-unlabeled_probs[:,1]
+            neg_prob = np.mean(neg_probs)
+
+            y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+            y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+            auc = roc_auc_score(y_true, y_scores)
+            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+            pos_lens = [sum(x[:,1]) for x in p_validdata.data]
+            neg_lens = [sum(x[:,1]) for x in u_validdata.data]
+
+            plt.scatter(pos_lens, pos_probs, label="Positives")
+            plt.scatter(neg_lens, neg_probs, label="Negatives")
+            plt.xlabel("Length")
+            plt.ylabel("P(LLM)")
+            plt.legend()
+            plt.savefig(f"{log_dir}len_prob_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format="pdf")
+            plt.clf()
+
+            plt.figure()
+            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+            plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.legend()
+            plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            bins = np.linspace(
+                min(pos_probs.min(), neg_probs.min()),
+                max(pos_probs.max(), neg_probs.max()),
+                50
+            )
+
+            plt.figure()
+            plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+            plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+            plt.legend()
+            plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            actual_mpe = 1 - np.mean(unlabeled_targets)
+            neg_acc = np.mean(preds == unlabeled_targets)
+            pos_acc = np.mean(np.round(pos_probs) == 1) 
+            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+            # import pdb; pdb.set_trace()
+
+            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
+            plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
 
 elif train_method=='uPU': 
 

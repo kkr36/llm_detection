@@ -153,6 +153,44 @@ def remove_first_last_sentence(paragraph):
         return ""  # or paragraph, depending on your preference
     return " ".join(sentences[1:-1])
 
+def read_arxiv_split_year(data_dir, label_year, unlabel_year, alpha=None, split="train", sentence=False):
+    data_path_label = f'{data_dir}/multillm/data_raw/arxiv_{label_year}_ai_cs._10000_fronthalf.parquet'
+    data_path_unlabel = f'{data_dir}/multillm/data_raw/arxiv_{unlabel_year}_ai_cs._10000_fronthalf.parquet'
+
+    arxiv_data_positive = pd.read_parquet(data_path_label)
+    arxiv_data_unlabel = pd.read_parquet(data_path_unlabel)
+
+    if split=="train":
+        arxiv_data_positive = arxiv_data_positive.iloc[:int(len(arxiv_data_positive)*.7)]
+        arxiv_data_unlabel = arxiv_data_unlabel.iloc[:int(len(arxiv_data_unlabel)*.7)]
+        assert(len(arxiv_data_positive) == 7000 and len(arxiv_data_unlabel) == 7000)
+    elif split=="val":
+        arxiv_data_positive = arxiv_data_positive.iloc[int(len(arxiv_data_positive)*.7):]
+        arxiv_data_unlabel = arxiv_data_unlabel.iloc[int(len(arxiv_data_unlabel)*.7):]
+        assert(len(arxiv_data_positive) == 3000 and len(arxiv_data_unlabel) == 3000)
+
+    # for the unlabeled data, replace alpha % with llm mirror
+    unlabeled_writing = []
+
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    inject_counter = int(alpha * len(arxiv_data_unlabel))
+    for i in tqdm(list(i for i in range(len(arxiv_data_unlabel)))):
+        assert(len(arxiv_data_unlabel.iloc[i][llm_cols[i % 4]]) > 0)
+        mirror = arxiv_data_unlabel.iloc[i][llm_cols[i % 4]]
+        if inject_counter:
+            unlabeled_writing.append(mirror)
+            inject_counter -= 1
+        else:
+            abstract = arxiv_data_unlabel.iloc[i]['human_abstract']
+            unlabeled_writing.append(abstract)
+    
+    positive_writing = arxiv_data_positive['human_abstract'].tolist()
+    texts = positive_writing + unlabeled_writing
+    labels = [1 for _ in range(len(positive_writing))] + [0 for _ in range(len(unlabeled_writing))]
+    return texts, labels
+
+
+
 def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inject=True):
     # import os
     # if not(os.path.exists(split_dir)):

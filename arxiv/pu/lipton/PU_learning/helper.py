@@ -309,6 +309,42 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         net = get_model(net_type)
         net = net.to(device)
 
+    elif "Arxiv_year" in data_type:
+        positive_year, unlabeled_year = data_type.split("_")[-2:]
+
+        train_texts, train_labels = read_arxiv_split_year(data_dir, positive_year, unlabeled_year, alpha=alpha, split="train", sentence=sentence)
+        test_texts, test_labels = read_arxiv_split_year(data_dir, positive_year, unlabeled_year, alpha=alpha, split="val", sentence=sentence)
+        if clean:
+            orig_train_len = sum([len(x) for x in train_texts])
+            train_texts = clean_text(train_texts)
+            new_train_len = sum([len(x) for x in train_texts])
+            test_texts = clean_text(test_texts)
+            print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
+        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
+
+        p_traindata, u_traindata = get_PUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8, \
+            shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, \
+            shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
+            shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
+            shuffle=shuffle)
+        
+        ## Initialize model 
+        net = get_model(net_type)
+        net = net.to(device)
+
     return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata
 
 
@@ -401,7 +437,34 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         ## Initialize model 
         net = get_model(net_type)
         net = net.to(device)
+    elif "Arxiv_year" in data_type:
+        positive_year, unlabeled_year = data_type.split("_")[-2:]
+        test_texts, test_labels = read_arxiv_split_year(data_dir, positive_year, unlabeled_year, alpha=alpha, split="val", sentence=sentence)
 
+        if clean:
+            print("cleaning test set?")
+            orig_len = sum([len(x) for x in test_texts])
+            test_texts = clean_text(test_texts)
+            new_len = sum([len(x) for x in test_texts])
+            print(f"cleaned test text of {new_len - orig_len} funny chars")
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
+
+        np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
+        alpha_split = 0
+        if not sentence:
+            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha_split*np_test), alpha=alpha_split, beta=(1-alpha_split)/(2-alpha_split),data_type=data_type)
+        else:
+            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha_split*np_test), alpha=alpha_split, beta=(np_test / (nn_test + np_test)),data_type=data_type)
+        # import pdb; pdb.set_trace()
+
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
+            shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
+            shuffle=shuffle)
+        
     return p_validloader, u_validloader, p_validdata, u_validdata    
 
 def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft=False, clean=False): 
