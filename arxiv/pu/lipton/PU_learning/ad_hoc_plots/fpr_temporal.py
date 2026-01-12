@@ -1,0 +1,17 @@
+from matplotlib import pyplot as plt
+
+aucs_pu = [.9496506540372716, .92195892383662, .9156110716744541, .9043238718236616, .9026938283680004, .8926155975202108]
+aucs_pn = [.9504568349365953, .9328716311779162, .9265485891342158, .9171182995663059, .9154610833652563, .906390553953292]
+aucs_pu_time = [.9496506540372716, .9435864255473019, .9386082518826232, .933801990011306, .934782098454025, .932304583190745]
+aucs_pn_time = [.9504568349365953, .9442133238526683, .9392386977714099, .9313174661931903, .9347779703353436, .9321489184380138]
+
+year = [2010, 2012, 2014, 2016, 2018, 2020]
+
+plt.plot(year, aucs_pu, label="PU")
+plt.plot(year, aucs_pn, label="PN")
+plt.plot(year, aucs_pu_time, label="PU, Retrain Per-Year")
+plt.plot(year, aucs_pn_time, label="PN, Retrain Per-Year")
+plt.legend()
+plt.ylabel("AUC")
+plt.xlabel("Year")
+plt.savefig("train_per_year.pdf", format="pdf")

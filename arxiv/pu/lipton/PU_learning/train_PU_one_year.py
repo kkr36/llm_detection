@@ -14,8 +14,14 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.optim import AdamW
 from sklearn.calibration import calibration_curve
-from matplotlib import pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
+
+font = {'family' : 'normal',
+        'weight' : 'bold',
+        'size'   : 20}
+import matplotlib
+from matplotlib import pyplot as plt
+matplotlib.rc('font', **font)
 
 from algorithm import * 
 from model_helper import * 
@@ -111,10 +117,10 @@ clean = args.clean
 # val_alphas = [0, .1, .25, .5]
 # val_alphas = [1, .9, .75, .5, .05]
 # val_alphas = [.2, 1]
-val_alphas = [0, .1, .3, .5, .8]
+val_alphas = [0, .1, .3, .5, .8][:1]
 # val_years = list(range(2010,2026))
-# val_years = [2010, 2012, 2014, 2016, 2018, 2020][-1:]
-val_years = [year]
+val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
+# val_years = [year]
 
 if train_method == "TEDn": 
     use_alpha=True
@@ -392,6 +398,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 plt.xlabel("Length")
                 plt.ylabel("P(LLM)")
                 plt.legend()
+                plt.tight_layout()
+
                 plt.savefig(f"{log_dir}len_prob_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format="pdf")
                 plt.clf()
 
@@ -401,6 +409,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 plt.xlabel("False Positive Rate")
                 plt.ylabel("True Positive Rate")
                 plt.legend()
+                plt.tight_layout()
+
                 plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format='pdf')
                 plt.clf()
 
@@ -414,6 +424,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
                 plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
                 plt.legend()
+                plt.tight_layout()
+
                 plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format='pdf')
                 plt.clf()
 
@@ -454,6 +466,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
             plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
             plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}.pdf", format='pdf')
             plt.clf()
 
@@ -463,6 +477,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
             plt.xlabel("False Positive Rate")
             plt.ylabel("True Positive Rate")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}.pdf", format='pdf')
             plt.clf()
 
@@ -508,6 +524,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
             plt.xlabel("Length")
             plt.ylabel("P(LLM)")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}len_prob_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format="pdf")
             plt.clf()
 
@@ -517,6 +535,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
             plt.xlabel("False Positive Rate")
             plt.ylabel("True Positive Rate")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
             plt.clf()
 
@@ -530,6 +550,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
             plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
             plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
             plt.clf()
 
@@ -614,6 +636,8 @@ elif train_method=="PN":
                 plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
                 plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
                 plt.legend()
+                plt.tight_layout()
+
                 plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format='pdf')
                 plt.clf()
 
@@ -623,6 +647,8 @@ elif train_method=="PN":
                 plt.xlabel("False Positive Rate")
                 plt.ylabel("True Positive Rate")
                 plt.legend()
+                plt.tight_layout()
+
                 plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format='pdf')
                 plt.clf()
 
@@ -685,6 +711,8 @@ elif train_method=="PN":
             plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
             plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}.pdf", format='pdf')
             plt.clf()
 
@@ -694,6 +722,8 @@ elif train_method=="PN":
             plt.xlabel("False Positive Rate")
             plt.ylabel("True Positive Rate")
             plt.legend()
+            plt.tight_layout()
+
             plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}.pdf", format='pdf')
             plt.clf()
 
