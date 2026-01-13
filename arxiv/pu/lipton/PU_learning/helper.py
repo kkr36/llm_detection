@@ -510,6 +510,7 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
                 print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
             
             train_texts, train_labels = train_texts + train_texts_new, train_labels + train_labels_new
+            test_texts, test_labels = test_texts + test_texts_new, test_labels + test_labels_new
 
         # if sentence:
         #     train_texts, train_labels = split_into_sentences(train_texts, train_labels)
