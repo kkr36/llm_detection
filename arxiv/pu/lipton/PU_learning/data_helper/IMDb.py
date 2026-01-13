@@ -276,8 +276,10 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
         print(f"Pollution {split}: {sum(wrong_labels)} / {sum(wrong_labels)} + {sum(right_labels)} = {sum(wrong_labels) / (sum(right_labels) + sum(wrong_labels))}")
     
     else:
-        texts = subset["human_abstract"].dropna().tolist() + subset["ai_abstract"].dropna().tolist()
-        labels = [0 for _ in range(len(subset))] + [1 for _ in range(len(subset))]
+        human_texts = subset["human_abstract"].dropna().tolist()
+        ai_texts = subset["ai_abstract"].dropna().tolist()
+        texts = human_texts + ai_texts
+        labels = [0 for _ in range(len(human_texts))] + [1 for _ in range(len(ai_texts))]
         print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
 
     assert(len(texts) == len(labels))
