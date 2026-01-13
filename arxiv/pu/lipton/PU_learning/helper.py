@@ -195,18 +195,29 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     
     if data_type=="ArXiv_BERT": 
 
-        data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+        years = [2010, 2012, 2014, 2016, 2018, 2020]
+        train_texts, train_labels = [], []
+        test_texts, test_labels = [], []
+        cal_texts, cal_labels = [], []
 
-        train_texts, train_labels = read_arxiv_split2(data_path, alpha, "train", sentence) # should have 15k each
-        test_texts, test_labels = read_arxiv_split2(data_path, alpha, "val", sentence) # should have 5k each
-        cal_texts, cal_labels = read_arxiv_split2(data_path, 0, "val", sentence, inject=False)
-        if clean:
-            orig_train_len = sum([len(x) for x in train_texts])
-            train_texts = clean_text(train_texts)
-            new_train_len = sum([len(x) for x in train_texts])
-            test_texts = clean_text(test_texts)
-            cal_texts = clean_text(cal_texts)
-            print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+        for year in years:
+
+            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+
+            train_texts_new, train_labels_new = read_arxiv_split2(data_path, alpha, "train", sentence) # should have 15k each
+            test_texts_new, test_labels_new = read_arxiv_split2(data_path, alpha, "val", sentence) # should have 5k each
+            cal_texts_new, cal_labels_new = read_arxiv_split2(data_path, 0, "val", sentence, inject=False)
+            if clean:
+                orig_train_len = sum([len(x) for x in train_texts_new])
+                train_texts_new = clean_text(train_texts_new)
+                new_train_len = sum([len(x) for x in train_texts_new])
+                test_texts_new = clean_text(test_texts_new)
+                cal_texts_new = clean_text(cal_texts_new)
+                print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+
+            train_texts, train_labels = train_texts + train_texts_new, train_labels + train_labels_new
+            test_texts, test_labels = test_texts + test_texts_new, test_labels + test_labels_new
+            cal_texts, cal_labels = cal_texts + cal_texts_new, cal_labels + cal_labels_new
 
         transform = initialize_bert_transform('distilbert-base-uncased')
 
@@ -356,15 +367,21 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._20000.parquet'
 
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
-        val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-        test_texts, test_labels = read_arxiv_split2(val_path, alpha, "val", sentence, inject=False)
-        if clean:
-            print("cleaning test set?")
-            orig_len = sum([len(x) for x in test_texts])
-            test_texts = clean_text(test_texts)
-            new_len = sum([len(x) for x in test_texts])
-            print(f"cleaned test text of {new_len - orig_len} funny chars")
+        years = [2010, 2012, 2014, 2016, 2018, 2020]
+        test_texts, test_labels = [], []
+
+        for year in years:
+            val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+
+            test_texts_new, test_labels_new = read_arxiv_split2(val_path, alpha, "val", sentence, inject=False)
+            if clean:
+                print("cleaning test set?")
+                orig_len = sum([len(x) for x in test_texts_new])
+                test_texts_new = clean_text(test_texts_new)
+                new_len = sum([len(x) for x in test_texts_new])
+                print(f"cleaned test text of {new_len - orig_len} funny chars")
+            test_texts, test_labels = test_texts + test_texts_new, test_labels + test_labels_new
         # if sentence:
             # test_sentences, new_test_labels = split_into_sentences(test_texts, test_labels)
             # import pdb; pdb.set_trace()
@@ -476,16 +493,23 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     if data_type=="ArXiv_BERT": 
         # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet'
         # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
-        data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+        years = [2010, 2012, 2014, 2016, 2018, 2020]
+        train_texts, train_labels = [], []
+        test_texts, test_labels = [], []
 
-        train_texts, train_labels = read_arxiv_split2(data_path, alpha, "train", sentence)
-        test_texts, test_labels = read_arxiv_split2(data_path, alpha, "val", sentence, inject=False)
-        if clean:
-            orig_train_len = sum([len(x) for x in train_texts])
-            train_texts = clean_text(train_texts)
-            new_train_len = sum([len(x) for x in train_texts])
-            test_texts = clean_text(test_texts)
-            print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+        for year in years:
+            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+
+            train_texts_new, train_labels_new = read_arxiv_split2(data_path, alpha, "train", sentence)
+            test_texts_new, test_labels_new = read_arxiv_split2(data_path, alpha, "val", sentence, inject=False)
+            if clean:
+                orig_train_len = sum([len(x) for x in train_texts_new])
+                train_texts_new = clean_text(train_texts_new)
+                new_train_len = sum([len(x) for x in train_texts_new])
+                test_texts_new = clean_text(test_texts_new)
+                print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+            
+            train_texts, train_labels = train_texts + train_texts_new, train_labels + train_labels_new
 
         # if sentence:
         #     train_texts, train_labels = split_into_sentences(train_texts, train_labels)
