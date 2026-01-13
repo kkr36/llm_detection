@@ -222,7 +222,8 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
             mirror = arxiv_data.iloc[i][llm_cols[(i+1)%4]]
             # mirror = "THIS IS AI WRITING -- I'm Watermarking here!!"
             llm_writing.append(mirror)
-            arxiv_data.at[i, 'human_abstract'] = original_rewrite
+            # arxiv_data.at[i, 'human_abstract'] = original_rewrite
+            arxiv_data.at[i, 'human_abstract'] = np.nan
             inject_counter -= 1
         else:
             llm_writing.append(original_rewrite)
@@ -262,8 +263,10 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # print("removed sentences")
     # if split=="val": import pdb; pdb.set_trace()
     if sentence:
+        wrong_texts_human = wrong_labels_subset["human_abstract"].dropna().tolist()
+        wrong_texts_ai = wrong_labels_subset["ai_abstract"].dropna().tolist()
         print("splitting into sentences")
-        wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["human_abstract"].tolist() + wrong_labels_subset["ai_abstract"].tolist(), [0 for _ in range(len(wrong_labels_subset))] + [1 for _ in range(len(wrong_labels_subset))])
+        wrong_texts, wrong_labels = split_into_sentences(wrong_texts_human + wrong_texts_ai, [0 for _ in range(len(wrong_texts_human))] + [1 for _ in range(len(wrong_texts_ai))])
         # import pdb; pdb.set_trace()
         # wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["ai_abstract"].tolist(), [1 for _ in range(len(wrong_labels_subset))]) # wrong texts are only the double mirrors; we remove all the bad negative labels
         if not inject: assert(len(wrong_texts) == 0)
@@ -273,7 +276,7 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
         print(f"Pollution {split}: {sum(wrong_labels)} / {sum(wrong_labels)} + {sum(right_labels)} = {sum(wrong_labels) / (sum(right_labels) + sum(wrong_labels))}")
     
     else:
-        texts = subset["human_abstract"].tolist() + subset["ai_abstract"].tolist()
+        texts = subset["human_abstract"].dropna().tolist() + subset["ai_abstract"].dropna().tolist()
         labels = [0 for _ in range(len(subset))] + [1 for _ in range(len(subset))]
         print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
 
