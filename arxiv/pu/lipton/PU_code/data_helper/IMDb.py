@@ -19,7 +19,7 @@ def read_imdb_split(split_dir):
 
     return texts, labels
 
-def read_semeval_split(split_dir, split, seed):
+def read_semeval_split(split_dir, split, seed, flip=True):
 
     if "train" in split:
         # data = pd.read_parquet(f"{split_dir}/test.parquet").sample(frac=1, random_state=42).reset_index(drop=True)
@@ -33,15 +33,27 @@ def read_semeval_split(split_dir, split, seed):
         # import pdb; pdb.set_trace()
 
         if "front" in split:
-            data = data.iloc[:110]
-            assert((data['label'] == 1).all())
-            texts = data['code'].tolist()
-            labels = [1 for _ in range(110)]
+            if flip:
+                data = data.iloc[-110:]
+                assert((data['label'] == 0).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
+            else:
+                data = data.iloc[:110]
+                assert((data['label'] == 1).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
         elif "back" in split:
-            data = data.iloc[110:220]
-            assert((data['label'] == 1).all())
-            texts = data['code'].tolist()
-            labels = [1 for _ in range(110)]
+            if flip:
+                data = data.iloc[-220:-110]
+                assert((data['label'] == 0).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
+            else:
+                data = data.iloc[110:220]
+                assert((data['label'] == 1).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
         else:
             data = data.iloc[:2000]
             texts, labels = data['code'].tolist(), data['label'].tolist()
@@ -52,18 +64,32 @@ def read_semeval_split(split_dir, split, seed):
         # import pdb; pdb.set_trace()
 
         if "front" in split:
-            data = data.iloc[:110]
-            assert((data['label'] == 1).all())
-            texts = data['code'].tolist()
-            labels = [1 for _ in range(110)]
+            if flip:
+                data = data.iloc[-110:]
+                assert((data['label'] == 0).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
+            else:
+                data = data.iloc[:110]
+                assert((data['label'] == 1).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
         elif "back" in split:
-            data = data.iloc[110:220]
-            assert((data['label'] == 1).all())
-            texts = data['code'].tolist()
-            labels = [1 for _ in range(110)]
+            if flip:
+                data = data.iloc[-220:-110]
+                assert((data['label'] == 0).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
+            else:
+                data = data.iloc[110:220]
+                assert((data['label'] == 1).all())
+                texts = data['code'].tolist()
+                labels = [1 for _ in range(110)]
         elif "submit" in split:
-            # data = data.iloc[140:]
+            data = data.iloc[:-220]
             texts, labels = data['code'].tolist(), data['label'].tolist()
+            if flip:
+                labels = [1-x for x in labels]
 
     elif "unlabeled" in split:
         data = pd.read_parquet(f"{split_dir}/test.parquet").sample(frac=1, random_state=42).reset_index(drop=True)

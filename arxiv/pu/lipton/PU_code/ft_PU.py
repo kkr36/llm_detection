@@ -270,7 +270,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
 
             our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
             # import pdb; pdb.set_trace()
-            # alpha_estimate =our_mpe_estimate
+            alpha_estimate =our_mpe_estimate
             # alpha_estimate=.2
 
             cal_acc, cal_labels, cal_preds, cal_probs = validate(epoch, net, u_calloader, \

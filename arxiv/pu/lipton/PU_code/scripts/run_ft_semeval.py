@@ -22,7 +22,7 @@ if __name__ == "__main__":
                 lr = hyperparameters['lr'][1]
                 momentum = hyperparameters['momentum'][0]
                 wd = hyperparameters['wd'][-2]
-                cmd = f"python ft_PU.py --lr={lr} --momentum={momentum} --wd={wd} --data-type='SemEval' --train-method={train_method} --net-type='microsoft/codebert-base' --epochs=15 --optimizer=AdamW --alpha={seed} --beta=.6 --log-dir=logging_accuracy_pn_on_unlabeled_id/{pretrain_path}/{seed}"
+                cmd = f"python ft_PU.py --lr={lr} --momentum={momentum} --wd={wd} --data-type='SemEval' --train-method={train_method} --net-type='microsoft/codebert-base' --epochs=15 --optimizer=AdamW --alpha={seed} --beta=.6 --log-dir=logging_accuracy_id_flip/{pretrain_path}/{seed}"
 
                 print(cmd)
 
