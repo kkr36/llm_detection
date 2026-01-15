@@ -291,7 +291,7 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     return texts, labels
 
 def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=False):
-    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"][-2:]
+    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"]
     assert(llm in llm_cols or llm=="all" and not flip), f"{llm} not valid"
     
     arxiv_data = pd.read_parquet(split_dir)
@@ -306,7 +306,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=False):
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
             # tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)]
             # start_idx = int(i*abs_per_llm)
-            tmp_subset = tmp_subset.iloc[:1500] #3k total; if all 4 llms then 750
+            tmp_subset = tmp_subset.iloc[:2500//4] #3k total; if all 4 llms then 750
             print(len(tmp_subset))
             tmp_subset["llm_writing"] = tmp_subset[llm2]
             if llm_subset is None:
@@ -332,8 +332,16 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=False):
     human_texts = llm_subset['human_abstract'].tolist()
     assert(len(llm_texts) == len(human_texts))
 
+    # if sentence:
+    #     human_texts, _ = split_into_sentences(human_texts, [0 for _ in range(len(human_texts))])
+    #     llm_texts, _ = split_into_sentences(llm_texts, [0 for _ in range(len(llm_texts))])
+
+    # min_size = min(len(human_texts), len(llm_texts))
+    # human_texts, llm_texts = human_texts[:min_size], llm_texts[:min_size]
+
     # replace alpha % of (human, llm) with (llm, human) writing --> unlabeled
     if flip:
+        # import pdb; pdb.set_trace()
         human_texts_alpha = human_texts[int(len(human_texts)*.8):] # TODO THIS 0.6 IS HARDCODED TO SEE IF FLIPPED LABELED WORKS WELL WHEN MAJORITY OF UNLABELED IS STILL HUMAN
         llm_texts_alpha = human_texts[:int(len(human_texts)*alpha)] + llm_texts[int(len(llm_texts)*alpha):]
         print(f"alpha level {len(llm_texts[:int(len(llm_texts)*alpha)]) / len(llm_texts_alpha)}")

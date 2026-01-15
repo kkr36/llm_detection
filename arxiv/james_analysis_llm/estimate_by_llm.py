@@ -177,7 +177,7 @@ def estimate_text_distribution(human_data, ai_data,save_file_path="Word.parquet"
 if __name__ == "__main__":
     # for year in [2011, 2012, 2013]:
     # years = [2020, 2023, 2025]
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][:-1]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][-1:]
 
     years = [2010, 2012, 2014, 2016, 2018, 2020][:]
     for year in tqdm(years):

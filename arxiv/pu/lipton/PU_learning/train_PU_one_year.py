@@ -119,7 +119,7 @@ clean = args.clean
 # val_alphas = [0, .1, .25, .5]
 # val_alphas = [1, .9, .75, .5, .05]
 # val_alphas = [.2, 1]
-val_alphas = [0, .2, .4, .6]
+val_alphas = [0, .2, .4, .6, .8]
 # val_years = list(range(2010,2026))
 val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
 # val_years = [year]
@@ -175,7 +175,7 @@ elif data_type=="paramveer":
         varied_vals['ft'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=True, clean=clean)
         varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean)
 elif "llm_type_" in data_type:
-    llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"][:2]
+    llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"]
     for llm in tqdm(llm_list):
         varied_vals[llm] = {}
         for valalpha in val_alphas:

@@ -42,21 +42,21 @@ def tokenize(text):
 
 if __name__ == "__main__":
     # years = [2020, 2023, 2025]
-    years = [2010, 2012, 2014, 2016, 2018, 2020][-2:-1]
+    years = [2010, 2012, 2014, 2016, 2018, 2020]
     # years = [2024]
     # years = [2014, 2015, 2016, 2017, 2018, 2019]
     # years = list(range(2010,2026))
     subsample_size = 20000//2
     # subsample_size = 2500
     category = 'cs.'
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][:-1]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][:]
     splits = ["train", "val"]
 
     for year in tqdm(years):
         arxiv_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_ai_{category}_{subsample_size}_fronthalf.parquet"
         arxiv_data = pd.read_parquet(arxiv_path)
 
-        for llm_col in llm_cols:
+        for llm_col in llm_cols[-1:]:
             for split in splits:
                 # load data
                 tokenized = defaultdict(list)
@@ -66,8 +66,8 @@ if __name__ == "__main__":
                     human_writing = []
 
                     for llm in llm_cols[:-1]:
-                        subset = arxiv_data[arxiv_data[llm_col].notna() & (arxiv_data[llm_col] != "")].reset_index(drop=True)
-                        llm_writing_tmp, human_writing_tmp = subset[llm_col].tolist(), subset["human_abstract"].tolist()
+                        subset = arxiv_data[arxiv_data[llm].notna() & (arxiv_data[llm] != "")].reset_index(drop=True)
+                        llm_writing_tmp, human_writing_tmp = subset[llm].tolist()[:2500//4], subset["human_abstract"].tolist()[:2500//4]
                         if split == "train":
                             llm_writing_tmp = llm_writing_tmp[:int(len(llm_writing_tmp)*.75)]
                             human_writing_tmp = human_writing_tmp[:int(len(human_writing_tmp)*.75)]
@@ -83,6 +83,8 @@ if __name__ == "__main__":
                     elif split == "val":
                         llm_writing, human_writing = subset[llm_col].iloc[int(len(subset)*.75):].tolist(), subset["human_abstract"].iloc[int(len(subset)*.75):].tolist()
 
+                # import pdb; pdb.set_trace()
+                
                 # tokenize human/ai abs separately
                 for i, ai_abstract in tqdm(list(enumerate(llm_writing))):
                     tokenized_abs = tokenize(ai_abstract)

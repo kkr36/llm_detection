@@ -230,7 +230,7 @@ if __name__ == "__main__":
     test_years = [2010, 2012, 2014, 2016, 2018, 2020]
 
     alphas = [0, .2, .4, .6, .8, 1.]
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][:-1]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][:]
 
     for val_year in test_years:
         for alpha in alphas:
@@ -241,7 +241,7 @@ if __name__ == "__main__":
                 logprob_path = f"/share/garg/arxiv_kaggle/train/arxiv_tokenized_{val_year}_logprob_{category}_{subsample_size}_{llm_col}.parquet"
                 mle = MLE(logprob_path)
 
-                for llm_col2 in llm_cols:
+                for llm_col2 in llm_cols[:-1]:
                     val_data = pd.read_parquet(f"/share/garg/arxiv_kaggle/multillm/val/arxiv_tokenized_{val_year}_ai_{category}_{subsample_size}_{llm_col2}_sentence.parquet")
                     val_data = df_to_val_set(val_data, alpha)
 
@@ -257,12 +257,12 @@ if __name__ == "__main__":
             errors = np.zeros((n, n))
 
             for i, mle_llm in enumerate(llm_cols):
-                for j, val_llm in enumerate(llm_cols):
+                for j, val_llm in enumerate(llm_cols[:-1]):
                     solution, half_width = grid[mle_llm][val_llm]
                     values[i, j] = solution
                     errors[i, j] = half_width
 
-            fig, ax = plt.subplots(figsize=(4*n, 4*n))
+            fig, ax = plt.subplots(figsize=(5*n, 4*n))
 
             # Heatmap
             im = ax.imshow(values, aspect="auto")
