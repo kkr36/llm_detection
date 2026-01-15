@@ -16,9 +16,11 @@ from torch.optim import AdamW
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import roc_curve, roc_auc_score
 
-font = {'family' : 'normal',
+font = {
+        # 'family' : 'normal',
         'weight' : 'bold',
-        'size'   : 20}
+        'size'   : 20
+    }
 import matplotlib
 from matplotlib import pyplot as plt
 matplotlib.rc('font', **font)
@@ -117,7 +119,7 @@ clean = args.clean
 # val_alphas = [0, .1, .25, .5]
 # val_alphas = [1, .9, .75, .5, .05]
 # val_alphas = [.2, 1]
-val_alphas = [0, .1, .3, .5, .8][:1]
+val_alphas = [0, .2, .4, .6]
 # val_years = list(range(2010,2026))
 val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
 # val_years = [year]
@@ -173,16 +175,20 @@ elif data_type=="paramveer":
         varied_vals['ft'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=True, clean=clean)
         varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean)
 elif "llm_type_" in data_type:
-    llm_list = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"][:2]
     for llm in tqdm(llm_list):
-        p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-            get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, 0, beta, batch_size, year, sentence, ft, clean)
-        varied_vals[llm] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
+        varied_vals[llm] = {}
+        for valalpha in val_alphas:
+            p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
+                get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean)
+            varied_vals[llm][valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 elif "Arxiv_year" in data_type:
     for valalpha in val_alphas:
         p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
             get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, None, sentence, ft, clean)
         varied_vals[valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
+
+# import pdb; pdb.set_trace()
 
 if device.startswith('cuda'):
     net = torch.nn.DataParallel(net)
@@ -314,8 +320,8 @@ elif train_method=='CVIR' or train_method=="TEDn":
         valid_acc = validate(epoch, net, u_validloader, \
             criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
         
-        if not os.path.exists(f"{save_dir_cal}/{year}"):
-            os.makedirs(f"{save_dir_cal}/{year}")
+        # if not os.path.exists(f"{save_dir_cal}/{year}"):
+        #     os.makedirs(f"{save_dir_cal}/{year}")
 
         if estimate_alpha: 
             # continue
@@ -442,53 +448,56 @@ elif train_method=='CVIR' or train_method=="TEDn":
     elif estimate_alpha and "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1]
         for llm_ood in varied_vals:
-            (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[llm_ood]
-            pos_probs = p_probs(net, device, p_validloader)
-            pos_prob = np.mean(pos_probs)
-            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
-            neg_probs = 1-unlabeled_probs[:,1]
-            neg_prob = np.mean(neg_probs)
-            naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
-            preds = np.argmax(unlabeled_probs, axis=1) # TODO change to average prob on the class, or cross entropy
+            for valalpha in val_alphas:
+                (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[llm_ood][valalpha]
+                pos_probs = p_probs(net, device, p_validloader)
+                pos_prob = np.mean(pos_probs)
+                unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+                neg_probs = 1-unlabeled_probs[:,1]
+                neg_prob = np.mean(neg_probs)
+                naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
+                preds = np.argmax(unlabeled_probs, axis=1) # TODO change to average prob on the class, or cross entropy
 
-            y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
-            y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
-            auc = roc_auc_score(y_true, y_scores)
-            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+                # import pdb; pdb.set_trace()
 
-            bins = np.linspace(
-                min(pos_probs.min(), neg_probs.min()),
-                max(pos_probs.max(), neg_probs.max()),
-                50
-            )
+                y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+                y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+                auc = roc_auc_score(y_true, y_scores)
+                fpr, tpr, thresholds = roc_curve(y_true, y_scores)
 
-            plt.figure()
-            plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
-            plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
-            plt.legend()
-            plt.tight_layout()
+                bins = np.linspace(
+                    min(pos_probs.min(), neg_probs.min()),
+                    max(pos_probs.max(), neg_probs.max()),
+                    50
+                )
 
-            plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}.pdf", format='pdf')
-            plt.clf()
+                plt.figure()
+                plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+                plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+                plt.legend()
+                plt.tight_layout()
 
-            plt.figure()
-            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
-            plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
-            plt.xlabel("False Positive Rate")
-            plt.ylabel("True Positive Rate")
-            plt.legend()
-            plt.tight_layout()
+                plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}_{valalpha}.pdf", format='pdf')
+                plt.clf()
 
-            plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}.pdf", format='pdf')
-            plt.clf()
+                plt.figure()
+                plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+                plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.legend()
+                plt.tight_layout()
 
-            neg_acc = np.mean(preds == unlabeled_targets)
-            pos_acc = np.mean(np.round(pos_probs) == 1)
-            actual_mpe = 1 - np.mean(unlabeled_targets)
-            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
-            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
-            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
-            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(llm_ood, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))  
+                plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}_{valalpha}.pdf", format='pdf')
+                plt.clf()
+
+                neg_acc = np.mean(preds == unlabeled_targets)
+                pos_acc = np.mean(np.round(pos_probs) == 1)
+                actual_mpe = 1 - np.mean(unlabeled_targets)
+                our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+                scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+                EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+                outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(llm_ood, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))  
     elif estimate_alpha and data_type=="paramveer":
         for key in varied_vals:
             for valalpha in varied_vals[key]:
@@ -687,54 +696,55 @@ elif train_method=="PN":
     elif estimate_alpha and "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1]
         for llm_ood in varied_vals:
-            (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[llm_ood]
-            pos_probs = p_probs(net, device, p_validloader)
-            pos_prob = np.mean(pos_probs)
-            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
-            neg_probs = 1-unlabeled_probs[:,1]
-            neg_prob = np.mean(neg_probs)
-            naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
-            preds = np.argmax(unlabeled_probs, axis=1) # TODO change to average prob on the class, or cross entropy
+            for valalpha in val_alphas:
+                (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[llm_ood][valalpha]
+                pos_probs = p_probs(net, device, p_validloader)
+                pos_prob = np.mean(pos_probs)
+                unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+                neg_probs = 1-unlabeled_probs[:,1]
+                neg_prob = np.mean(neg_probs)
+                naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
+                preds = np.argmax(unlabeled_probs, axis=1) # TODO change to average prob on the class, or cross entropy
 
-            y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
-            y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
-            auc = roc_auc_score(y_true, y_scores)
-            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+                y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+                y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+                auc = roc_auc_score(y_true, y_scores)
+                fpr, tpr, thresholds = roc_curve(y_true, y_scores)
 
-            bins = np.linspace(
-                min(pos_probs.min(), neg_probs.min()),
-                max(pos_probs.max(), neg_probs.max()),
-                50
-            )
+                bins = np.linspace(
+                    min(pos_probs.min(), neg_probs.min()),
+                    max(pos_probs.max(), neg_probs.max()),
+                    50
+                )
 
-            plt.figure()
-            plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
-            plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
-            plt.legend()
-            plt.tight_layout()
+                plt.figure()
+                plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+                plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+                plt.legend()
+                plt.tight_layout()
 
-            plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}.pdf", format='pdf')
-            plt.clf()
+                plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}.pdf", format='pdf')
+                plt.clf()
 
-            plt.figure()
-            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
-            plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
-            plt.xlabel("False Positive Rate")
-            plt.ylabel("True Positive Rate")
-            plt.legend()
-            plt.tight_layout()
+                plt.figure()
+                plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+                plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.legend()
+                plt.tight_layout()
 
-            plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}.pdf", format='pdf')
-            plt.clf()
+                plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}.pdf", format='pdf')
+                plt.clf()
 
-            neg_acc = np.mean(preds == unlabeled_targets)
-            pos_acc = np.mean(np.round(pos_probs) == 1)
-            actual_mpe = 1 - np.mean(unlabeled_targets)
-            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
-            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
-            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
-            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(llm_ood, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
-            # import pdb; pdb.set_trace()
+                neg_acc = np.mean(preds == unlabeled_targets)
+                pos_acc = np.mean(np.round(pos_probs) == 1)
+                actual_mpe = 1 - np.mean(unlabeled_targets)
+                our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+                scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+                EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+                outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(llm_ood, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
+                # import pdb; pdb.set_trace()
 
     elif estimate_alpha and data_type=="paramveer":
         for key in varied_vals:

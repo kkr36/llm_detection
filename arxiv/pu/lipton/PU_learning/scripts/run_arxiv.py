@@ -8,7 +8,7 @@ if __name__ == "__main__":
     # years = [2020, 2023, 2025][:]
     # years = [2010, 2012, 2014, 2016, 2018, 2020]
     # years = [2010, 2012, 2014, 2016, 2018, 2020]
-    years = [2010, 2020, 2012, 2018, 2014, 2016][:3]
+    years = [2010, 2020, 2012, 2018, 2014, 2016][4:]
 
     # alphas = [0, .1, .2, .3, .4, .5, .6][:1]
 
@@ -36,13 +36,13 @@ if __name__ == "__main__":
             print(year, alphas)
 
             for alpha in alphas:
-                cmd = f"python train_PU_one_year.py --lr=0.000001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha/sentence_{year}/{alpha} --clean"
+                cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha_drop/sentence_{year}/{alpha} --clean"
 
                 print(cmd)
 
                 subprocess.run(shlex.split(cmd))
 
-                cmd = f"python train_PU_one_year.py --lr=0.000001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha/abstract_{year}/{alpha} --abstract --clean"
+                cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha_drop/abstract_{year}/{alpha} --abstract --clean"
 
                 print(cmd)
 

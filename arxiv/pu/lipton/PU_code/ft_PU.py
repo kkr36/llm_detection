@@ -97,9 +97,9 @@ outfile= open(file_name, 'w')
 ## Obtain dataset 
 
 if train_method=='PN': 
-    u_trainloader, u_validloader, net= get_PN_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
+    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
 else:
-    p_trainloader, u_trainloader, p_validloader, u_validloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata, u_caldata = \
+    p_trainloader, u_trainloader, p_validloader, u_validloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
         get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, model_path)
 
     train_pos_size= len(X)
@@ -115,7 +115,6 @@ def batch_decode(batch):
         batch,
         skip_special_tokens=True
     )
-
 
 
 if device.startswith('cuda'):
@@ -239,7 +238,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
 
             alpha_estimate =our_mpe_estimate
 
-            cal_acc, cal_labels, cal_preds, cal_probs = validate(epoch, net, u_calloader, \
+            cal_acc, cal_labels, cal_preds, cal_probs = validate(epoch, net, u_submitloader, \
                 criterion=criterion, device=device, threshold=0.5,show_bar=show_bar)
 
             preds_label_0 = cal_probs[cal_labels == 0]
@@ -265,7 +264,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
             print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
 
             # get some metrics
-            f1 = f1_score(cal_labels, np.round(cal_probs))
+            f1 = f1_score(cal_labels, np.round(cal_probs), average="macro")
             auc = roc_auc_score(cal_labels, cal_probs)
             ce = log_loss(cal_labels, np.round(cal_probs))
             tn, fp, fn, tp = confusion_matrix(cal_labels, np.round(cal_probs)).ravel().tolist()
@@ -288,6 +287,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
             if f1 >= best_f1:
                 submit_preds = (1 - np.round(probs)).astype(int)
                 best_epoch = epoch
+                best_f1 = f1
 
         else: 
             outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
@@ -336,7 +336,10 @@ elif train_method=="PN":
         train_acc, train_labels, train_preds, train_probs = train_PN(epoch, net, u_trainloader, \
                 optimizer=optimizer, criterion=criterion, device=device, show_bar=show_bar)
 
-        valid_acc, labels, preds, probs = validate(epoch, net, u_validloader, \
+        valid_acc, valid_labels, valid_preds, valid_probs = validate(epoch, net, u_validloader, \
+                criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
+
+        submit_acc, labels, preds, probs = validate(epoch, net, u_submitloader, \
                 criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
 
         preds_label_0 = probs[labels == 0]
@@ -362,12 +365,12 @@ elif train_method=="PN":
         print(f'Saved prediction histograms to prediction_histograms_epoch{epoch}.pdf')
 
         # get some metrics
-        f1 = f1_score(labels, np.round(probs))
+        f1 = f1_score(labels, np.round(probs), average="macro")
         auc = roc_auc_score(labels, probs)
         ce = log_loss(labels, probs)
         tn, fp, fn, tp = confusion_matrix(labels, np.round(probs)).ravel().tolist()
         # import pdb; pdb.set_trace()
-        outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, f1, auc, ce, tn, fp, fn, tp))
+        outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, submit_acc, f1, auc, ce, tn, fp, fn, tp))
         outfile.flush()
 
         model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd, args.momentum, alpha, beta)   + "_" + timestr
@@ -384,6 +387,7 @@ elif train_method=="PN":
         if f1 >= best_f1:
             submit_preds = (1 - np.round(probs)).astype(int)
             best_epoch = epoch
+            best_f1 = f1
 
 elif train_method=="TiCE" or train_method=="KM": 
     print("here")

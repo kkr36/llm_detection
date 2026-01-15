@@ -20,17 +20,71 @@ def read_imdb_split(split_dir):
     return texts, labels
 
 def read_semeval_split(split_dir, split):
-    if "test_sample" in split:
-        load_split = "test_sample"
-    else:
-        load_split = split        
-    data = pd.read_parquet(f"{split_dir}/{load_split}.parquet")
+    if split == "submit":
+        data = pd.read_parquet(f"{split_dir}/test.parquet")
+        texts, labels = data["code"].tolist(), [0 for _ in range(len(data))]
 
-    if "front" in split:
-        data = data.iloc[:int(len(data)*.7)]
-    elif "back" in split:
-        data = data.iloc[int(len(data)*.7):]
-    print(f"{split} : loaded {len(data)} samples; {sum(data['label'])} pos {len(data) - sum(data['label'])} neg")
+    elif "validation" in split:
+        data = pd.read_parquet(f"{split_dir}/validation.parquet").sample(frac=1, random_state=42).reset_index(drop=True)
+        if "front" in split or "back" in split:
+            data = data[data["label"] == 1]
+            if "front" in split:
+                data = data.iloc[:1000]
+            elif "back" in split:
+                data = data.iloc[1000:2000]
+        else:
+            data = data.iloc[:10000]
+        texts, labels = data["code"].tolist(), data["label"].tolist()
+    
+    elif "test_sample" in split:
+        data = pd.read_parquet(f"{split_dir}/test_sample.parquet")
+        if "front" in split or "back" in split:
+            data = data.sample(frac=1, random_state=42).reset_index(drop=True)
+            if "front" in split:
+                data = data.iloc[:700]
+                assert(len(data) == 700)
+            elif "back" in split:
+                data = data.iloc[700:]
+                assert(len(data) == 300)
+            texts, labels = data["code"].tolist(), [0 for _ in range(len(data))] # deliberately unlabeled
+        else:
+            texts, labels = data["code"].tolist(), data["label"].tolist()
+
+    elif "test" in split:
+        data = pd.read_parquet(f"{split_dir}/test.parquet")
+        if "front" in split or "back" in split:
+            data = data.sample(frac=1, random_state=42).reset_index(drop=True)
+            if "front" in split:
+                data = data.iloc[:700]
+                assert(len(data) == 700)
+            elif "back" in split:
+                data = data.iloc[700:]
+                assert(len(data) == 300)
+            texts, labels = data["code"].tolist(), [0 for _ in range(len(data))] # deliberately unlabeled
+        else:
+            texts, labels = data["code"].tolist(), data["label"].tolist()
+
+    elif "train" in split:
+        data = pd.read_parquet(f"{split_dir}/train.parquet").sample(frac=1, random_state=42).reset_index(drop=True)
+        data = data.iloc[:10000]
+        texts, labels = data["code"].tolist(), data["label"].tolist()
+
+    return texts, labels
+
+    # if "test_sample" in split:
+    #     load_split = "test_sample"
+    # else:
+    #     load_split = split        
+    # data = pd.read_parquet(f"{split_dir}/{load_split}.parquet")
+    # if split != "test":
+    #     data = data.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    # if "front" in split:
+    #     data = data.iloc[:int(len(data)*.5)]
+    # elif "middle" in split:
+    #     data = data.iloc[int(len(data)*.5):int(len(data)*.75)]
+    # elif "back" in split:
+    #     data = data.iloc[int(len(data)*.75):]
 
     # if split=="validation":
     #     data = data.iloc[-100:]
@@ -40,8 +94,12 @@ def read_semeval_split(split_dir, split):
     #     subset = data.iloc[:int(len(data) * .3)]
     # elif split == "validation":
     #     subset = data.iloc[int(len(data) * .3):int(len(data) * .4)]
-    
-    texts, labels = data["code"].tolist(), data["label"].tolist()
+    if split=="test":
+        texts, labels = data["code"].tolist(), [0 for _ in range(len(data))]
+    else:
+        texts, labels = data["code"].tolist(), data["label"].tolist()
+    print(f"{split} : loaded {len(data)} samples; {sum(labels)} pos {len(data) - sum(labels)} neg")
+
     return texts, labels
 
 def getBertTokenizer(model):

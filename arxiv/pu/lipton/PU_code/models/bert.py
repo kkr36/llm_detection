@@ -17,13 +17,14 @@ class DistilBertClassifier(DistilBertForSequenceClassification):
 
 def initialize_bert_based_model(net, num_classes):
 
-	if net == 'distilbert-base-uncased':
-		model = DistilBertClassifier.from_pretrained(
-			net,
-			num_labels=num_classes)
-	else:
-		raise ValueError(f'Model: {net} not recognized.')
-	return model
+    if net == 'distilbert-base-uncased':
+        model = DistilBertClassifier.from_pretrained(
+            net,
+            num_labels=num_classes)
+    else:
+        raise ValueError(f'Model: {net} not recognized.')
+        
+    return model
 
 class CodeBertClassifier(RobertaForSequenceClassification):
     def __init__(self, config):

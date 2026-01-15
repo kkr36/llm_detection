@@ -290,9 +290,9 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # import pdb; pdb.set_trace()
     return texts, labels
 
-def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=True):
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
-    assert(llm in llm_cols or llm=="all")
+def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=False):
+    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"][-2:]
+    assert(llm in llm_cols or llm=="all" and not flip), f"{llm} not valid"
     
     arxiv_data = pd.read_parquet(split_dir)
 
@@ -306,7 +306,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=True):
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
             # tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)]
             # start_idx = int(i*abs_per_llm)
-            # tmp_subset = tmp_subset.iloc[:750]
+            tmp_subset = tmp_subset.iloc[:1500] #3k total; if all 4 llms then 750
             print(len(tmp_subset))
             tmp_subset["llm_writing"] = tmp_subset[llm2]
             if llm_subset is None:
@@ -341,6 +341,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=True):
 
         texts, labels = llm_texts_alpha + human_texts_alpha, [0 for _ in range(len(llm_texts_alpha))] + [1 for _ in range(len(human_texts_alpha))]
     else:
+        # if alpha == 0.25: import pdb; pdb.set_trace()
         llm_texts_alpha = llm_texts[int(len(llm_texts)*alpha):]
         human_texts_alpha = llm_texts[:int(len(llm_texts)*alpha)] + human_texts[int(len(human_texts)*alpha):]
         print(f"alpha level {len(llm_texts[:int(len(llm_texts)*alpha)]) / len(human_texts_alpha)}")

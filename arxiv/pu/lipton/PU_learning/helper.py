@@ -253,7 +253,8 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
 
     elif "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
-        data_path = f"{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet" if llm != "all" else f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
+        data_path = f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet" 
+        # if llm != "all" else f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
         train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence, alpha) # should have 15k each
         test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence, alpha) # should have 5k each
@@ -423,11 +424,14 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
 
         np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
+        # import pdb; pdb.set_trace()
 
-        if not sentence:
-            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
-        else:
-            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type)
+
+        # if not sentence:
+            # p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        # else:
+            # p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
 
         p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
             shuffle=shuffle)

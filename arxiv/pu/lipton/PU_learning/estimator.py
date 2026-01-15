@@ -69,10 +69,13 @@ def u_probs(net, device, u_loader):
                 pu_targets = targets.numpy().squeeze()
                 
             else:
-                pu_probs = np.concatenate( (pu_probs, \
-                    probs.detach().cpu().numpy().squeeze()))
-                pu_targets = np.concatenate( (pu_targets, \
-                    targets.numpy().squeeze()))
+                try:
+                    pu_probs = np.concatenate( (pu_probs, \
+                        probs.detach().cpu().numpy()), axis=0)
+                    pu_targets = np.concatenate( (pu_targets, \
+                        targets.numpy()), axis=0)
+                except:
+                    import pdb; pdb.set_trace()
                 
     
     return pu_probs, pu_targets

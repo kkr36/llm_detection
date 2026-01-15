@@ -182,8 +182,8 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     if data_type=="SemEval":
         # train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A/train.parquet', 'train')
         # test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A/train.parquet', 'validation')
-        train_texts, train_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'train')
-        test_texts, test_labels = read_semeval_split(f'/home/ubuntu/data/Task_A', 'validation')
+        train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'train')
+        test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'validation')
 
         np_train = sum(train_labels)
         nn_train = len(train_labels) - np_train
@@ -257,7 +257,7 @@ def get_PN_ft_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_
         u_traindata = get_PNDataSplits(train_dataset, pos_size=np_train, neg_size=nn_train, data_type='SemEval')
         u_validdata = get_PNDataSplits(test_dataset, pos_size=np_test, neg_size=nn_test, data_type='SemEval')
 
-        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=32, \
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, \
             shuffle=True)
         u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=256, \
             shuffle=True)
@@ -279,7 +279,7 @@ def get_submit_dataset():
 
     u_trainloader=None
 
-    train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test')
+    train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample')
     # import pdb; pdb.set_trace()
  
     np_train = sum(train_labels)
@@ -308,28 +308,27 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
 
     if data_type=="SemEval": 
 
-        train_texts, train_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_front')
-        u_texts, u_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test')
+        u_texts, u_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_front')
+        # u_texts, u_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_front')
+        p_texts, p_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'validation_front')
+        train_texts = u_texts + p_texts
+        train_labels = u_labels + p_labels
+        u_texts2, u_labels2 = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_back')
+        # u_texts2, u_labels2 = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_back')
+        p_texts2, p_labels2 = read_semeval_split(f'/share/garg/kkr36/Task_A', 'validation_back')
+        test_texts = u_texts2 + p_texts2
+        test_labels = u_labels2 + p_labels2
         # import pdb; pdb.set_trace()
-        train_texts += u_texts
-        train_labels += u_labels
-        test_texts, test_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_middle')
-        cal_texts, cal_labels = read_semeval_split(f'/share/garg/kkr36/Task_A', 'test_sample_back')
 
         np_train = sum(train_labels)
         nn_train = len(train_labels) - np_train
         np_test = sum(test_labels)
         nn_test = len(test_labels) - np_test
-        np_cal = sum(cal_labels)
-        nn_cal = len(cal_labels) - np_cal
-
-        # import pdb; pdb.set_trace()
 
         transform = initialize_codebert_transform("microsoft/codebert-base")
 
         train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
         test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
-        cal_dataset = IMDbBERTData(cal_texts, cal_labels, transform=transform)
 
         # neg = (1-beta) pos / beta
         # neg/pos = 1-beta / beta
@@ -342,20 +341,17 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
 
         p_traindata, u_traindata = get_PUDataSplits(train_dataset, pos_size=np_train, alpha=alpha, beta=beta_train,data_type='SemEval')
         p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=np_test, alpha=alpha, beta=beta_test,data_type='SemEval')
-        u_caldata = get_PNDataSplits(cal_dataset, np_cal, nn_cal, data_type='SemEval')
         
         X = p_traindata.targets
         Y = u_traindata.targets
         
-        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=64, \
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8, \
             shuffle=True)
-        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=64, \
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, \
             shuffle=True)
         p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=256, \
             shuffle=True)
         u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=256, \
-            shuffle=True)
-        u_calloader = torch.utils.data.DataLoader(u_caldata, batch_size=256, \
             shuffle=True)
         
         ## Initialize model 
@@ -368,4 +364,4 @@ def get_ft_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size
         else:
             net = net.to(device)
 
-    return p_trainloader, u_trainloader, p_validloader, u_validloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata, u_caldata
+    return p_trainloader, u_trainloader, p_validloader, u_validloader, net, X, Y, p_validdata, u_validdata, u_traindata
