@@ -2,14 +2,16 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 import swifter
+import seaborn as sns
+
 font = {
         # 'family' : 'normal',
         'weight' : 'bold',
-        'size'   : 20
+        'size'   : 25
     }
 import matplotlib
 from matplotlib import pyplot as plt
-matplotlib.rc('font', **font)
+# matplotlib.rc('font', **font)
 from collections import defaultdict
 import os
 
@@ -212,6 +214,8 @@ def df_to_val_set(df, alpha=None):
     human_data = human_data[human_data['human_index'] != -1]
     ai_data = df[["ai_sentence", "ai_index"]]
 
+    human_data, ai_data = human_data.sample(frac=1, random_state=42).reset_index(drop=True), ai_data.sample(frac=1, random_state=42).reset_index(drop=True)
+
     min_size = min(len(human_data), len(ai_data))
     human_data, ai_data = human_data.iloc[:min_size], ai_data.iloc[:min_size]
     assert(len(human_data) == len(ai_data))
@@ -227,9 +231,9 @@ if __name__ == "__main__":
 
     category = "cs."
     subsample_size = 20000//2
-    test_years = [2010, 2012, 2014, 2016, 2018, 2020]
+    test_years = [2010, 2012, 2014, 2016, 2018, 2020][::-1]
 
-    alphas = [0, .2, .4, .6, .8, 1.]
+    alphas = [.4, 0, .2, .6, .8, 1.]
     llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash", "all"][:]
 
     for val_year in test_years:
@@ -249,50 +253,116 @@ if __name__ == "__main__":
                     print(f"{val_year}: {solution} += {half_width}")
 
                     grid[llm_col][llm_col2] = (solution, half_width)
-        
-            n = len(llm_cols)
 
             # Build matrix for heatmap
-            values = np.zeros((n, n))
-            errors = np.zeros((n, n))
+            n_rows = len(llm_cols)  # 5 rows (including "all")
+            n_cols = len(llm_cols) - 1  # 4 columns (excluding "all")
 
-            for i, mle_llm in enumerate(llm_cols):
-                for j, val_llm in enumerate(llm_cols[:-1]):
+            values = np.zeros((n_rows, n_cols))
+            errors = np.zeros((n_rows, n_cols))
+
+            for i, mle_llm in enumerate(llm_cols):  # Keep all rows including "all"
+                for j, val_llm in enumerate(llm_cols[:-1]):  # Only 4 columns
                     solution, half_width = grid[mle_llm][val_llm]
                     values[i, j] = solution
                     errors[i, j] = half_width
 
-            fig, ax = plt.subplots(figsize=(5*n, 4*n))
+            plt.figure(figsize=(6,5))
+            ax = sns.heatmap(
+                values,
+                annot=True,          # print numbers inside cells
+                fmt=".3f",           # number formatting
+                cmap="viridis",
+                xticklabels=llm_cols[:-1],
+                yticklabels=llm_cols,
+                cbar=True
+            )
 
-            # Heatmap
-            im = ax.imshow(values, aspect="auto")
+            # fig, ax = plt.subplots(figsize=(5*n_cols, 4*n_rows))
 
-            # Colorbar
-            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-            cbar.set_label("MLE estimate")
+            # # Heatmap
+            # im = ax.imshow(values, aspect="auto")
 
-            # Ticks and labels
-            ax.set_xticks(np.arange(n))
-            ax.set_yticks(np.arange(n))
-            ax.set_xticklabels(llm_cols, rotation=45, ha="right")
-            ax.set_yticklabels(llm_cols)
+            # # Colorbar
+            # cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            # cbar.set_label("MLE estimate")
 
-            # Annotate each cell
-            for i in range(n):
-                for j in range(n):
-                    text = f"{values[i, j]:.3f}\n± {errors[i, j]:.3f}"
-                    ax.text(
-                        j, i, text,
-                        ha="center",
-                        va="center",
-                        fontsize=15,
-                        color="black"
-                    )
+            # # Ticks and labels
+            # ax.set_xticks(np.arange(n_cols))
+            # ax.set_yticks(np.arange(n_rows))
+            # ax.set_xticklabels(llm_cols[:-1], rotation=45, ha="right")
+            # ax.set_yticklabels(llm_cols)
 
-            ax.set_title(f"MLE Heatmap — Validation Year {val_year}", fontsize=16)
-            ax.set_xlabel("Validation LLM")
-            ax.set_ylabel("MLE Model")
+            # # Annotate each cell
+            # for i in range(n_rows):
+            #     for j in range(n_cols):
+            #         text = f"{values[i, j]:.3f}\n± {errors[i, j]:.3f}"
+
+            #         # Normalize value to [0, 1] range for color determination
+            #         norm_value = (values[i, j] - values.min()) / (values.max() - values.min())
+                    
+            #         # Use white text if background is dark (norm_value > 0.5), else black
+            #         text_color = "white" if norm_value < 0.5 else "black"
+                    
+            #         ax.text(
+            #             j, i, text,
+            #             ha="center",
+            #             va="center",
+            #             fontsize=20,
+            #             color=text_color
+            #         )
+
+            # ax.set_title(f"MLE Heatmap — Validation Year {val_year}", fontsize=16)
+            # ax.set_title(f"{plot_col} Heatmap")
+            ax.set_xlabel("Test LLM")
+            ax.set_ylabel("Training LLM")
 
             plt.tight_layout()
             plt.savefig(f"{val_year}/{alpha}/4x4_heatmap.pdf", format="pdf")
             plt.close()
+            # n = len(llm_cols)
+
+            # # Build matrix for heatmap
+            # values = np.zeros((n, n))
+            # errors = np.zeros((n, n))
+
+            # for i, mle_llm in enumerate(llm_cols):
+            #     for j, val_llm in enumerate(llm_cols[:-1]):
+            #         solution, half_width = grid[mle_llm][val_llm]
+            #         values[i, j] = solution
+            #         errors[i, j] = half_width
+
+            # fig, ax = plt.subplots(figsize=(5*n, 4*n))
+
+            # # Heatmap
+            # im = ax.imshow(values, aspect="auto")
+
+            # # Colorbar
+            # cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            # cbar.set_label("MLE estimate")
+
+            # # Ticks and labels
+            # ax.set_xticks(np.arange(n))
+            # ax.set_yticks(np.arange(n))
+            # ax.set_xticklabels(llm_cols, rotation=45, ha="right")
+            # ax.set_yticklabels(llm_cols)
+
+            # # Annotate each cell
+            # for i in range(n):
+            #     for j in range(n):
+            #         text = f"{values[i, j]:.3f}\n± {errors[i, j]:.3f}"
+            #         ax.text(
+            #             j, i, text,
+            #             ha="center",
+            #             va="center",
+            #             fontsize=15,
+            #             color="black"
+            #         )
+
+            # ax.set_title(f"MLE Heatmap — Validation Year {val_year}", fontsize=16)
+            # ax.set_xlabel("Validation LLM")
+            # ax.set_ylabel("MLE Model")
+
+            # plt.tight_layout()
+            # plt.savefig(f"{val_year}/{alpha}/4x4_heatmap.pdf", format="pdf")
+            # plt.close()

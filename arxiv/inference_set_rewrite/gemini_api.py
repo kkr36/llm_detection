@@ -83,3 +83,51 @@ def call_gemini_3(context: str, prompt: str,
         contents=prompt
     )
     return response.text
+
+@retry_with_backoff()
+def call_gemini_2_flash_lite(context: str, prompt: str) -> str:
+    """
+    Gemini 2.0 Flash-Lite: ultra-low latency, no thinking.
+    Best for cheap / fast generations.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-lite",
+        config=types.GenerateContentConfig(
+            max_output_tokens=700,
+            temperature=0.5,
+            system_instruction=context,
+            # Flash-Lite does not support thinking; omit or force 0
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
+        contents=prompt,
+    )
+
+    return response.text
+
+
+@retry_with_backoff()
+def call_gemini_2_flash(
+    context: str,
+    prompt: str,
+    max_output_tokens: int = 700,
+    temperature: float = 0.5,
+) -> str:
+    """
+    Gemini 2.0 Flash: fast + higher quality than Flash-Lite.
+    No thinking / reasoning budget.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        config=types.GenerateContentConfig(
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+            system_instruction=context,
+            # Flash models do not support thinking
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
+        contents=prompt,
+    )
+
+    return response.text
