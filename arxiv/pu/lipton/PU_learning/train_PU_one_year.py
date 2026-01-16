@@ -119,7 +119,8 @@ clean = args.clean
 # val_alphas = [0, .1, .25, .5]
 # val_alphas = [1, .9, .75, .5, .05]
 # val_alphas = [.2, 1]
-val_alphas = [0, .2, .4, .6, .8]
+# val_alphas = [0, .2, .4, .6, .8][-2:-1]
+val_alphas = [alpha] if alpha == 0 else [0, alpha]
 # val_years = list(range(2010,2026))
 val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
 # val_years = [year]
