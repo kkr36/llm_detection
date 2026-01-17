@@ -50,7 +50,7 @@ parser.add_argument('--seed', type=int, default=42, help='Seed')
 parser.add_argument('--alpha', type=float, default=0.5, help='Mixture proportion in unlabeled')
 parser.add_argument('--beta', type=float, default=0.5, help='Proportion of labeled in total data ')
 parser.add_argument('--log-dir', type=str, default='logging_accuracy_one_year', help='Dir for logging accuracies')
-parser.add_argument('--data-dir', type=str, default='/share/garg/arxiv_kaggle', help='Data directory')
+parser.add_argument('--data-dir', type=str, default='/home/ubuntu/data', help='Data directory')
 parser.add_argument('--optimizer', type=str, default='SGD', help='Optimizer used')
 parser.add_argument('--year', type=int, default=None, help='year of arxiv data to take in')
 parser.add_argument('--abstract', default=True, action='store_false', help='sentence level analysis')
@@ -445,7 +445,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
                 # import pdb; pdb.set_trace()
 
                 outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(valyear, actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
-                plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
+                # plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
     elif estimate_alpha and "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1]
         for llm_ood in varied_vals:
@@ -574,7 +574,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
             # import pdb; pdb.set_trace()
 
             outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
-            plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
+            # plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
 
 elif train_method=='uPU': 
 
@@ -775,3 +775,8 @@ elif train_method=="TiCE" or train_method=="KM":
         print(TiCE_estimate(X,Y,data_type))
 
 outfile.close()
+
+# TODO save net here
+model_file = log_dir + "{}_{}_{}_{}_{}_{}_{}_{}_{}_{}".format(train_method, net_type.replace("/", "_"), args.seed, epoch, warm_start_epochs, args.lr, args.wd, args.momentum, alpha, beta)   + "_" + timestr
+torch.save(net.state_dict(), f"{model_file}.pt")
+print(f"saved model to {model_file}.pt")
