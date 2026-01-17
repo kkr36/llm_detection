@@ -290,8 +290,8 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # import pdb; pdb.set_trace()
     return texts, labels
 
-def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=False):
-    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"]
+def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, flip=False, gemini=False):
+    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"]
     assert(llm in llm_cols or llm=="all"), f"{llm} not valid"
 
     flip = True
