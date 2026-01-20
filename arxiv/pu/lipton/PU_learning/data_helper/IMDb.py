@@ -222,8 +222,8 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
             mirror = arxiv_data.iloc[i][llm_cols[(i+1)%4]]
             # mirror = "THIS IS AI WRITING -- I'm Watermarking here!!"
             llm_writing.append(mirror)
-            # arxiv_data.at[i, 'human_abstract'] = original_rewrite
-            arxiv_data.at[i, 'human_abstract'] = np.nan
+            arxiv_data.at[i, 'human_abstract'] = original_rewrite
+            # arxiv_data.at[i, 'human_abstract'] = np.nan
             inject_counter -= 1
         else:
             llm_writing.append(original_rewrite)
