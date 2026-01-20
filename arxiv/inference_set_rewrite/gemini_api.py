@@ -11,7 +11,7 @@ gemini_key = keys["gemini_api_key"]
 
 client = genai.Client(api_key = gemini_key)
 
-def retry_with_backoff(max_retries=5, initial_delay=1, backoff_factor=2):
+def retry_with_backoff(max_retries=5, initial_delay=3, backoff_factor=2):
     """Decorator for exponential backoff on any exception."""
     def decorator(func):
         @functools.wraps(func)

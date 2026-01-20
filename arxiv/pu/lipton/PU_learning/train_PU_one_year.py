@@ -57,6 +57,7 @@ parser.add_argument('--abstract', default=True, action='store_false', help='sent
 parser.add_argument('--ft', default=False, action='store_true', help='whether to train on ft or zero shot')
 parser.add_argument('--clean', default=False, action='store_true', help='whether to remove chars you cant type on keyboard')
 parser.add_argument('--gemini', default=False, action='store_true', help='use diverse llms or gemini line')
+parser.add_argument('--flip', default=False, action='store_true', help='pos is llm or human')
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
 args = parser.parse_args()

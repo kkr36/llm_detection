@@ -290,11 +290,11 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # import pdb; pdb.set_trace()
     return texts, labels
 
-def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False):
+def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False, flip=False):
     llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"]
     assert(llm in llm_cols or llm=="all"), f"{llm} not valid"
 
-    flip = False
+    # flip = False
     
     arxiv_data = pd.read_parquet(split_dir)
 
@@ -303,8 +303,9 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False)
 
         for i, llm2 in enumerate(llm_cols):
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
+            assert(len(tmp_subset)==2500)
 
-            tmp_subset = tmp_subset.iloc[:2500//4] #3k total; if all 4 llms then 750
+            tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
             print(len(tmp_subset))
             tmp_subset["llm_writing"] = tmp_subset[llm2]
             if llm_subset is None:
