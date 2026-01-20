@@ -50,7 +50,7 @@ parser.add_argument('--seed', type=int, default=42, help='Seed')
 parser.add_argument('--alpha', type=float, default=0.5, help='Mixture proportion in unlabeled')
 parser.add_argument('--beta', type=float, default=0.5, help='Proportion of labeled in total data ')
 parser.add_argument('--log-dir', type=str, default='logging_accuracy_one_year', help='Dir for logging accuracies')
-parser.add_argument('--data-dir', type=str, default='/home/ubuntu/data', help='Data directory')
+parser.add_argument('--data-dir', type=str, default='/share/garg/arxiv_kaggle', help='Data directory')
 parser.add_argument('--optimizer', type=str, default='SGD', help='Optimizer used')
 parser.add_argument('--year', type=int, default=None, help='year of arxiv data to take in')
 parser.add_argument('--abstract', default=True, action='store_false', help='sentence level analysis')
@@ -183,7 +183,7 @@ elif data_type=="paramveer":
         varied_vals['ft'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=True, clean=clean, gemini=gemini, flip=flip, combine=combine)
         varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean, gemini=gemini, flip=flip, combine=combine)
 elif "llm_type_" in data_type:
-    llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"]
+    llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
     for llm in tqdm(llm_list):
         varied_vals[llm] = {}
         for valalpha in val_alphas:

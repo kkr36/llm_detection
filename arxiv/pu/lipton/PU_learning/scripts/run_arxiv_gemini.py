@@ -36,6 +36,7 @@ if __name__ == "__main__":
         for train_method in train_methods:
             for alpha in alphas:
                 for llm in llm_list:
+                    if llm != "all" and alpha == .6 and train_method=="TEDn": continue
 
                     # if alpha == .6 and llm in ["Gemini 3 Preview", "Gemini 2.5 Flash", "all"]: continue
                     lr = 0.00001
