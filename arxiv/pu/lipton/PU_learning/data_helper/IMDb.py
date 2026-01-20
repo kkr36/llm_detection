@@ -35,7 +35,7 @@ import math
 #     return all_sentences, all_labels
 
 
-def split_into_sentences(abstracts, labels, batch_size=1000, n_process=7):
+def split_into_sentences(abstracts, labels, batch_size=200, n_process=3):
     all_sentences = []
     all_labels = []
 
