@@ -58,6 +58,7 @@ parser.add_argument('--ft', default=False, action='store_true', help='whether to
 parser.add_argument('--clean', default=False, action='store_true', help='whether to remove chars you cant type on keyboard')
 parser.add_argument('--gemini', default=False, action='store_true', help='use diverse llms or gemini line')
 parser.add_argument('--flip', default=False, action='store_true', help='pos is llm or human')
+parser.add_argument('--combine', default=False, action='store_true', help='use hardcoded years 2014/6/8/20')
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
 args = parser.parse_args()
@@ -118,6 +119,9 @@ sentence = args.abstract
 ft = args.ft
 clean = args.clean
 gemini = args.gemini
+flip = args.flip
+combine = args.combine
+
 # val_alphas = [0.01,.05,.1,.2,.3,.5]
 # val_alphas = [0, .1, .25, .5]
 # val_alphas = [1, .9, .75, .5, .05]
@@ -147,12 +151,12 @@ outfile= open(file_name, 'w')
 varied_vals = {}
 
 if train_method=='PN': 
-    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini)
+    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine)
     # import pdb; pdb.set_trace()
 
 else:
     p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
-        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence,ft, clean, gemini)
+        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence,ft, clean, gemini, flip, combine)
     # import pdb; pdb.set_trace()
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)
@@ -169,27 +173,27 @@ if data_type=="ArXiv_BERT":
         # for valalpha in tqdm(val_alphas):
             # continue
             p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-                get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, valyear, sentence, ft, clean)
+                get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, valyear, sentence, ft, clean, gemini, flip, combine)
             varied_vals[valyear][valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 elif data_type=="paramveer":
     varied_vals['ft'] = {}
     varied_vals['ai'] = {}
 
     for alpha in val_alphas:
-        varied_vals['ft'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=True, clean=clean)
-        varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean)
+        varied_vals['ft'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=True, clean=clean, gemini=gemini, flip=flip, combine=combine)
+        varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean, gemini=gemini, flip=flip, combine=combine)
 elif "llm_type_" in data_type:
     llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"]
     for llm in tqdm(llm_list):
         varied_vals[llm] = {}
         for valalpha in val_alphas:
             p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-                get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini)
+                get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine)
             varied_vals[llm][valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 elif "Arxiv_year" in data_type:
     for valalpha in val_alphas:
         p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-            get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, None, sentence, ft, clean)
+            get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, None, sentence, ft, clean, gemini, flip, combine)
         varied_vals[valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 
 # import pdb; pdb.set_trace()

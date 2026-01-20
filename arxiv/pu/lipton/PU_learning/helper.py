@@ -181,7 +181,7 @@ def get_PNDataSplits(data_obj, pos_size, neg_size, data_type=None):
                 index=np.array(range(pos_size + neg_size)),data_type=data_type)
 
 
-def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False): 
+def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False): 
 
     p_trainloader=None
     u_trainloader=None
@@ -195,8 +195,9 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     
     if data_type=="ArXiv_BERT": 
 
-        # years = [2010, 2012, 2014, 2016, 2018, 2020]
-        years = [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-4:] if combine else [year]
+        print(years)
+        # years = [year]
         train_texts, train_labels = [], []
         test_texts, test_labels = [], []
         cal_texts, cal_labels = [], []
@@ -361,7 +362,7 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata
 
 
-def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False): # TODO fix
+def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False): # TODO fix
     p_validloader=None
     u_validloader=None
     # import pdb; pdb.set_trace()
@@ -370,8 +371,8 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
 
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
-        # years = [2010, 2012, 2014, 2016, 2018, 2020]
-        years = [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-4:] if combine else [year]
+        # years = [year]
         test_texts, test_labels = [], []
 
         for year in years:
@@ -490,7 +491,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         
     return p_validloader, u_validloader, p_validdata, u_validdata    
 
-def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False): 
+def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False): 
 
     u_trainloader=None
     u_validloader=None
@@ -499,8 +500,8 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     if data_type=="ArXiv_BERT": 
         # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet'
         # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
-        # years = [2010, 2012, 2014, 2016, 2018, 2020]
-        years = [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-4:] if combine else [year]
+        # years = [year]
         train_texts, train_labels = [], []
         test_texts, test_labels = [], []
 
