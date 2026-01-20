@@ -181,7 +181,7 @@ def get_PNDataSplits(data_obj, pos_size, neg_size, data_type=None):
                 index=np.array(range(pos_size + neg_size)),data_type=data_type)
 
 
-def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False): 
+def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False, add=False): 
 
     p_trainloader=None
     u_trainloader=None
@@ -195,19 +195,21 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     
     if data_type=="ArXiv_BERT": 
 
-        years = [2010, 2012, 2014, 2016, 2018, 2020][-4:] if combine else [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-2:] if combine else [year]
         print(years)
         # years = [year]
         train_texts, train_labels = [], []
         test_texts, test_labels = [], []
         cal_texts, cal_labels = [], []
 
+        load_fn = read_arxiv_split_add if add else read_arxiv_split2
+
         for year in years:
 
             data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-            train_texts_new, train_labels_new = read_arxiv_split2(data_path, alpha, "train", sentence) # should have 15k each
-            test_texts_new, test_labels_new = read_arxiv_split2(data_path, alpha, "val", sentence) # should have 5k each
+            train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence) # should have 15k each
+            test_texts_new, test_labels_new = load_fn(data_path, alpha, "val", sentence) # should have 5k each
             cal_texts_new, cal_labels_new = read_arxiv_split2(data_path, 0, "val", sentence, inject=False)
             if clean:
                 orig_train_len = sum([len(x) for x in train_texts_new])
@@ -362,7 +364,7 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata
 
 
-def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False): # TODO fix
+def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False, add=False): # TODO fix
     p_validloader=None
     u_validloader=None
     # import pdb; pdb.set_trace()
@@ -371,7 +373,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
 
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
-        years = [2010, 2012, 2014, 2016, 2018, 2020][-4:] if combine else [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-2:] if combine else [year]
         # years = [year]
         test_texts, test_labels = [], []
 
@@ -399,12 +401,13 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         # import pdb; pdb.set_trace()
 
         np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type)
         # assert(np_test == 5000 and nn_test == 5000)
-        if not sentence:
-            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
-        else:
-            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
-        # import pdb; pdb.set_trace()
+        # if not sentence:
+        #     p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        # else:
+        #     p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
+        # # import pdb; pdb.set_trace()
 
         p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
             shuffle=shuffle)
@@ -491,7 +494,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         
     return p_validloader, u_validloader, p_validdata, u_validdata    
 
-def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False): 
+def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft=False, clean=False, gemini=False, flip=False, combine=False, add=False): 
 
     u_trainloader=None
     u_validloader=None
@@ -500,15 +503,17 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     if data_type=="ArXiv_BERT": 
         # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet'
         # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
-        years = [2010, 2012, 2014, 2016, 2018, 2020][-4:] if combine else [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-2:] if combine else [year]
         # years = [year]
         train_texts, train_labels = [], []
         test_texts, test_labels = [], []
 
+        load_fn = read_arxiv_split_add if add else read_arxiv_split2
+
         for year in years:
             data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-            train_texts_new, train_labels_new = read_arxiv_split2(data_path, alpha, "train", sentence)
+            train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence)
             test_texts_new, test_labels_new = read_arxiv_split2(data_path, alpha, "val", sentence, inject=False)
             if clean:
                 orig_train_len = sum([len(x) for x in train_texts_new])

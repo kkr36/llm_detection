@@ -1,7 +1,7 @@
 import torch
 from utils import progress_bar
 import numpy as np
-
+from tqdm import tqdm
 
 def ramp_loss(out, y, device): 
     loss = torch.max(torch.min(1 - torch.mul(2*y -1, out),\
@@ -264,14 +264,14 @@ def train_PU_discard(epoch, net,  p_trainloader, u_trainloader, optimizer, crite
     return 100.*correct/total
 
 def rank_inputs(_, net, u_trainloader, device, alpha, u_size):
-
+    print(device, torch.cuda.is_available())
     net.eval() 
     output_probs = np.zeros(u_size)
     keep_samples = np.ones_like(output_probs)
     true_targets_all = np.zeros(u_size)
 
     with torch.no_grad():
-        for batch_num, (idx, inputs, _, true_targets) in enumerate(u_trainloader):
+        for batch_num, (idx, inputs, _, true_targets) in tqdm(enumerate(u_trainloader), total=len(u_trainloader)):
             idx = idx.numpy()
             
             inputs = inputs.to(device)

@@ -12,30 +12,47 @@ nlp.enable_pipe("senter")
 
 import math
 
-def split_into_sentences(abstracts, labels):
+# def split_into_sentences(abstracts, labels):
+#     all_sentences = []
+#     all_labels = []
+#     # abstracts = [t.replace('‑', '-').replace('’', "'") for t in abstracts]
+
+#     # all_sentences_2 = []
+#     # all_labels_2 = []
+#     print("Splitting into sentences!")
+#     for i, abstract in tqdm(list(enumerate(abstracts))):
+#         doc = nlp(abstract)
+#         sentences = [sent.text.strip() for sent in doc.sents]
+#         # sentences = [s[i:i+len(s)//2 + len(s)%2] for s in sentences for i in (0, len(s)//2 + len(s)%2)]
+#         # sentences = sentences[:2] + sentences[-2:]
+#         # sentences = [x for x in sentences if len(x) > 1]
+#         all_sentences.extend(sentences)  # extend instead of append
+#         all_labels.extend([labels[i] for _ in range(len(sentences))])
+#         # all_sentences_2.extend(sentences2)
+#         # all_labels_2.extend([labels[i] for _ in range(len(sentences2))])
+#     print(f"Made {len(all_sentences)} sentences")
+#     # import pdb; pdb.set_trace()
+#     return all_sentences, all_labels
+
+
+def split_into_sentences(abstracts, labels, batch_size=1000, n_process=7):
     all_sentences = []
     all_labels = []
-    # abstracts = [t.replace('‑', '-').replace('’', "'") for t in abstracts]
 
-    # all_sentences_2 = []
-    # all_labels_2 = []
     print("Splitting into sentences!")
-    for i, abstract in tqdm(list(enumerate(abstracts))):
-        doc = nlp(abstract)
+
+    # Wrap nlp.pipe with tqdm for progress
+    for doc, label in zip(tqdm(nlp.pipe(abstracts, batch_size=batch_size, n_process=n_process),
+                                total=len(abstracts),
+                                desc="Processing abstracts"),
+                          labels):
         sentences = [sent.text.strip() for sent in doc.sents]
-        # sentences = [s[i:i+len(s)//2 + len(s)%2] for s in sentences for i in (0, len(s)//2 + len(s)%2)]
-        # sentences = sentences[:2] + sentences[-2:]
-        # sentences = [x for x in sentences if len(x) > 1]
-        all_sentences.extend(sentences)  # extend instead of append
-        all_labels.extend([labels[i] for _ in range(len(sentences))])
-        # all_sentences_2.extend(sentences2)
-        # all_labels_2.extend([labels[i] for _ in range(len(sentences2))])
+        all_sentences.extend(sentences)
+        all_labels.extend([label] * len(sentences))
+
     print(f"Made {len(all_sentences)} sentences")
-    # import pdb; pdb.set_trace()
     return all_sentences, all_labels
 
-nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
-nlp.enable_pipe("senter")
 
 def read_paramveer(split_dir, split="train", ft=False):
     with open(split_dir, 'r') as f:
@@ -288,6 +305,78 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # texts = np.array(texts)[perm].tolist()
     # labels = np.array(labels)[perm].tolist()
     # import pdb; pdb.set_trace()
+    return texts, labels
+
+def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, inject=True):
+    assert(inject)
+    pct_inject = .2
+    
+    arxiv_data = pd.read_parquet(split_dir)
+    num_inject = int(pct_inject * len(arxiv_data))
+    print(f"injecting {num_inject} LLM-written abstracts ({pct_inject}) into pool of {len(arxiv_data)} abstracts")
+
+    llm_writing = []
+    inject_counter = num_inject
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    for i in tqdm(list(i for i in range(len(arxiv_data)))):
+        assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
+        original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
+
+        if inject_counter > 0 and arxiv_data.iloc[i][llm_cols[(i+1)%4]] is None:
+            import pdb; pdb.set_trace()
+        if inject_counter > 0 and len(arxiv_data.iloc[i][llm_cols[(i+1)%4]]) > 0:
+            if not inject:
+                assert(False), "should not be injecting"
+            mirror = arxiv_data.iloc[i][llm_cols[(i+1)%4]]
+            llm_writing.append(mirror)
+            arxiv_data.at[i, 'human_abstract'] = original_rewrite
+            inject_counter -= 1
+        else:
+            llm_writing.append(original_rewrite)
+    arxiv_data['ai_abstract'] = llm_writing
+    assert(inject_counter == 0)
+
+
+    wrong_labels = arxiv_data.iloc[:num_inject].reset_index(drop=True)
+    right_labels = arxiv_data.iloc[num_inject:2*num_inject].reset_index(drop=True)
+
+    assert(split in ["train", "val"])
+    if split == "train":
+        wrong_labels_subset = wrong_labels.iloc[:int(len(wrong_labels)*.75)].reset_index(drop=True)
+        right_labels_subset = right_labels.iloc[:int(len(right_labels)*.75)].reset_index(drop=True)
+
+    elif split == "val":
+
+        wrong_labels_subset = wrong_labels.iloc[int(len(wrong_labels)*.75):].reset_index(drop=True)
+        right_labels_subset = right_labels.iloc[int(len(right_labels)*.75):].reset_index(drop=True)
+    
+    num_bad_labels = int((alpha * len(wrong_labels_subset)) / (1 - alpha))
+    wrong_labels_subset = wrong_labels_subset.iloc[:num_bad_labels]
+
+    subset = pd.concat([wrong_labels_subset, right_labels_subset]).reset_index(drop=True)
+
+    if sentence:
+        wrong_texts_human = wrong_labels_subset["human_abstract"].dropna().tolist()
+        wrong_texts_ai = wrong_labels_subset["ai_abstract"].dropna().tolist()
+        print("splitting into sentences")
+        wrong_texts, wrong_labels = split_into_sentences(wrong_texts_human + wrong_texts_ai, [0 for _ in range(len(wrong_texts_human))] + [1 for _ in range(len(wrong_texts_ai))])
+        # import pdb; pdb.set_trace()
+        # wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["ai_abstract"].tolist(), [1 for _ in range(len(wrong_labels_subset))]) # wrong texts are only the double mirrors; we remove all the bad negative labels
+        if not inject: assert(len(wrong_texts) == 0)
+        right_texts, right_labels = split_into_sentences(right_labels_subset["human_abstract"].tolist() + right_labels_subset["ai_abstract"].tolist(), [0 for _ in range(len(right_labels_subset))] + [1 for _ in range(len(right_labels_subset))])
+        texts, labels = wrong_texts + right_texts, wrong_labels + right_labels
+        # import pdb; pdb.set_trace()
+        print(f"Pollution add {split}: {len(wrong_labels) - sum(wrong_labels)} / {len(wrong_labels) - sum(wrong_labels)} + {len(right_labels) - sum(right_labels)} = {(len(wrong_labels) - sum(wrong_labels)) / (len(right_labels) - sum(right_labels) + len(wrong_labels) - sum(wrong_labels))}")
+    
+    else:
+        human_texts = subset["human_abstract"].dropna().tolist()
+        ai_texts = subset["ai_abstract"].dropna().tolist()
+        texts = human_texts + ai_texts
+        labels = [0 for _ in range(len(human_texts))] + [1 for _ in range(len(ai_texts))]
+        print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
+
+    assert(len(texts) == len(labels))
+
     return texts, labels
 
 def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False, flip=False):
