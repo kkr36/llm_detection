@@ -11,3 +11,4 @@ ssrn/secrets.json
 *logging_accuracy*
 *.txt
 *ArXiv_BERT*
+.python-version

@@ -106,9 +106,10 @@ if __name__ == "__main__":
         for drop_str in drop_strs:
 
             for year in years:
-                year_dir = f"{outer_dir}/{data_str}{drop_str}_{year}"
+                year_dir = f"{outer_dir}/{data_str}_{year}"
                 alpha = max(0, .15 * ((year - 2012) // 2))
                 if year == 2018: alpha = '0.44999999999999996'
+                if drop_str: alpha = 0
 
                 inner_dir = f"{year_dir}/{alpha}/ArXiv_BERT_3"
                 # files_without_period = [
@@ -198,8 +199,8 @@ if __name__ == "__main__":
             "PN 2010": aucs_pn_2010,
             "PU retrain": aucs_pu_time,
             "PN retrain": aucs_pn_time,
-            "PU no_drop": aucs_pu_drop,
-            "PN no_drop": aucs_pn_drop,
+            "PU alpha_0": aucs_pu_drop,
+            "PN alpha_0": aucs_pn_drop,
         }
 
         # ---------- TPR ----------
@@ -208,8 +209,8 @@ if __name__ == "__main__":
             "PN 2010": tpr_pn_2010,
             "PU retrain": tpr_pu_time,
             "PN retrain": tpr_pn_time,
-            "PU no_drop": tpr_pu_drop,
-            "PN no_drop": tpr_pn_drop,
+            "PU alpha_0": tpr_pu_drop,
+            "PN alpha_0": tpr_pn_drop,
         }
 
         # ---------- TNR ----------
@@ -218,8 +219,8 @@ if __name__ == "__main__":
             "PN 2010": tnr_pn_2010,
             "PU retrain": tnr_pu_time,
             "PN retrain": tnr_pn_time,
-            "PU no_drop": tnr_pu_drop,
-            "PN no_drop": tnr_pn_drop,
+            "PU alpha_0": tnr_pu_drop,
+            "PN alpha_0": tnr_pn_drop,
         }
 
         # ---------- POS ----------
@@ -228,8 +229,8 @@ if __name__ == "__main__":
             "PN 2010": pos_pn_2010,
             "PU retrain": pos_pu_time,
             "PN retrain": pos_pn_time,
-            "PU no_drop": pos_pu_drop,
-            "PN no_drop": pos_pn_drop,
+            "PU alpha_0": pos_pu_drop,
+            "PN alpha_0": pos_pn_drop,
         }
 
         # ---------- NEG ----------
@@ -238,8 +239,8 @@ if __name__ == "__main__":
             "PN 2010": neg_pn_2010,
             "PU retrain": neg_pu_time,
             "PN retrain": neg_pn_time,
-            "PU no_drop": neg_pu_drop,
-            "PN no_drop": neg_pn_drop,
+            "PU alpha_0": neg_pu_drop,
+            "PN alpha_0": neg_pn_drop,
         }
 
         naive_mpe_data = {
@@ -247,8 +248,8 @@ if __name__ == "__main__":
             "PN 2010": [(p+n)/2 for n, p in zip(neg_pn_2010, pos_pn_2010)],
             "PU retrain": [(p+n)/2 for n, p in zip(neg_pu_time, pos_pu_time)],
             "PN retrain": [(p+n)/2 for n, p in zip(neg_pn_time, pos_pn_time)],
-            "PU no_drop": [(p+n)/2 for n, p in zip(neg_pu_drop, pos_pu_drop)],
-            "PN no_drop": [(p+n)/2 for n, p in zip(neg_pn_drop, pos_pn_drop)],
+            "PU alpha_0": [(p+n)/2 for n, p in zip(neg_pu_drop, pos_pu_drop)],
+            "PN alpha_0": [(p+n)/2 for n, p in zip(neg_pn_drop, pos_pn_drop)],
         }
 
         alpha_0_data = {
@@ -256,8 +257,8 @@ if __name__ == "__main__":
             "PN 2010": alpha_0_pn_2010,
             "PU retrain": alpha_0_pu_time,
             "PN retrain": alpha_0_pn_time,
-            "PU drop": alpha_0_pu_drop,
-            "PN drop": alpha_0_pn_drop,
+            "PU alpha_0": alpha_0_pu_drop,
+            "PN alpha_0": alpha_0_pn_drop,
         }
 
         alpha_diff_data = {
@@ -265,15 +266,15 @@ if __name__ == "__main__":
             "PN 2010": alpha_diff_pn_2010,
             "PU retrain": alpha_diff_pu_time,
             "PN retrain": alpha_diff_pn_time,
-            "PU drop": alpha_diff_pu_drop,
-            "PN drop": alpha_diff_pn_drop,
+            "PU alpha_0": alpha_diff_pu_drop,
+            "PN alpha_0": alpha_diff_pn_drop,
         }
 
         # color by experiment type
         colors = {
             "2010": "black",      # matplotlib auto-assigns
             "retrain": "red",
-            "drop": "blue",
+            "alpha_0": "blue",
         }
 
         def plot_group(data, title, ylabel):
@@ -289,8 +290,8 @@ if __name__ == "__main__":
                     color = colors["2010"]
                 elif "retrain" in label:
                     color = colors["retrain"]
-                elif "drop" in label:
-                    color = colors["drop"]
+                elif "alpha_0" in label:
+                    color = colors["alpha_0"]
                 else:
                     color = "red"
 

@@ -12,7 +12,7 @@ font = {
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
 
-combine_strs = ['', '_combine']
+combine_strs = ['', '_combine'][:1]
 drop_strs = ['', '_drop']
 year = [2010, 2012, 2014, 2016, 2018, 2020][-1]
 learning_methods = ['TEDn', 'PN']
@@ -157,61 +157,61 @@ if __name__ == "__main__":
         auc_data = {
             "PU retrain": aucs_pu_time,
             "PN retrain": aucs_pn_time,
-            "PU drop": aucs_pu_drop,
-            "PN drop": aucs_pn_drop,
+            # "PU drop": aucs_pu_drop,
+            # "PN drop": aucs_pn_drop,
         }
 
         # ---------- TPR ----------
         tpr_data = {
             "PU retrain": tpr_pu_time,
             "PN retrain": tpr_pn_time,
-            "PU drop": tpr_pu_drop,
-            "PN drop": tpr_pn_drop,
+            # "PU drop": tpr_pu_drop,
+            # "PN drop": tpr_pn_drop,
         }
 
         # ---------- TNR ----------
         tnr_data = {
             "PU retrain": tnr_pu_time,
             "PN retrain": tnr_pn_time,
-            "PU drop": tnr_pu_drop,
-            "PN drop": tnr_pn_drop,
+            # "PU drop": tnr_pu_drop,
+            # "PN drop": tnr_pn_drop,
         }
 
         # ---------- POS ----------
         pos_data = {
             "PU retrain": pos_pu_time,
             "PN retrain": pos_pn_time,
-            "PU drop": pos_pu_drop,
-            "PN drop": pos_pn_drop,
+            # "PU drop": pos_pu_drop,
+            # "PN drop": pos_pn_drop,
         }
 
         # ---------- NEG ----------
         neg_data = {
             "PU retrain": neg_pu_time,
             "PN retrain": neg_pn_time,
-            "PU drop": neg_pu_drop,
-            "PN drop": neg_pn_drop,
+            # "PU drop": neg_pu_drop,
+            # "PN drop": neg_pn_drop,
         }
 
         naive_mpe_data = {
             "PU retrain": [(p+n)/2 for n, p in zip(neg_pu_time, pos_pu_time)],
             "PN retrain": [(p+n)/2 for n, p in zip(neg_pn_time, pos_pn_time)],
-            "PU no_drop": [(p+n)/2 for n, p in zip(neg_pu_drop, pos_pu_drop)],
-            "PN no_drop": [(p+n)/2 for n, p in zip(neg_pn_drop, pos_pn_drop)],
+            # "PU no_drop": [(p+n)/2 for n, p in zip(neg_pu_drop, pos_pu_drop)],
+            # "PN no_drop": [(p+n)/2 for n, p in zip(neg_pn_drop, pos_pn_drop)],
         }
 
         alpha_diff_data = {
             "PU retrain": alpha_diff_pu_time,
             "PN retrain": alpha_diff_pn_time,
-            "PU drop": alpha_diff_pu_drop,
-            "PN drop": alpha_diff_pn_drop,
+            # "PU drop": alpha_diff_pu_drop,
+            # "PN drop": alpha_diff_pn_drop,
         }
 
         alpha_0_data = {
             "PU retrain": alpha_0_pu_time,
             "PN retrain": alpha_0_pn_time,
-            "PU drop": alpha_0_pu_drop,
-            "PN drop": alpha_0_pn_drop,
+            # "PU drop": alpha_0_pu_drop,
+            # "PN drop": alpha_0_pn_drop,
         }
 
         # color by experiment type
