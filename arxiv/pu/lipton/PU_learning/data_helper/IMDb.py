@@ -338,7 +338,7 @@ def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, i
 
 
     wrong_labels = arxiv_data.iloc[:num_inject].reset_index(drop=True)
-    right_labels = arxiv_data.iloc[num_inject:2*num_inject].reset_index(drop=True)
+    right_labels = arxiv_data.iloc[num_inject:int(num_inject + (2/3*num_inject))].reset_index(drop=True)
 
     assert(split in ["train", "val"])
     if split == "train":

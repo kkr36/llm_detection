@@ -380,7 +380,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         for year in years:
             val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-            test_texts_new, test_labels_new = read_arxiv_split2(val_path, alpha, "val", sentence, inject=False)
+            test_texts_new, test_labels_new = read_arxiv_split2(val_path, 0, "val", sentence, inject=False)
             if clean:
                 print("cleaning test set?")
                 orig_len = sum([len(x) for x in test_texts_new])
@@ -401,12 +401,12 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         # import pdb; pdb.set_trace()
 
         np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
-        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type)
+        # p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type)
         # assert(np_test == 5000 and nn_test == 5000)
-        # if not sentence:
-        #     p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
-        # else:
-        #     p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
+        if not sentence:
+            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
+        else:
+            p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
         # # import pdb; pdb.set_trace()
 
         p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
