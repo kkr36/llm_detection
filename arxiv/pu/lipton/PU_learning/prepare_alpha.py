@@ -31,30 +31,22 @@ def get_metrics(preds_p, preds_u, u_targets):
     preds_up = preds_u[u_targets==0][:,0]
     preds_un = preds_u[u_targets==1][:,0]
 
-    orig_keys = [
-        'auc',
-        'pos_prob',
-        'neg_prob',
-        'avg_pos_neg_prob',
-        'tpr',
-        'fnr',
-        'tnr',
-        'tpr',
-        'plugin',
-        'plugin-int' # TODO implement -- average of all predictions, across p/u sets
-        'entropy',
-        'bbe'
-    ]
-    bounds = []
-    for metric in orig_keys:
-        bounds.append(f"{metric}_u")
-        bounds.append(f"{metric}_l")
-    all_keys = orig_keys + bounds
+    # orig_keys = [
+    #     'auc',
+    #     'pos_prob',
+    #     'neg_prob',
+    #     'avg_pos_neg_prob',
+    #     'tpr',
+    #     'fnr',
+    #     'tnr',
+    #     'tpr',
+    #     'plugin',
+    #     'plugin-int', # TODO implement -- average of all predictions, across p/u sets
+    #     'entropy',
+    #     'bbe'
+    # ]
 
-    metrics_dict = {
-        k: None
-        for k in all_keys
-    }
+    metrics_dict = {}
 
     # ============================================================================
     # Compute all metrics
@@ -64,14 +56,14 @@ def get_metrics(preds_p, preds_u, u_targets):
     metrics_dict['auc'], metrics_dict['auc_l'], metrics_dict['auc_u'] = bootstrap_metric(auc_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['pos_prob'], metrics_dict['pos_prob_l'], metrics_dict['pos_prob_u'] = bootstrap_metric(pos_prob_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['neg_prob'], metrics_dict['neg_prob_l'], metrics_dict['neg_prob_u'] = bootstrap_metric(neg_prob_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['avg_pos_neg_prob'], metrics_dict['avg_pos_neg_prob_l'], metrics_dict['avg_pos_neg_prob_u'] = bootstrap_metric(avg_prob_fn, preds_p, preds_u, n_bootstrap)
+    metrics_dict['avg_pos_neg_prob'], metrics_dict['avg_pos_neg_prob_l'], metrics_dict['avg_pos_neg_prob_u'] = bootstrap_metric(avg_prob_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['tpr'], metrics_dict['tpr_l'], metrics_dict['tpr_u'] = bootstrap_metric(tpr_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['fnr'], metrics_dict['fnr_l'], metrics_dict['fnr_u'] = bootstrap_metric(fnr_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['tnr'], metrics_dict['tnr_l'], metrics_dict['tnr_u'] = bootstrap_metric(tnr_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['fpr'], metrics_dict['fpr_l'], metrics_dict['fpr_u'] = bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['plugin'], metrics_dict['plugin_l'], metrics_dict['plugin_u'] = bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['plugin-int'], metrics_dict['plugin-int_l'], metrics_dict['plugin-int_u'] = bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['entropy'], metrics_dict['entropy_l'], metrics_dict['entropy_u'] = bootstrap_metric(entropy_fn, preds_up, preds_up, n_bootstrap)
+    metrics_dict['entropy'], metrics_dict['entropy_l'], metrics_dict['entropy_u'] = bootstrap_metric(entropy_fn, preds_up, preds_un, n_bootstrap)
 
     # bbe with confidence bounds
     metrics_dict['bbe'], bbe_l, bbe_u = BBE_estimator(preds_p, preds_u, u_targets)
@@ -82,8 +74,6 @@ def get_metrics(preds_p, preds_u, u_targets):
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
 entrance_path = "logging_accuracy_temporal_alpha_full_sentence"
-
-alphas = [0, .15, .3, .45, .6]
 
 data_type = "ArXiv_BERT"
 
@@ -105,55 +95,101 @@ epochs = 3 # can toggle
 
 metrics_dict = defaultdict(list)
 
-for alpha in alphas:
-    alpha_dir = Path(f"{entrance_path}/{'sentence' if sentence else 'abstract'}_2020/{alpha}/ArXiv_BERT_{epochs}")
-    pts_pu = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "TEDn" in p.name][0]
-    pts_pn = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "PN" in p.name][0]
-    pts = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt")]
-    assert(len(pts) == 2)
+train_years = [2010, 2012, 2014, 2016, 2018, 2020]
 
-    model_paths = {
-        "PU": pts_pu,
-        "PN": pts_pn 
-    }
+output_csv = f"{entrance_path}_alpha_temporal.csv"
 
-    for model_name, model_path in model_paths.items():
-        # import pdb; pdb.set_trace()
-        net = get_model("DistilBert")
-        state_dict = torch.load(model_path, map_location=device)
-        state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
-        net.load_state_dict(state_dict)
-        net.eval()
-        net.to(device)
+if os.path.exists(output_csv):
+    metrics_df = pd.read_csv(output_csv)
+else:
+    metrics_df = pd.DataFrame()
 
-        None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
+run_id = len(metrics_df)
 
-        test_alphas = [0.5]
-        if alpha not in test_alphas: test_alphas.append(alpha)
+for train_year in train_years:
+    if train_year == 2020:
+        alphas = [0, .15, .3, .45, .6]
+    elif train_year == 2018: 
+        alphas = [0, 0.44999999999999996] if train_year == 2018 else [0, .45]
+    elif train_year == 2016:
+        alphas = [0, .3]
+    elif train_year == 2014:
+        alphas = [0, .15]
+    elif train_year == 2010 or train_year == 2010:
+        alphas = [0]
 
-        for test_alpha in test_alphas:
-            pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, 2020, combine, sentence, clean, add, gemini, flip)
-            info = {
-                "learning_method": model_name,
-                "data_type": data_type,
-                "train_alpha": alpha,
-                "test_alpha": test_alpha,
-                "epochs": epochs,
-                "combine": combine,
-                "clean": clean,
-                "sentence": sentence,
-                "add": add,
-                "gemini": gemini,
-                "flip": flip,
-                "model_path": model_path
-            }
-            metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets)
+    for alpha in alphas:
+        alpha_dir = Path(f"{entrance_path}/{'sentence' if sentence else 'abstract'}_{train_year}/{alpha}/ArXiv_BERT_{epochs}")
+        pts_pu = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "TEDn" in p.name][0]
+        pts_pn = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "PN" in p.name][0]
+        pts = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt")]
+        assert(len(pts) == 2)
 
-            # add metrics and info to metrics_dict
-            for a, b in info.items():
-                metrics_dict[a] = b
-            for a, b in metrics.items():
-                metrics_dict[a] = b
+        model_paths = {
+            "PU": pts_pu,
+            "PN": pts_pn 
+        }
 
-metrics_df = pd.DataFrame(metrics_dict)
-metrics_df.to_csv(f"{entrance_path}_alpha.csv")
+        for model_name, model_path in model_paths.items():
+            net = get_model("DistilBert")
+            state_dict = torch.load(model_path, map_location=device)
+            state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
+            net.load_state_dict(state_dict)
+            net.eval()
+            net.to(device)
+
+            None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
+
+            test_alphas = [0.5]
+            # if alpha not in test_alphas: test_alphas.append(alpha)
+            test_years = [train_year] if train_year != 2010 else train_years
+
+            # import pdb; pdb.set_trace()
+
+            for test_alpha in test_alphas:
+                for test_year in test_years:
+                    print(f"train: {model_name} {train_year} {alpha} | test: {test_year} {test_alpha}")
+                    pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip)
+                    info = {
+                        "learning_method": model_name,
+                        "data_type": data_type,
+                        "train_alpha": alpha,
+                        "train_year": train_year,
+                        "test_alpha": test_alpha,
+                        "test_year": test_year,
+                        "epochs": epochs,
+                        "combine": combine,
+                        "clean": clean,
+                        "sentence": sentence,
+                        "add": add,
+                        "gemini": gemini,
+                        "flip": flip,
+                        "model_path": model_path,
+                        "run_id": run_id
+                    }
+
+                    metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets)
+
+                    # one row per experiment
+                    row = {}
+                    row.update(info)
+                    row.update(metrics)
+
+                    # append
+                    metrics_df = pd.concat(
+                        [metrics_df, pd.DataFrame([row])],
+                        ignore_index=True
+                    )
+
+                    # save after every run (crash-safe)
+                    metrics_df.to_csv(output_csv, index=False)
+
+
+                    # # add metrics and info to metrics_dict
+                    # for a, b in info.items():
+                    #     metrics_dict[a] = b
+                    # for a, b in metrics.items():
+                    #     metrics_dict[a] = b
+
+                    # metrics_df = pd.DataFrame(metrics_dict)
+                    # metrics_df.to_csv(f"{entrance_path}_alpha_temporal.csv")
