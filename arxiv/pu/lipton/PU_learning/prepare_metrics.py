@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 from sklearn.metrics import roc_auc_score
+from tqdm import tqdm
 
 # Set parameters
 n_bootstrap = 1000
@@ -14,7 +15,7 @@ def bootstrap_metric(metric_fn, preds_p, preds_u, n_bootstrap=1000, ci=0.90, see
     np.random.seed(seed)
     
     estimates = []
-    for _ in range(n_bootstrap):
+    for _ in tqdm(list(range(n_bootstrap)), smoothing=.3):
         estimate = metric_fn(preds_p, preds_u)
         estimates.append(estimate)
     
