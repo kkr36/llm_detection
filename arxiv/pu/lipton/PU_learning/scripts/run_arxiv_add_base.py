@@ -24,7 +24,9 @@ if __name__ == "__main__":
             print(year, alphas)
 
             for alpha in alphas:
-                cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs={epochs} --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha_add/sentence_{year}/{alpha} --clean --add"
+                # if year == 2020 and train_method == "TEDn" and alpha > .3: continue
+
+                cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs={epochs} --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha_add_v2/sentence_{year}/{alpha} --clean --add"
 
                 print(cmd)
 

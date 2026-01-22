@@ -76,8 +76,8 @@ def plugin_int_fn(preds_p, preds_u):
 
 # Entropy with confidence bounds (assuming binary cross-entropy of predictions)
 def binary_entropy_fn(preds_p, preds_u):
-    entropy_p = binary_entropy_pos_fn(preds_p)
-    entropy_u = binary_entropy_neg_fn(preds_u)
+    entropy_p = binary_entropy_pos_fn(preds_p, preds_u)
+    entropy_u = binary_entropy_neg_fn(preds_p, preds_u)
     return (entropy_p + entropy_u) / 2
 
 def binary_entropy_pos_fn(preds_p, preds_u):

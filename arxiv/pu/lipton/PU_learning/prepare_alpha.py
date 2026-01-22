@@ -32,21 +32,6 @@ def get_metrics(preds_p, preds_u, u_targets):
     preds_up = preds_u[u_targets==0][:,0]
     preds_un = preds_u[u_targets==1][:,0]
 
-    # orig_keys = [
-    #     'auc',
-    #     'pos_prob',
-    #     'neg_prob',
-    #     'avg_pos_neg_prob',
-    #     'tpr',
-    #     'fnr',
-    #     'tnr',
-    #     'tpr',
-    #     'plugin',
-    #     'plugin-int', # TODO implement -- average of all predictions, across p/u sets
-    #     'entropy',
-    #     'bbe'
-    # ]
-
     metrics_dict = {}
 
     # ============================================================================
