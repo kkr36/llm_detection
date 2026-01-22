@@ -75,12 +75,19 @@ def plugin_int_fn(preds_p, preds_u):
     return np.mean(combined_preds)
 
 # Entropy with confidence bounds (assuming binary cross-entropy of predictions)
-def entropy_fn(preds_p, preds_u):
-    # Binary cross-entropy
-    eps = 1e-15  # for numerical stability
-    boot_preds_p = np.clip(preds_p, eps, 1 - eps)
-    boot_preds_u = np.clip(preds_u, eps, 1 - eps)
-    
-    entropy_p = -np.mean(np.log(boot_preds_p))
-    entropy_u = -np.mean(np.log(1 - boot_preds_u))
+def binary_entropy_fn(preds_p, preds_u):
+    entropy_p = binary_entropy_pos_fn(preds_p)
+    entropy_u = binary_entropy_neg_fn(preds_u)
     return (entropy_p + entropy_u) / 2
+
+def binary_entropy_pos_fn(preds_p, preds_u):
+    """Shannon entropy for binary predictions"""
+    eps = 1e-15
+    preds = np.clip(preds_p, eps, 1 - eps)
+    return -np.mean(preds * np.log(preds) + (1 - preds) * np.log(1 - preds))
+
+def binary_entropy_neg_fn(preds_p, preds_u):
+    """Shannon entropy for binary predictions"""
+    eps = 1e-15
+    preds = np.clip(preds_u, eps, 1 - eps)
+    return -np.mean(preds * np.log(preds) + (1 - preds) * np.log(1 - preds))

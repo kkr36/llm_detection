@@ -350,24 +350,35 @@ def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, i
         wrong_labels_subset = wrong_labels.iloc[int(len(wrong_labels)*.75):].reset_index(drop=True)
         right_labels_subset = right_labels.iloc[int(len(right_labels)*.75):].reset_index(drop=True)
     
-    num_bad_labels = int((alpha * len(wrong_labels_subset)) / (1 - alpha))
+    num_bad_labels = int((alpha * len(right_labels_subset)) / (1 - alpha))
     wrong_labels_subset = wrong_labels_subset.iloc[:num_bad_labels]
 
     subset = pd.concat([wrong_labels_subset, right_labels_subset]).reset_index(drop=True)
 
+    print(f"pollution pre sentence: {num_bad_labels / (num_bad_labels + len(right_labels_subset))}")
+
     if sentence:
         wrong_texts_human = wrong_labels_subset["human_abstract"].dropna().tolist()
         wrong_texts_ai = wrong_labels_subset["ai_abstract"].dropna().tolist()
-        print("splitting into sentences")
-        wrong_texts, wrong_labels = split_into_sentences(wrong_texts_human + wrong_texts_ai, [0 for _ in range(len(wrong_texts_human))] + [1 for _ in range(len(wrong_texts_ai))])
-        # import pdb; pdb.set_trace()
-        # wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["ai_abstract"].tolist(), [1 for _ in range(len(wrong_labels_subset))]) # wrong texts are only the double mirrors; we remove all the bad negative labels
-        if not inject: assert(len(wrong_texts) == 0)
-        right_texts, right_labels = split_into_sentences(right_labels_subset["human_abstract"].tolist() + right_labels_subset["ai_abstract"].tolist(), [0 for _ in range(len(right_labels_subset))] + [1 for _ in range(len(right_labels_subset))])
-        texts, labels = wrong_texts + right_texts, wrong_labels + right_labels
-        # import pdb; pdb.set_trace()
-        print(f"Pollution add {split}: {len(wrong_labels) - sum(wrong_labels)} / {len(wrong_labels) - sum(wrong_labels)} + {len(right_labels) - sum(right_labels)} = {(len(wrong_labels) - sum(wrong_labels)) / (len(right_labels) - sum(right_labels) + len(wrong_labels) - sum(wrong_labels))}")
-    
+        right_texts_human, right_texts_ai = right_labels_subset['human_abstract'].dropna().tolist(), right_labels_subset['ai_abstract'].dropna().tolist()
+
+        human_texts, human_labels = wrong_texts_human + right_texts_human, [1 for _ in range(len(wrong_texts_human))] + [0 for _ in range(len(right_texts_human))]
+        human_texts, human_labels = split_into_sentences(human_texts, human_labels)
+
+        # if alpha not in [0, 1]:
+        #     human_labels = np.array(human_labels)
+        #     rng = np.random.default_rng(42)
+        #     n_unlabeled = min(len(np.where(human_labels==1)[0]) / alpha, len(np.where(human_labels==0)[0]) / (1-alpha))
+        #     idx = np.concatenate([rng.choice(np.where(human_labels==k)[0], int(n_unlabeled*(alpha if k==0 else 1-alpha)), False) for k in (0,1)])
+        #     human_texts, human_labels = np.array(human_texts)[idx].tolist(), np.array(human_labels)[idx].tolist()
+
+        print(f"Pollution add {split}: {sum(human_labels)} / {len(human_labels)} = {sum(human_labels) / len(human_labels)}")
+
+        ai_texts, ai_labels = wrong_texts_ai + right_texts_ai, [1 for _ in range(len(wrong_texts_ai) + len(right_texts_ai))]
+        ai_texts, ai_labels = split_into_sentences(ai_texts, ai_labels)
+
+        texts, labels = human_texts + ai_texts, [0 for _ in range(len(human_texts))] + [1 for _ in range(len(ai_texts))]
+
     else:
         human_texts = subset["human_abstract"].dropna().tolist()
         ai_texts = subset["ai_abstract"].dropna().tolist()

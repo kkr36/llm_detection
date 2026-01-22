@@ -195,7 +195,7 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     
     if data_type=="ArXiv_BERT": 
 
-        years = [2010, 2012, 2014, 2016, 2018, 2020][-2:] if combine else [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-3:] if combine else [year]
         print(years)
         # years = [year]
         train_texts, train_labels = [], []
@@ -373,7 +373,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
 
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
 
-        years = [2010, 2012, 2014, 2016, 2018, 2020][-2:] if combine else [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-3:] if combine else [year]
         # years = [year]
         test_texts, test_labels = [], []
 
@@ -503,7 +503,7 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     if data_type=="ArXiv_BERT": 
         # train_path = f'{data_dir}/alpha/train/arxiv_tokenized_{year}_cs._2000.parquet'
         # val_path = f'{data_dir}/alpha/val/arxiv_tokenized_{year}_cs._500.parquet'
-        years = [2010, 2012, 2014, 2016, 2018, 2020][-2:] if combine else [year]
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-3:] if combine else [year]
         # years = [year]
         train_texts, train_labels = [], []
         test_texts, test_labels = [], []

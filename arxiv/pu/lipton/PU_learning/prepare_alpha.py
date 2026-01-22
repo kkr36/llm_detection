@@ -20,6 +20,7 @@ from model_helper import *
 
 from prepare_metrics import *
 from estimator import BBE_estimator
+import torch
 
 # prior_csv = None # if something, will need to load
 # if prior_csv:
@@ -63,7 +64,9 @@ def get_metrics(preds_p, preds_u, u_targets):
     metrics_dict['fpr'], metrics_dict['fpr_l'], metrics_dict['fpr_u'] = bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['plugin'], metrics_dict['plugin_l'], metrics_dict['plugin_u'] = bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap)
     metrics_dict['plugin-int'], metrics_dict['plugin-int_l'], metrics_dict['plugin-int_u'] = bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['entropy'], metrics_dict['entropy_l'], metrics_dict['entropy_u'] = bootstrap_metric(entropy_fn, preds_up, preds_un, n_bootstrap)
+    metrics_dict['entropy'], metrics_dict['entropy_l'], metrics_dict['entropy_u'] = bootstrap_metric(binary_entropy_fn, preds_up, preds_un, n_bootstrap)
+    metrics_dict['entropy_pos'], metrics_dict['entropy_pos_l'], metrics_dict['entropy_pos_u'] = bootstrap_metric(binary_entropy_pos_fn, preds_up, preds_un, n_bootstrap)
+    metrics_dict['entropy_neg'], metrics_dict['entropy_neg_l'], metrics_dict['entropy_neg_u'] = bootstrap_metric(binary_entropy_neg_fn, preds_up, preds_un, n_bootstrap)
 
     # bbe with confidence bounds
     metrics_dict['bbe'], bbe_l, bbe_u = BBE_estimator(preds_p, preds_u, u_targets)
@@ -89,7 +92,7 @@ gemini = False
 
 add = False
 
-device = 'cpu' # can toggle
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
 
 epochs = 3 # can toggle
 
