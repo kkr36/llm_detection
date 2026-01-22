@@ -1,9 +1,3 @@
-# enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
-
-entrance_path = "logging_accuracy_alpha_full_sentence"
-
-alphas = [0, .15, .3, .45, .6]
-
 # for each alpha:
     # load in models, given path (both the pt file with pn and the pt file with pu)
     
@@ -16,132 +10,151 @@ alphas = [0, .15, .3, .45, .6]
             # avg pred pos / neg / avg(avg pos, avg neg) / avg(tpr, fpr) aka plugin (bootstrap 90% bounds?)
             # put into a new csv (train_year, train_method, train_alpha, test_alpha, test_year, **test_metrics); save/add to global df
 
-
-
 import os
-import argparse
-import time
-import random
+import pandas as pd
+from pathlib import Path
 import numpy as np
-from tqdm import tqdm
+from model_inference import get_preds
+from collections import defaultdict
+from model_helper import *
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
-import torchvision
-import torchvision.transforms as transforms
-from torch.optim import AdamW
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import roc_curve, roc_auc_score
+from prepare_metrics import *
+from estimator import BBE_estimator
 
-font = {
-        # 'family' : 'normal',
-        'weight' : 'bold',
-        'size'   : 20
+# prior_csv = None # if something, will need to load
+# if prior_csv:
+#     prior_df = pd.read_csv(prior_csv)
+# exit_path = entrance_path if not prior_csv else f"{prior_csv.split('.csv')[0]}1.csv"
+
+def get_metrics(preds_p, preds_u, u_targets, labels, alpha):
+
+    preds_up = preds_u[u_targets==0]
+    preds_un = preds_u[u_targets==1]
+
+    orig_keys = [
+        'auc',
+        'pos_prob',
+        'neg_prob',
+        'avg_pos_neg_prob',
+        'tpr',
+        'fnr',
+        'tnr',
+        'tpr',
+        'plugin',
+        'plugin-int' # TODO implement -- average of all predictions, across p/u sets
+        'entropy',
+        'bbe'
+    ]
+    bounds = []
+    for metric in orig_keys:
+        bounds.append(f"{metric}_u")
+        bounds.append(f"{metric}_l")
+    all_keys = orig_keys + bounds
+
+    metrics_dict = {
+        k: None
+        for k in all_keys
     }
-import matplotlib
-from matplotlib import pyplot as plt
-matplotlib.rc('font', **font)
 
-from algorithm import * 
-from model_helper import * 
-from helper import *
-from estimator import *
-from baselines import *
+    if alpha == 0:
 
-np.set_printoptions(suppress=True, precision=1)
+        # ============================================================================
+        # Compute all metrics
+        # ============================================================================
 
-parser = argparse.ArgumentParser(description='PU Learning Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--wd', default=5e-4, type=float, help='Weight decay')
-parser.add_argument('--momentum', default=0.9, type=float, help='SGD momentum')
-parser.add_argument('--batch-size', type=int, default=200, help='input batch size')
-parser.add_argument('--data-type', type=str, help='mnist | cifar')
-parser.add_argument('--train-method', type=str, help='training algorithm to use')
-parser.add_argument('--net-type', type=str, help='linear | FCN | ResNet')
-parser.add_argument('--sigmoid-loss', default=True, action='store_false', help='Sigmoid loss for nnPU training')
-parser.add_argument('--estimate-alpha', default=True, action='store_false', help='Estimate alpha')
-parser.add_argument('--warm-start', action='store_true', default=False, help='Start domain discrimination training')
-parser.add_argument('--warm-start-epochs', type=int, default=0, help='Epochs for domain discrimination training')
-parser.add_argument('--epochs', type=int, default=5000, help='Epochs for the specified training algorithm')
-parser.add_argument('--seed', type=int, default=42, help='Seed')
-parser.add_argument('--alpha', type=float, default=0.5, help='Mixture proportion in unlabeled')
-parser.add_argument('--beta', type=float, default=0.5, help='Proportion of labeled in total data ')
-parser.add_argument('--log-dir', type=str, default='logging_accuracy_one_year', help='Dir for logging accuracies')
-parser.add_argument('--data-dir', type=str, default='/home/ubuntu/data', help='Data directory')
-parser.add_argument('--optimizer', type=str, default='SGD', help='Optimizer used')
-parser.add_argument('--year', type=int, default=None, help='year of arxiv data to take in')
-parser.add_argument('--abstract', default=True, action='store_false', help='sentence level analysis')
-parser.add_argument('--ft', default=False, action='store_true', help='whether to train on ft or zero shot')
-parser.add_argument('--clean', default=False, action='store_true', help='whether to remove chars you cant type on keyboard')
-parser.add_argument('--model_path', type=str, default=None, help='path to model')
+        metrics_dict['auc'], metrics_dict['auc_l'], metrics_dict['auc_u'] = bootstrap_metric(auc_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['pos_prob'], metrics_dict['pos_prob_l'], metrics_dict['pos_prob_u'] = bootstrap_metric(pos_prob_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['neg_prob'], metrics_dict['neg_prob_l'], metrics_dict['neg_prob_u'] = bootstrap_metric(neg_prob_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['avg_pos_neg_prob'], metrics_dict['avg_pos_neg_prob_l'], metrics_dict['avg_pos_neg_prob_u'] = bootstrap_metric(avg_prob_fn, preds_p, preds_u, n_bootstrap)
+        metrics_dict['tpr'], metrics_dict['tpr_l'], metrics_dict['tpr_u'] = bootstrap_metric(tpr_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['fnr'], metrics_dict['fnr_l'], metrics_dict['fnr_u'] = bootstrap_metric(fnr_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['tnr'], metrics_dict['tnr_l'], metrics_dict['tnr_u'] = bootstrap_metric(tnr_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['fpr'], metrics_dict['fpr_l'], metrics_dict['fpr_u'] = bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['plugin'], metrics_dict['plugin_l'], metrics_dict['plugin_u'] = bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['plugin-int'], metrics_dict['plugin-int_l'], metrics_dict['plugin-int_u'] = bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap)
+        metrics_dict['entropy'], metrics_dict['entropy_l'], metrics_dict['entropy_u'] = bootstrap_metric(entropy_fn, preds_up, preds_up, n_bootstrap)
 
-args = parser.parse_args()
+    else:
+        # bbe with confidence bounds
+        metrics_dict['bbe'], metrics_dict['bbe_l'], metrics_dict['bbe_u'] = BBE_estimator(preds_p, preds_u, u_targets)
 
-torch.manual_seed(args.seed)
-torch.cuda.manual_seed(args.seed)
-np.random.seed(args.seed)
-random.seed(args.seed)
+    import pdb; pdb.set_trace()
+    return metrics_dict
 
-# to make interpreting things easier
-tokenizer = getBertTokenizer('distilbert-base-uncased')
-def batch_decode(batch):
-    return tokenizer.batch_decode(
-        batch,
-        skip_special_tokens=True
-    )
+# enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
-import numpy as np
+entrance_path = "logging_accuracy_temporal_alpha_full_sentence"
 
-def topk_small_large(probs, validdata, k=10):
-    order = np.argsort(probs)
+alphas = [0, .15, .3, .45, .6]
 
-    small_idx = order[:k]
-    large_idx = order[-k:][::-1]   # largest sorted descending
+data_type = "ArXiv_BERT"
 
-    small_vals = validdata[small_idx]
-    large_vals = validdata[large_idx]
+flip = False
 
-    small_p = probs[small_idx]
-    large_p = probs[large_idx]
+combine = "combine" in entrance_path
 
-    return small_vals, small_p, large_vals, large_p
+sentence = True # can toggle
 
+clean = True # can toggle
 
-print(args)
+gemini = False
 
-net_type = args.net_type
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# device = 'cpu'
-train_method = args.train_method
-data_type = args.data_type
-## Train set for positive and unlabeled
-alpha = args.alpha
-beta = args.beta
-warm_start = args.warm_start
-warm_start_epochs = args.warm_start_epochs
-batch_size=args.batch_size
-epochs=args.epochs
-log_dir=args.log_dir + "/" + data_type + "_" + str(epochs) + "/"
-optimizer_str=args.optimizer
-alpha_estimate=0.0
-show_bar = True
-use_alpha = False
-data_dir = args.data_dir
-estimate_alpha = args.estimate_alpha
-year = args.year
-sentence = args.abstract
-ft = args.ft
-clean = args.clean
+add = False
 
-val_alphas = [alpha] if alpha == 0 else [0, alpha]
-val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
+device = 'cpu' # can toggle
 
-# load model
+epochs = 3 # can toggle
 
-# load data
+metrics_dict = defaultdict(list)
 
-# inference
-    # keep track of whatever stats
+for alpha in alphas:
+    alpha_dir = Path(f"{entrance_path}/{'sentence' if sentence else 'abstract'}_2020/{alpha}/ArXiv_BERT_{epochs}")
+    pts_pu = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "TEDn" in p.name][0]
+    pts_pn = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "PN" in p.name][0]
+    pts = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt")]
+    assert(len(pts) == 2)
+
+    model_paths = {
+        "PU": pts_pu,
+        "PN": pts_pn 
+    }
+
+    for model_name, model_path in model_paths.items():
+        # import pdb; pdb.set_trace()
+        net = get_model("DistilBert")
+        state_dict = torch.load(model_path, map_location=device)
+        state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
+        net.load_state_dict(state_dict)
+        net.eval()
+        net.to(device)
+
+        None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
+
+        test_alphas = [0, 0.5, alpha]
+
+        for test_alpha in test_alphas:
+            pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, 2020, combine, sentence, clean, add, gemini, flip)
+            info = {
+                "learning_method": model_name,
+                "data_type": data_type,
+                "train_alpha": alpha,
+                "test_alpha": test_alpha,
+                "epochs": epochs,
+                "combine": combine,
+                "clean": clean,
+                "sentence": sentence,
+                "add": add,
+                "gemini": gemini,
+                "flip": flip,
+                "model_path": model_path
+            }
+            metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets, test_alpha)
+
+            # add metrics and info to metrics_dict
+            for a, b in info.items():
+                metrics_dict[a] = b
+            for a, b in metrics.items():
+                metrics_dict[a] = b
+
+metrics_df = pd.DataFrame(metrics_dict)
+metrics_df.to_csv(f"{entrance_path}_alpha.csv")

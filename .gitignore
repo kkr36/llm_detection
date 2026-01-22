@@ -12,3 +12,4 @@ ssrn/secrets.json
 *.txt
 *ArXiv_BERT*
 .python-version
+virtualenv

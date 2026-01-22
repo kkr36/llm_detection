@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
+from tqdm import tqdm
 
 from baselines import * 
 from data_helper import *
@@ -34,7 +35,7 @@ def p_probs(net, device, p_loader):
     net.eval()
     pp_probs = None
     with torch.no_grad():
-        for batch_idx, (_, inputs, targets) in enumerate(p_loader):
+        for batch_idx, (_, inputs, targets) in tqdm(enumerate(p_loader), total=len(p_loader)):
            
             inputs = inputs.to(device)
             outputs = net(inputs)
@@ -58,7 +59,7 @@ def u_probs(net, device, u_loader):
     pu_probs = None
     pu_targets = None
     with torch.no_grad():
-        for batch_idx, (_, inputs, _, targets) in enumerate(u_loader):
+        for batch_idx, (_, inputs, _, targets) in tqdm(enumerate(u_loader), total=len(u_loader)):
             inputs = inputs.to(device)
             outputs = net(inputs)
                 
