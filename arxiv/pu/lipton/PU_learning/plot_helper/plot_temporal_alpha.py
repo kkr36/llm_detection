@@ -29,7 +29,7 @@ def make_line_plot(metric, x_lab, title, data):
     fig, ax = plt.subplots()
     for label, subset in data:
         col = colors[label.split( )[0]]
-        linestyle = "-" if "Retrain" in label else ":"
+        linestyle = ":" if "2010" in label else "--" if "Alpha" in label else "-" 
         plt.plot(
                 subset[x_lab], 
                 subset[metric],                         
@@ -66,6 +66,37 @@ def plot_temporal_data(data, metrics):
     for metric in metrics:
         make_line_plot(metric, "test_year", "temporal", [("PU 2010", pu_2010), ("PN 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PN Retrain", pn_retrain_0)])
 
+def plot_temporal_alpha(data, metrics):
+    # get 2010 data
+    rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"]==0) & (data['test_alpha']==0.5)]
+    pu_2010 = rows_2010[rows_2010["learning_method"]=="PU"]
+    pn_2010 = rows_2010[rows_2010["learning_method"]=="PN"]
+
+    # get retrain 0 data
+    rows_retrain_0 = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0)]
+    pu_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PU"]
+    pn_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PN"]
+
+    # get retrain alpha data
+    # Step 1: rows where train_year == test_year
+    same_year = data[data["train_year"] == data["test_year"]]
+
+    # Step 2: compute max train_alpha per train_year (within same_year)
+    max_alpha_per_year = (
+        same_year
+        .groupby("train_year")["train_alpha"]
+        .transform("max")
+    )
+
+    # Step 3: filter rows matching that max
+    rows_retrain_alpha = same_year[
+        same_year["train_alpha"] == max_alpha_per_year
+    ]
+    pu_retrain_alpha = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PU"]
+    pn_retrain_alpha = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PN"]
+    for metric in metrics:
+        make_line_plot(metric, "test_year", "temporal_alpha", [("PU 2010", pu_2010), ("PN 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PN Retrain", pn_retrain_0), ("PU Retrain Alpha", pu_retrain_alpha), ("PN Retrain Alpha", pn_retrain_alpha)])
+
 def plot_alpha(data, metrics):
     rows = data[data["train_year"] == 2020]
     rows_pu = rows[rows["learning_method"]=="PU"]
@@ -77,5 +108,6 @@ def plot_alpha(data, metrics):
 if __name__ == "__main__":
 
     data = pd.read_csv(input_file)
-    plot_temporal_data(data, plot_metrics)
-    plot_alpha(data, plot_metrics)
+    # plot_temporal_data(data, plot_metrics)
+    # plot_alpha(data, plot_metrics)
+    plot_temporal_alpha(data, plot_metrics)
