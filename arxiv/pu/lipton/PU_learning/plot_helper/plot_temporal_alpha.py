@@ -1,6 +1,14 @@
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
+font = {
+        # 'family' : 'normal',
+        'weight' : 'bold',
+        'size'   : 20
+    }
+import matplotlib
+matplotlib.rc('font', **font)
+from matplotlib.ticker import MaxNLocator
 
 input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal.csv"
 import os
@@ -19,11 +27,25 @@ plot_metrics = [
     "plugin-int"
 ]
 
+name_to_name = {
+    "train_alpha": r"Train ${\alpha}$",
+    "test_year": "Test Year",
+    "auc": "AUC",
+    "pos_prob": "Avg Pred LLM",
+    "neg_prob": "Avg Pred Human",
+    "entropy_pos": "Avg Entropy LLM",
+    "entropy_neg": "Avg Entropy Human",
+    "bbe": r'Test $\hat{\alpha}$',
+    "plugin": "Plug-In Alpha",
+    "plugin-int": "Avg P(LLM)"
+}
+
 def make_line_plot(metric, x_lab, title, data):
 
     colors = {
         "PU": "blue",      # matplotlib auto-assigns
         "PN": "red",
+        "MLE": "green"
     }
 
     fig, ax = plt.subplots()
@@ -45,10 +67,19 @@ def make_line_plot(metric, x_lab, title, data):
             color=col
             # label="confidence interval",
         )
-    plt.xlabel(x_lab)
-    plt.ylabel(metric)
+
+
+    if "year" in x_lab:
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3,integer=True))
+    plt.xlabel(name_to_name[x_lab])
+    plt.ylabel(name_to_name[metric])
     plt.tight_layout()
-    plt.legend()
+    # plt.legend()
+    ax.legend(
+        loc="center left",
+        bbox_to_anchor=(1, 0.5)
+    )
+
     plt.savefig(f"{output_folder}/{title}_{metric}.pdf", bbox_inches="tight")
     plt.clf()
 
@@ -105,9 +136,44 @@ def plot_alpha(data, metrics):
     for metric in metrics:
         make_line_plot(metric, "train_alpha", "alpha", [("PU Retrain", rows_pu), ("PN Retrain", rows_pn)])
 
+def plot_alpha_james(data, metrics):
+    rows = data[data["train_year"] == 2020]
+    rows_pu = rows[rows["learning_method"]=="PU"]
+    rows_pn = rows[rows["learning_method"]=="PN"]
+    rows_james = rows[rows["learning_method"]=="MLE"]
+
+    for metric in metrics:
+        make_line_plot(metric, "train_alpha", "james_alpha", [("PU Retrain (BBE)", rows_pu), ("PN Retrain (BBE)", rows_pn), ("MLE Retrain", rows_james)])
+
+def plot_temporal_james(data, metrics):
+    # get 2010 data
+    rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"]==0) & (data['test_alpha']==0.5)]
+    pu_2010 = rows_2010[rows_2010["learning_method"]=="PU"]
+    pn_2010 = rows_2010[rows_2010["learning_method"]=="PN"]
+    james_2010 = rows_2010[rows_2010["learning_method"]=="MLE"]
+
+    rows_retrain_0 = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0)]
+    pu_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PU"]
+    pn_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PN"]
+    james_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="MLE"]
+    # import pdb; pdb.set_trace()
+
+
+    for metric in metrics:
+        make_line_plot(metric, "test_year", "james_temporal", [("PU 2010 (BBE)", pu_2010), ("PN 2010 (BBE)", pn_2010), ("PU Retrain (BBE)", pu_retrain_0), ("PN Retrain (BBE)", pn_retrain_0), ("MLE 2010", james_2010), ("MLE Retrain", james_retrain_0)])
+
+
 if __name__ == "__main__":
 
     data = pd.read_csv(input_file)
     # plot_temporal_data(data, plot_metrics)
     # plot_alpha(data, plot_metrics)
-    plot_temporal_alpha(data, plot_metrics)
+    # plot_temporal_alpha(data, plot_metrics)
+
+    plot_alpha_james(data, ["bbe"])
+    plot_alpha(data, plot_metrics)
+
+    if "combine" not in input_file:
+        plot_temporal_james(data, ["bbe"])
+        plot_temporal_data(data, plot_metrics)
+        plot_temporal_alpha(data, plot_metrics)

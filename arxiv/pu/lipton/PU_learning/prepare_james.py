@@ -2,12 +2,11 @@ import os
 import pandas as pd
 from pathlib import Path
 import numpy as np
-from model_inference import get_preds
+from model_inference import *
 from collections import defaultdict
 from model_helper import *
 
 from prepare_metrics import *
-from james_methods import *
 
 train_years = [2010, 2012, 2014, 2016, 2018, 2020]
 
@@ -25,9 +24,14 @@ clean = True # can toggle
 
 gemini = False
 
-add = False
+add = "add" in entrance_path
 
 output_csv = f"{entrance_path}_alpha_temporal.csv"
+
+
+# import pdb; pdb.set_trace()
+if not os.path.exists(os.path.expanduser(f"{data_dir}/multillm/james_v_us")):
+    os.makedirs(os.path.expanduser(f"{data_dir}/multillm/james_v_us"))
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -37,7 +41,7 @@ else:
 run_id = len(metrics_df)
 
 # for each train_year:
-for train_year in train_years:
+for train_year in train_years[-1:]:
     if train_year == 2020:
         alphas = [0, .15, .3, .45, .6]
     elif train_year == 2018: 
@@ -52,9 +56,9 @@ for train_year in train_years:
     # for each train_alpha:
     for alpha in alphas:
         # tokenize train
-        tokenize_fn(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip)
+        tokenize_fn(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train")
         # do estimation on train
-        estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip)
+        estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train")
         # get test_years, test_alpha
         test_alphas = [0.5]
         # if alpha not in test_alphas: test_alphas.append(alpha)
@@ -66,11 +70,26 @@ for train_year in train_years:
             for test_year in test_years:
 
                 # tokenize the test set
-                tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip)
+                tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val")
                 # MLE with (train, test)
-                alpha_hat, ci = MLE(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip)
+                alpha_hat, ci = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip)
                 # store results
-                row = {}
+                row = {
+                        "learning_method": "MLE",
+                        "data_type": data_type,
+                        "train_alpha": alpha,
+                        "train_year": train_year,
+                        "test_alpha": test_alpha,
+                        "test_year": test_year,
+                        "combine": combine,
+                        "clean": clean,
+                        "sentence": sentence,
+                        "add": add,
+                        "gemini": gemini,
+                        "flip": flip,
+                        "run_id": run_id
+                    }
+
                 row["bbe"], row["bbe_l"], row["bbe_u"] = alpha_hat, alpha_hat - ci, alpha_hat + ci
 
                 # append

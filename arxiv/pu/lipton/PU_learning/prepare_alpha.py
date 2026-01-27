@@ -61,7 +61,7 @@ def get_metrics(preds_p, preds_u, u_targets):
 
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
-entrance_path = "logging_accuracy_temporal_alpha_full_sentence"
+entrance_path = "logging_accuracy_temporal_alpha_full_sentence_combine"
 
 data_type = "ArXiv_BERT"
 
@@ -84,6 +84,7 @@ epochs = 3 # can toggle
 metrics_dict = defaultdict(list)
 
 train_years = [2010, 2012, 2014, 2016, 2018, 2020]
+if combine: train_years = [2020]
 
 output_csv = f"{entrance_path}_alpha_temporal.csv"
 
