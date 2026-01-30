@@ -28,7 +28,14 @@ from platt_scaling import *
 #     prior_df = pd.read_csv(prior_csv)
 # exit_path = entrance_path if not prior_csv else f"{prior_csv.split('.csv')[0]}1.csv"
 
-def get_metrics(preds_p, preds_u, u_targets):
+def update_dict(metrics_dict, metric, point, uppers, lowers):
+    metrics_dict[metric] = point
+    for ci in uppers:
+        assert(ci in lowers)
+        metrics_dict[f'{metric}_l_{ci}'] = lowers[ci]
+        metrics_dict[f'{metric}_u_{ci}'] = uppers[ci]
+
+def get_metrics(preds_p, preds_u, u_targets, test_cis):
 
     preds_up = preds_u[u_targets==0][:,0]
     preds_un = preds_u[u_targets==1][:,0]
@@ -40,24 +47,22 @@ def get_metrics(preds_p, preds_u, u_targets):
     # ============================================================================
 
     print('calculating metrics')
-    metrics_dict['auc'], metrics_dict['auc_l'], metrics_dict['auc_u'] = bootstrap_metric(auc_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['pos_prob'], metrics_dict['pos_prob_l'], metrics_dict['pos_prob_u'] = bootstrap_metric(pos_prob_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['neg_prob'], metrics_dict['neg_prob_l'], metrics_dict['neg_prob_u'] = bootstrap_metric(neg_prob_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['avg_pos_neg_prob'], metrics_dict['avg_pos_neg_prob_l'], metrics_dict['avg_pos_neg_prob_u'] = bootstrap_metric(avg_prob_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['tpr'], metrics_dict['tpr_l'], metrics_dict['tpr_u'] = bootstrap_metric(tpr_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['fnr'], metrics_dict['fnr_l'], metrics_dict['fnr_u'] = bootstrap_metric(fnr_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['tnr'], metrics_dict['tnr_l'], metrics_dict['tnr_u'] = bootstrap_metric(tnr_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['fpr'], metrics_dict['fpr_l'], metrics_dict['fpr_u'] = bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['plugin'], metrics_dict['plugin_l'], metrics_dict['plugin_u'] = bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['plugin-int'], metrics_dict['plugin-int_l'], metrics_dict['plugin-int_u'] = bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['entropy'], metrics_dict['entropy_l'], metrics_dict['entropy_u'] = bootstrap_metric(binary_entropy_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['entropy_pos'], metrics_dict['entropy_pos_l'], metrics_dict['entropy_pos_u'] = bootstrap_metric(binary_entropy_pos_fn, preds_up, preds_un, n_bootstrap)
-    metrics_dict['entropy_neg'], metrics_dict['entropy_neg_l'], metrics_dict['entropy_neg_u'] = bootstrap_metric(binary_entropy_neg_fn, preds_up, preds_un, n_bootstrap)
 
-    # bbe with confidence bounds
-    metrics_dict['bbe'], bbe_l, bbe_u = BBE_estimator(preds_p, preds_u, u_targets)
-    metrics_dict['bbe_l'], metrics_dict['bbe_u'] = bbe_l[np.argmin(bbe_u)], bbe_u[np.argmin(bbe_u)]
-
+    update_dict(metrics_dict, "auc", *bootstrap_metric(auc_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "avg_pos_neg_prob", *bootstrap_metric(avg_prob_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "tpr", *bootstrap_metric(tpr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "fnr", *bootstrap_metric(fnr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "tnr", *bootstrap_metric(tnr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "fpr", *bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "plugin", *bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "plugin-int", *bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=2000, cis=test_cis))
+    
     return metrics_dict
 
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
@@ -74,7 +79,7 @@ sentence = True # can toggle
 
 clean = True # can toggle
 
-platt = True # can toggle
+platt = False # can toggle
 
 gemini = False
 
@@ -149,6 +154,7 @@ for train_year in train_years:
             None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
 
             test_alphas = [0.5]
+            test_cis = [.9, .95]
             # if alpha not in test_alphas: test_alphas.append(alpha)
             test_years = [train_year] if train_year != 2010 else [2010, 2012, 2014, 2016, 2018, 2020]
 
@@ -176,7 +182,7 @@ for train_year in train_years:
                         "run_id": run_id
                     }
 
-                    metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets)
+                    metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets, test_cis)
 
                     # one row per experiment
                     row = {}

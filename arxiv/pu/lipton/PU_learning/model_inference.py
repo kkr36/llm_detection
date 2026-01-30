@@ -61,7 +61,7 @@ def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split):
     if split == "out":
         right_labels = right_labels.iloc[5700:6000].reset_index(drop=True)
     else:
-        right_labels = right_labels.iloc[2500:6000-2000].reset_index(drop=True) # this should not be seen by any models
+        right_labels = right_labels.iloc[2500:6000-1000].reset_index(drop=True) # this should not be seen by any models
 
     llm_subset = right_labels.iloc[:int(len(right_labels)*test_alpha)]
     human_subset = right_labels.iloc[int(len(right_labels)*test_alpha):]

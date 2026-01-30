@@ -4,12 +4,36 @@ from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
 # Set parameters
-n_bootstrap = 1000
+# n_bootstrap = 1000
 alpha = 0.5  # for plugin metric, adjust as needed
 threshold = 0.5  # classification threshold
 
-# Generic bootstrap function
-def bootstrap_metric(metric_fn, preds_p, preds_u, n_bootstrap=1000, ci=0.90, seed=42):
+def bootstrap_metric_bbe(metric_fn, preds_p, preds_u, u_targets, n_bootstrap=1000, cis=[0.90], seed=42):
+    """Generic bootstrap function that returns (point_estimate, lower_bound, upper_bound)"""
+    # Set seed for reproducibility
+    np.random.seed(seed)
+    
+    estimates = []
+    for _ in tqdm(list(range(n_bootstrap)), smoothing=.3):
+        # Resample both positives and negatives
+        idx_p = np.random.choice(len(preds_p), len(preds_p), replace=True)
+        idx_u = np.random.choice(len(preds_u), len(preds_u), replace=True)
+        
+        # Pass resampled data to metric function
+        estimate = metric_fn(preds_p[idx_p], preds_u[idx_u], u_targets[idx_u])[0]
+        estimates.append(estimate)
+    
+    point_estimate = metric_fn(preds_p, preds_u)  # Use original data for point estimate
+    lowers = {}
+    uppers = {}
+    for ci in cis:
+        lower = np.percentile(estimates, (1 - ci) / 2 * 100)
+        upper = np.percentile(estimates, (1 + ci) / 2 * 100)
+        lowers[ci] = lower
+        uppers[ci] = upper
+    return point_estimate, lowers, uppers
+
+def bootstrap_metric(metric_fn, preds_p, preds_u, n_bootstrap=1000, cis=[0.90], seed=42):
     """Generic bootstrap function that returns (point_estimate, lower_bound, upper_bound)"""
     # Set seed for reproducibility
     np.random.seed(seed)
@@ -25,9 +49,14 @@ def bootstrap_metric(metric_fn, preds_p, preds_u, n_bootstrap=1000, ci=0.90, see
         estimates.append(estimate)
     
     point_estimate = metric_fn(preds_p, preds_u)  # Use original data for point estimate
-    lower = np.percentile(estimates, (1 - ci) / 2 * 100)
-    upper = np.percentile(estimates, (1 + ci) / 2 * 100)
-    return point_estimate, lower, upper
+    lowers = {}
+    uppers = {}
+    for ci in cis:
+        lower = np.percentile(estimates, (1 - ci) / 2 * 100)
+        upper = np.percentile(estimates, (1 + ci) / 2 * 100)
+        lowers[ci] = lower
+        uppers[ci] = upper
+    return point_estimate, lowers, uppers
 
 # AUC with confidence bounds
 def auc_fn(preds_p, preds_u):
