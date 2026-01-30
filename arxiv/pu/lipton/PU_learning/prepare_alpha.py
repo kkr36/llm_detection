@@ -35,7 +35,7 @@ def update_dict(metrics_dict, metric, point, uppers, lowers):
         metrics_dict[f'{metric}_l_{ci}'] = lowers[ci]
         metrics_dict[f'{metric}_u_{ci}'] = uppers[ci]
 
-def get_metrics(preds_p, preds_u, u_targets, test_cis):
+def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
 
     preds_up = preds_u[u_targets==0][:,0]
     preds_un = preds_u[u_targets==1][:,0]
@@ -48,50 +48,43 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis):
 
     print('calculating metrics')
 
-    update_dict(metrics_dict, "auc", *bootstrap_metric(auc_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "avg_pos_neg_prob", *bootstrap_metric(avg_prob_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "tpr", *bootstrap_metric(tpr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "fnr", *bootstrap_metric(fnr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "tnr", *bootstrap_metric(tnr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "fpr", *bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "plugin", *bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "plugin-int", *bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up, preds_un, n_bootstrap=2000, cis=test_cis))
-    update_dict(metrics_dict, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=2000, cis=test_cis))
+    update_dict(metrics_dict, "auc", *bootstrap_metric(auc_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "avg_pos_neg_prob", *bootstrap_metric(avg_prob_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "tpr", *bootstrap_metric(tpr_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "fnr", *bootstrap_metric(fnr_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "tnr", *bootstrap_metric(tnr_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "fpr", *bootstrap_metric(fpr_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "plugin", *bootstrap_metric(plugin_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "plugin-int", *bootstrap_metric(plugin_int_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up, preds_un, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=n_bootstrap, cis=test_cis))
     
     return metrics_dict
 
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
+# SWITCHES
 entrance_path = "logging_accuracy_temporal_alpha_full_sentence"
-
 data_type = "ArXiv_BERT"
-
 flip = False
-
 combine = "combine" in entrance_path
-
-sentence = True # can toggle
-
-clean = True # can toggle
-
-platt = False # can toggle
-
+sentence = True 
+clean = True 
+platt = False 
 gemini = False
-
-add = False
-
+add = "_add_" in entrance_path
+epochs = 3 # can toggle
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
 
-epochs = 3 # can toggle
+### LOGIC ###
 
 metrics_dict = defaultdict(list)
 
-train_years = [2010, 2012, 2014, 2016, 2018, 2020][:1]
+train_years = [2010, 2012, 2014, 2016, 2018, 2020]
 if combine: train_years = [2020]
 
 output_csv = f"{entrance_path}_alpha_temporal.csv"
@@ -154,7 +147,7 @@ for train_year in train_years:
             None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
 
             test_alphas = [0.5]
-            test_cis = [.9, .95]
+            test_cis = [.9, .95, .99]
             # if alpha not in test_alphas: test_alphas.append(alpha)
             test_years = [train_year] if train_year != 2010 else [2010, 2012, 2014, 2016, 2018, 2020]
 
@@ -182,7 +175,7 @@ for train_year in train_years:
                         "run_id": run_id
                     }
 
-                    metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets, test_cis)
+                    metrics = get_metrics(pos_probs, unlabeled_probs, unlabeled_targets, test_cis=test_cis, n_bootstrap=2500)
 
                     # one row per experiment
                     row = {}
