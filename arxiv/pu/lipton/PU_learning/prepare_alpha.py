@@ -144,8 +144,6 @@ for train_year in train_years:
                 net = PlattCalibratedClassifier(net, platt)
                 net.eval()
 
-            None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
-
             test_alphas = [0.5]
             test_cis = [.9, .95, .99]
             # if alpha not in test_alphas: test_alphas.append(alpha)
