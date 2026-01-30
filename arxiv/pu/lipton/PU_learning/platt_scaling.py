@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 
 class PlattScaler(nn.Module):
     """
@@ -62,7 +63,9 @@ def fit_platt_scaler(
     labels_list = []
 
     with torch.no_grad():
-        for inputs, labels in calib_loader:
+        print("platt scaling")
+        for _, inputs, _, labels in tqdm(calib_loader):
+        # for inputs, labels in calib_loader:
             inputs = inputs.to(device)
             outputs = model(inputs)
 

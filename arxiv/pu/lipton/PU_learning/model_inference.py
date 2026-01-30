@@ -45,7 +45,7 @@ def get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, ge
     flip_str = '_flip' if flip else ''
     return f"arxiv_tokenized_{split}_{year}_{alpha}_{data_type}{combine_str}{sentence_str}{clean_str}{add_str}{gemini_str}{flip_str}.parquet"
 
-def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean):
+def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split):
     arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet")
 
     llm_cols, llm_writing = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"], []
@@ -58,7 +58,10 @@ def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean):
     num_inject = int(.2 * len(arxiv_data))
 
     right_labels = arxiv_data.iloc[num_inject:].reset_index(drop=True)
-    right_labels = right_labels.iloc[2500:6000-2000].reset_index(drop=True) # this should not be seen by any models
+    if split == "out":
+        right_labels = right_labels.iloc[5700:6000].reset_index(drop=True)
+    else:
+        right_labels = right_labels.iloc[2500:6000-2000].reset_index(drop=True) # this should not be seen by any models
 
     llm_subset = right_labels.iloc[:int(len(right_labels)*test_alpha)]
     human_subset = right_labels.iloc[int(len(right_labels)*test_alpha):]
@@ -145,12 +148,12 @@ def get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip):
         shuffle=False)
     return p_data_loader
 
-def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip):
+def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, split="in"):
     if data_type == "ArXiv_BERT":
         u_texts, u_labels = [], []
         years = [2016, 2018, 2020] if combine else [test_year]
         for year in years:
-            ut, ul = read_arxiv_unlabeled(test_alpha, year, sentence, clean)
+            ut, ul = read_arxiv_unlabeled(test_alpha, year, sentence, clean, split)
             u_texts += ut
             u_labels += ul
 
@@ -171,7 +174,7 @@ def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, 
 
 def get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip):
     p_data_loader = get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip)
-    u_data_loader, _, _ = get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip)
+    u_data_loader, _, _ = get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, "in")
 
     # get preds with model
     pos_probs = p_probs(net, device, p_data_loader)

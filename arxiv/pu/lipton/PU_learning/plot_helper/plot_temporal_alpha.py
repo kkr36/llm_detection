@@ -35,7 +35,7 @@ name_to_name = {
     "neg_prob": "Avg Pred Human",
     "entropy_pos": "Avg Entropy LLM",
     "entropy_neg": "Avg Entropy Human",
-    "bbe": r'Test $\hat{\alpha}$',
+    "bbe": r'Test $\hat{\alpha}$ bias',
     "plugin": "Plug-In Alpha",
     "plugin-int": "Avg P(LLM)"
 }
@@ -43,31 +43,32 @@ name_to_name = {
 def make_line_plot(metric, x_lab, title, data):
 
     colors = {
-        "PU": "blue",      # matplotlib auto-assigns
+        "PU": "orange",      # matplotlib auto-assigns
         "PN": "red",
-        "MLE": "green"
+        "MLE": "green",
+        "Plug-In": "blue"
     }
 
     fig, ax = plt.subplots()
     for label, subset in data:
-        col = colors[label.split( )[0]]
+        col = colors[label.split( )[0]] if "Plug-In" not in label else "blue"
         linestyle = ":" if "2010" in label else "--" if "Alpha" in label else "-" 
+        real_metric = metric if "Plug-In" not in label else "plugin-int"
         plt.plot(
                 subset[x_lab], 
-                subset[metric],                         
+                subset[real_metric] if metric != "bbe" else subset[real_metric]-.5,                         
                 linestyle=linestyle,
                 label=label,
                 color=col
                 )
         ax.fill_between(
             subset[x_lab],
-            subset[f"{metric}_l"],
-            subset[f"{metric}_u"],
+            subset[f"{real_metric}_l"] if metric != "bbe" else subset[f"{real_metric}_l"]-.5,
+            subset[f"{real_metric}_u"] if metric != "bbe" else subset[f"{real_metric}_u"]-.5,
             alpha=0.3,
             color=col
             # label="confidence interval",
         )
-
 
     if "year" in x_lab:
         ax.xaxis.set_major_locator(MaxNLocator(nbins=3,integer=True))
@@ -95,7 +96,8 @@ def plot_temporal_data(data, metrics):
     # import pdb; pdb.set_trace()
 
     for metric in metrics:
-        make_line_plot(metric, "test_year", "temporal", [("PU 2010", pu_2010), ("PN 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PN Retrain", pn_retrain_0)])
+        # removed ("PU 2010", pu_2010), 
+        make_line_plot(metric, "test_year", "temporal", [("PN 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PN Retrain", pn_retrain_0)])
 
 def plot_temporal_alpha(data, metrics):
     # get 2010 data
@@ -126,7 +128,8 @@ def plot_temporal_alpha(data, metrics):
     pu_retrain_alpha = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PU"]
     pn_retrain_alpha = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PN"]
     for metric in metrics:
-        make_line_plot(metric, "test_year", "temporal_alpha", [("PU 2010", pu_2010), ("PN 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PN Retrain", pn_retrain_0), ("PU Retrain Alpha", pu_retrain_alpha), ("PN Retrain Alpha", pn_retrain_alpha)])
+        # removed ("PU 2010", pu_2010)
+        make_line_plot(metric, "test_year", "temporal_alpha", [("PN 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PN Retrain", pn_retrain_0), ("PU Retrain Alpha", pu_retrain_alpha), ("PN Retrain Alpha", pn_retrain_alpha)])
 
 def plot_alpha(data, metrics):
     rows = data[data["train_year"] == 2020]
@@ -141,9 +144,10 @@ def plot_alpha_james(data, metrics):
     rows_pu = rows[rows["learning_method"]=="PU"]
     rows_pn = rows[rows["learning_method"]=="PN"]
     rows_james = rows[rows["learning_method"]=="MLE"]
+    rows_pn = rows[rows["learning_method"]=="PN"]
 
     for metric in metrics:
-        make_line_plot(metric, "train_alpha", "james_alpha", [("PU Retrain (BBE)", rows_pu), ("PN Retrain (BBE)", rows_pn), ("MLE Retrain", rows_james)])
+        make_line_plot(metric, "train_alpha", "james_alpha", [("PU Retrain (BBE)", rows_pu), ("PN Retrain (BBE)", rows_pn), ("MLE Retrain", rows_james), ("PN (Plug-In)", rows_pn)])
 
 def plot_temporal_james(data, metrics):
     # get 2010 data
@@ -158,9 +162,11 @@ def plot_temporal_james(data, metrics):
     james_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="MLE"]
     # import pdb; pdb.set_trace()
 
+    platt_pn_2010 = data[data["learning_method"]=="PN_platt_2010"]
 
     for metric in metrics:
-        make_line_plot(metric, "test_year", "james_temporal", [("PU 2010 (BBE)", pu_2010), ("PN 2010 (BBE)", pn_2010), ("PU Retrain (BBE)", pu_retrain_0), ("PN Retrain (BBE)", pn_retrain_0), ("MLE 2010", james_2010), ("MLE Retrain", james_retrain_0)])
+        # removed ("PU 2010 (BBE)", pu_2010), ("PU Retrain (BBE)", pu_retrain_0)
+        make_line_plot(metric, "test_year", "james_temporal", [("PN 2010 (BBE)", pn_2010), ("PN Retrain (BBE)", pn_retrain_0), ("MLE 2010", james_2010), ("MLE Retrain", james_retrain_0), ("PN 2010 Rescaled (Plug-In)", platt_pn_2010)])
 
 
 if __name__ == "__main__":

@@ -14,13 +14,14 @@ import os
 import pandas as pd
 from pathlib import Path
 import numpy as np
-from model_inference import get_preds
+from model_inference import get_preds, get_u_data
 from collections import defaultdict
 from model_helper import *
 
 from prepare_metrics import *
 from estimator import BBE_estimator
 import torch
+from platt_scaling import *
 
 # prior_csv = None # if something, will need to load
 # if prior_csv:
@@ -61,7 +62,7 @@ def get_metrics(preds_p, preds_u, u_targets):
 
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
-entrance_path = "logging_accuracy_temporal_alpha_full_sentence_combine"
+entrance_path = "logging_accuracy_temporal_alpha_full_sentence"
 
 data_type = "ArXiv_BERT"
 
@@ -73,6 +74,8 @@ sentence = True # can toggle
 
 clean = True # can toggle
 
+platt = True # can toggle
+
 gemini = False
 
 add = False
@@ -83,7 +86,7 @@ epochs = 3 # can toggle
 
 metrics_dict = defaultdict(list)
 
-train_years = [2010, 2012, 2014, 2016, 2018, 2020]
+train_years = [2010, 2012, 2014, 2016, 2018, 2020][:1]
 if combine: train_years = [2020]
 
 output_csv = f"{entrance_path}_alpha_temporal.csv"
@@ -120,6 +123,7 @@ for train_year in train_years:
         }
 
         for model_name, model_path in model_paths.items():
+            if "PU" in model_name: continue
             net = get_model("DistilBert")
             state_dict = torch.load(model_path, map_location=device)
             state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
@@ -127,11 +131,26 @@ for train_year in train_years:
             net.eval()
             net.to(device)
 
+            if platt:
+                assert(not combine)
+                scale_year = 2010 # might want to change? if not scaling to 2010 every time
+                u_data_loader, _, _ = get_u_data(data_type, 0.5, scale_year, combine, sentence, clean, add, gemini, flip, split="out")
+                # 2. fit Platt scaling
+                platt = fit_platt_scaler(
+                    model=net,
+                    calib_loader=u_data_loader,
+                    device=device
+                )
+
+                # 3. build calibrated model
+                net = PlattCalibratedClassifier(net, platt)
+                net.eval()
+
             None # TODO load this in as pt; use weight dict to load into a seqclassifier obj
 
             test_alphas = [0.5]
             # if alpha not in test_alphas: test_alphas.append(alpha)
-            test_years = [train_year] if train_year != 2010 else train_years
+            test_years = [train_year] if train_year != 2010 else [2010, 2012, 2014, 2016, 2018, 2020]
 
             # import pdb; pdb.set_trace()
 
@@ -140,7 +159,7 @@ for train_year in train_years:
                     print(f"train: {model_name} {train_year} {alpha} | test: {test_year} {test_alpha}")
                     pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip)
                     info = {
-                        "learning_method": model_name,
+                        "learning_method": model_name + f"_platt_{scale_year}" if platt else '',
                         "data_type": data_type,
                         "train_alpha": alpha,
                         "train_year": train_year,
