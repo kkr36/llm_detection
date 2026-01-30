@@ -10,7 +10,7 @@ from prepare_metrics import *
 
 train_years = [2010, 2012, 2014, 2016, 2018, 2020]
 
-entrance_path = "logging_accuracy_temporal_alpha_full_sentence_combine"
+entrance_path = "logging_accuracy_temporal_alpha_full_sentence"
 
 data_type = "ArXiv_BERT"
 
@@ -61,6 +61,7 @@ for train_year in train_years[-1:]:
         estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train")
         # get test_years, test_alpha
         test_alphas = [0.5]
+        test_cis = [.9, .95, .99]
         # if alpha not in test_alphas: test_alphas.append(alpha)
         test_years = [train_year] if train_year != 2010 else train_years
 
@@ -72,7 +73,7 @@ for train_year in train_years[-1:]:
                 # tokenize the test set
                 tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val")
                 # MLE with (train, test)
-                alpha_hat, ci = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip)
+                alpha_hat, half_widths = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis)
                 # store results
                 row = {
                         "learning_method": "MLE",
@@ -89,8 +90,10 @@ for train_year in train_years[-1:]:
                         "flip": flip,
                         "run_id": run_id
                     }
-
-                row["bbe"], row["bbe_l"], row["bbe_u"] = alpha_hat, alpha_hat - ci, alpha_hat + ci
+                
+                row["bbe"] = alpha_hat
+                for ci in test_cis:
+                    row[f"bbe_l_{ci}"], row[f"bbe_u_{ci}"] = alpha_hat - half_widths[ci], alpha_hat + half_widths[ci]
 
                 # append
                 metrics_df = pd.concat(
