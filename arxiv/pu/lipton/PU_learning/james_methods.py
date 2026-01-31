@@ -376,7 +376,7 @@ class MLE():
             cis[ci] = np.percentile(alpha_values_bootstrap, [diff, 1.-diff])
         return cis
 
-    def inference(self,inference_data,exploded_data=False, test_cis = [.95]):
+    def inference(self,inference_data,exploded_data=False, n_bootstrap=1000,test_cis = [.95]):
         """
         Performs inference on a new dataset, estimating the mixing parameter (alpha) and its confidence interval.
         
@@ -411,7 +411,7 @@ class MLE():
         # Convert sentences to sets of tokens found in the vocabulary, here we use swifter to parallelize the process
         data = inference_data['inference_sentence'].swifter.progress_bar(False).apply(lambda x: set(token for token in x if token in self.all_tokens_set))
         # Infer the confidence interval for the mixing parameter alpha
-        confidence_intervals=self.bootstrap_alpha_inference(data, inference_data, test_cis)
+        confidence_intervals=self.bootstrap_alpha_inference(data, inference_data, n_bootstrap, test_cis)
         # Calculate and round the mean of the confidence interval and its half-width
         half_widths = {}
         for ci in test_cis:

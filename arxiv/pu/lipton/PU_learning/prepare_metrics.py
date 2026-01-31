@@ -23,7 +23,7 @@ def bootstrap_metric_bbe(metric_fn, preds_p, preds_u, u_targets, n_bootstrap=100
         estimate = metric_fn(preds_p[idx_p], preds_u[idx_u], u_targets[idx_u])[0]
         estimates.append(estimate)
     
-    point_estimate = metric_fn(preds_p, preds_u)  # Use original data for point estimate
+    point_estimate, _, _ = metric_fn(preds_p, preds_u, u_targets)  # Use original data for point estimate
     lowers = {}
     uppers = {}
     for ci in cis:

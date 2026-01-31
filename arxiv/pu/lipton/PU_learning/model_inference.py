@@ -259,7 +259,7 @@ def estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, 
 
     estimate_text_distribution(human_train, ai_train, f"{data_dir}/multillm/james_v_us/{load_str.replace('.parquet', '_logprob.parquet')}")
 
-def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis):
+def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, n_bootstrap):
     def df_to_val_set(df, t_alpha):
         human_data = df[["human_sentence", "human_index"]]
         human_subset = human_data[human_data['human_index'] != -1]
@@ -277,5 +277,5 @@ def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sent
     val_data_path = f"{data_dir}/multillm/james_v_us/{val_data_str}"
     val_data = pd.read_parquet(val_data_path)
     val_data = df_to_val_set(val_data, test_alpha)
-    solution, half_widths = mle.inference(val_data,True,test_cis)
+    solution, half_widths = mle.inference(val_data,True,n_bootstrap,test_cis)
     return solution, half_widths

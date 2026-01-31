@@ -28,7 +28,7 @@ from platt_scaling import *
 #     prior_df = pd.read_csv(prior_csv)
 # exit_path = entrance_path if not prior_csv else f"{prior_csv.split('.csv')[0]}1.csv"
 
-def update_dict(metrics_dict, metric, point, uppers, lowers):
+def update_dict(metrics_dict, metric, point, lowers, uppers):
     metrics_dict[metric] = point
     for ci in uppers:
         assert(ci in lowers)
@@ -156,7 +156,7 @@ for train_year in train_years:
                     print(f"train: {model_name} {train_year} {alpha} | test: {test_year} {test_alpha}")
                     pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip)
                     info = {
-                        "learning_method": model_name + f"_platt_{scale_year}" if platt else '',
+                        "learning_method": model_name + (f"_platt_{scale_year}" if platt else ''),
                         "data_type": data_type,
                         "train_alpha": alpha,
                         "train_year": train_year,
