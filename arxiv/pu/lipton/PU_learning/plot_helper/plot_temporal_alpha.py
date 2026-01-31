@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
 
-input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal.csv"
+input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal_2.csv"
 import os
 output_folder = input_file.split("/")[-1].split(".csv")[0]
 if not os.path.exists(output_folder):
@@ -63,8 +63,8 @@ def make_line_plot(metric, x_lab, title, data):
                 )
         ax.fill_between(
             subset[x_lab],
-            subset[f"{real_metric}_l"] if metric != "bbe" else subset[f"{real_metric}_l"]-.5,
-            subset[f"{real_metric}_u"] if metric != "bbe" else subset[f"{real_metric}_u"]-.5,
+            subset[f"{real_metric}_l_0.95"] if metric != "bbe" else subset[f"{real_metric}_l_0.95"]-.5,
+            subset[f"{real_metric}_u_0.95"] if metric != "bbe" else subset[f"{real_metric}_u_0.95"]-.5,
             alpha=0.3,
             color=col
             # label="confidence interval",
