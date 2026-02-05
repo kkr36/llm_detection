@@ -76,7 +76,6 @@ for train_year in train_years:
         }
 
         for model_name, model_path in model_paths.items():
-            if "PU" in model_name: continue
             net = get_model("DistilBert")
             state_dict = torch.load(model_path, map_location=device)
             state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
@@ -106,6 +105,7 @@ for train_year in train_years:
                 for test_year in test_years:
                     print(f"train: {model_name} {train_year} {alpha} | test: {test_year} {test_alpha}")
                     pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip)
+                    unlabeled_probs = unlabeled_probs[:,0]
 
                     if train_year == 2010:
                         temp_dict[model_name][test_year] = (unlabeled_probs, unlabeled_targets)
@@ -129,65 +129,131 @@ def plot_overlaid_hists(
     title_prefix,
     bins=50,
     density=True,
-    alpha=0.5,
+    alpha=0.4,
 ):
     """
     data_dict[key] = (probs, targets)
-    Produces two plots:
-      - label == 1 (target == 0)
-      - label == 0 (target == 1)
+    Produces four plots:
+      - label == 1 (PDF)
+      - label == 0 (PDF)
+      - label == 1 (CDF)
+      - label == 0 (CDF)
     """
-    # -------- label == 1 (target == 0) --------
+    cols = ["red", "purple", "blue"]  # ordered, perceptual
+
+    def plot_ecdf(ax, x, label, color):
+        x = np.sort(x)
+        y = np.arange(1, len(x) + 1) / len(x)
+        ax.step(x, y, where="post", label=label, color=color)
+
+    # -------- label == 1 (target == 0): PDF --------
     fig, ax = plt.subplots()
-    plt.figure(figsize=(5, 4))
-    for key, (probs, targets) in data_dict.items():
+    for i, (key, (probs, targets)) in enumerate(data_dict.items()):
         probs = np.asarray(probs)
         targets = np.asarray(targets)
+        mask = targets == 0
 
-        mask = targets == 0   # flipped: target 0 -> label 1
-        plt.hist(
+        ax.hist(
             probs[mask],
             bins=bins,
             density=density,
             alpha=alpha,
             histtype="stepfilled",
             label=str(key),
+            color=cols[i],
         )
 
     if "year" in title_prefix.lower():
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=3,integer=True))
-    # plt.title(f"{title_prefix} | {model_name} | label = 1")
-    plt.xlabel("Predicted probability")
-    plt.ylabel("Density" if density else "Count")
-    plt.legend(title=title_prefix)
-    plt.tight_layout()
-    plt.savefig(f"{title_prefix.replace(' ', '_')}_{model_name}_pos.pdf", format='pdf', bbox_inches='tight')
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
 
-    # -------- label == 0 (target == 1) --------
+    ax.set_xlabel("Predicted probability")
+    ax.set_ylabel("Density" if density else "Count")
+    ax.legend(title=title_prefix)
+    plt.tight_layout()
+    plt.savefig(
+        f"{title_prefix.replace(' ', '_')}_{model_name}_pos.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )
+    plt.clf()
+
+    # -------- label == 1 (target == 0): CDF --------
     fig, ax = plt.subplots()
-    plt.figure(figsize=(5, 4))
-    for key, (probs, targets) in data_dict.items():
+    for i, (key, (probs, targets)) in enumerate(data_dict.items()):
         probs = np.asarray(probs)
         targets = np.asarray(targets)
+        mask = targets == 0
 
-        mask = targets == 1   # flipped: target 1 -> label 0
-        plt.hist(
+        plot_ecdf(ax, probs[mask], label=str(key), color=cols[i])
+
+    if "year" in title_prefix.lower():
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
+
+    ax.set_xlabel("Predicted probability")
+    ax.set_ylabel("CDF")
+    ax.legend(title=title_prefix)
+    plt.tight_layout()
+    plt.savefig(
+        f"{title_prefix.replace(' ', '_')}_{model_name}_pos_cdf.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )
+    plt.clf()
+
+    # -------- label == 0 (target == 1): PDF --------
+    fig, ax = plt.subplots()
+    for i, (key, (probs, targets)) in enumerate(data_dict.items()):
+        probs = np.asarray(probs)
+        targets = np.asarray(targets)
+        mask = targets == 1
+
+        ax.hist(
             probs[mask],
             bins=bins,
             density=density,
             alpha=alpha,
             histtype="stepfilled",
             label=str(key),
+            color=cols[i],
         )
 
     if "year" in title_prefix.lower():
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=3,integer=True))
-    # plt.title(f"{title_prefix} | {model_name} | label = 0")
-    plt.xlabel("Predicted probability")
-    plt.ylabel("Density" if density else "Count")
-    plt.legend(title=title_prefix)
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
+
+    ax.set_xlabel("Predicted probability")
+    ax.set_ylabel("Density" if density else "Count")
+    ax.legend(title=title_prefix)
     plt.tight_layout()
-    plt.savefig(f"{title_prefix.replace(' ', '_')}_{model_name}_neg.pdf", format='pdf', bbox_inches='tight')
+    plt.savefig(
+        f"{title_prefix.replace(' ', '_')}_{model_name}_neg.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )
+    plt.clf()
+
+    # -------- label == 0 (target == 1): CDF --------
+    fig, ax = plt.subplots()
+    for i, (key, (probs, targets)) in enumerate(data_dict.items()):
+        probs = np.asarray(probs)
+        targets = np.asarray(targets)
+        mask = targets == 1
+
+        plot_ecdf(ax, probs[mask], label=str(key), color=cols[i])
+
+    if "year" in title_prefix.lower():
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
+
+    ax.set_xlabel("Predicted probability")
+    ax.set_ylabel("CDF")
+    ax.legend(title=title_prefix)
+    plt.tight_layout()
+    plt.savefig(
+        f"{title_prefix.replace(' ', '_')}_{model_name}_neg_cdf.pdf",
+        format="pdf",
+        bbox_inches="tight",
+    )
+    plt.clf()
+
 
 for model_name in temp_dict:
     plot_overlaid_hists(
