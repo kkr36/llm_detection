@@ -26,7 +26,7 @@ gemini = False
 
 add = "add" in entrance_path
 
-output_csv = f"{entrance_path}_alpha_temporal.csv"
+output_csv = f"{entrance_path}_alpha_temporal_2.csv"
 
 
 # import pdb; pdb.set_trace()
@@ -41,7 +41,7 @@ else:
 run_id = len(metrics_df)
 
 # for each train_year:
-for train_year in train_years[-1:]:
+for train_year in train_years:
     if train_year == 2020:
         alphas = [0, .15, .3, .45, .6]
     elif train_year == 2018: 
@@ -70,10 +70,12 @@ for train_year in train_years[-1:]:
             # for each test_year:
             for test_year in test_years:
 
+                print(f"{train_year} {alpha} | {test_year} {test_alpha}")
+
                 # tokenize the test set
                 tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val")
                 # MLE with (train, test)
-                alpha_hat, half_widths = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis)
+                alpha_hat, half_widths = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, 2500)
                 # store results
                 row = {
                         "learning_method": "MLE",

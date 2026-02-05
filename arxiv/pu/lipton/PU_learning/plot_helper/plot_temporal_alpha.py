@@ -76,10 +76,10 @@ def make_line_plot(metric, x_lab, title, data):
     plt.ylabel(name_to_name[metric])
     plt.tight_layout()
     # plt.legend()
-    ax.legend(
-        loc="center left",
-        bbox_to_anchor=(1, 0.5)
-    )
+    # ax.legend(
+    #     loc="center left",
+    #     bbox_to_anchor=(1, 0.5)
+    # )
 
     plt.savefig(f"{output_folder}/{title}_{metric}.pdf", bbox_inches="tight")
     plt.clf()
