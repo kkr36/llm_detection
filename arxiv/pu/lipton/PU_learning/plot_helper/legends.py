@@ -1,50 +1,56 @@
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
-fig = plt.figure(figsize=(6, 1.2))
+fig = plt.figure(figsize=(8.4, 1.8))
 
 handles = [
-    Line2D([], [], color="orange", linewidth=2, label="PU Retrain (BBE)"),
-    Line2D([], [], color="red",    linewidth=2, label="PN Retrain (BBE)"),
-    Line2D([], [], color="green",  linewidth=2, label="MLE Retrain"),
-    Line2D([], [], color="blue",   linewidth=2, label="PN (Plug-In)"),
+    Line2D([], [], color="steelblue", linewidth=3, label="PU Retrain"),
+    Line2D([], [], color="red",    linewidth=3, label="Supervised Retrain"),
+    Line2D([], [], color="darkorange",   linewidth=3, label="Supervised (Plug-In)"),
+    Line2D([], [], color="burlywood",  linewidth=3, label="Liang et al"),
+    Line2D([], [], color="black",  linewidth=3, label="Unachievable Optimal"),
 ]
 
 fig.legend(
     handles=handles,
     loc="center",
-    ncol=2,
+    ncol=2,                 # 3 columns → 2 rows with 5 entries
     frameon=True,
-    handlelength=2.8,
+    handlelength=3.0,
     columnspacing=1.6,
-    fontsize=14,
+    handletextpad=0.8,
+    fontsize=16,
 )
 
 plt.savefig("alpha_legend.pdf", bbox_inches="tight")
 plt.close()
 
 
+
+
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
-fig = plt.figure(figsize=(6.5, 1.6))
+# SAME size as the previous legend
+fig = plt.figure(figsize=(8.4, 1.8))
 
 handles = [
-    Line2D([], [], color="red",   linestyle=":", linewidth=2, label="PN 2010 (BBE)"),
-    Line2D([], [], color="red",   linestyle="-", linewidth=2, label="PN Retrain (BBE)"),
-    Line2D([], [], color="green", linestyle=":", linewidth=2, label="MLE 2010"),
-    Line2D([], [], color="green", linestyle="-", linewidth=2, label="MLE Retrain"),
-    Line2D([], [], color="blue",  linestyle=":", linewidth=2, label="PN 2010 Rescaled (Plug-In)"),
+    Line2D([], [], color="red",   linestyle="--", linewidth=3, label="Supervised 2010"),
+    Line2D([], [], color="black", linestyle="-", linewidth=3, label="Unachievable Optimal"),
+    Line2D([], [], color="burlywood", linestyle="--", linewidth=3, label="Liang et al 2010"),
+    Line2D([], [], color="darkorange",  linestyle="--", linewidth=3, label="Supervised 2010 Platt (Plug-In)"),
+    # Line2D([], [], color="green", linestyle="-", linewidth=3, label="Liang et al Retrain"),
 ]
 
 fig.legend(
     handles=handles,
     loc="center",
-    ncol=2,
+    ncol=2,                 # 3 × 2 layout
     frameon=True,
-    handlelength=2.8,
+    handlelength=3.0,
     columnspacing=1.6,
-    fontsize=14,
+    handletextpad=0.8,
+    fontsize=16,
 )
 
 plt.savefig("temporal_legend.pdf", bbox_inches="tight")
