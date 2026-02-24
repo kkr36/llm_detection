@@ -7,10 +7,60 @@ import json
 import spacy
 from tqdm import tqdm
 import re
+import random
+import csv
 nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
 nlp.enable_pipe("senter")
 
-import math
+import pandas as pd
+
+def find_cells_with_substring(df, x, case=True):
+    """
+    Returns a list of (row_index, column_name, cell_value)
+    for all cells containing substring x.
+    """
+    # Work on string version (handles NaNs safely)
+    df_str = df.astype(str)
+    
+    # Boolean mask of matches
+    mask = df_str.apply(
+        lambda col: col.str.contains(x, case=case, na=False)
+    )
+    
+    results = []
+    
+    # Iterate over True locations
+    for row_idx, col_name in zip(*mask.to_numpy().nonzero()):
+        results.append(
+            (
+                df.index[row_idx],
+                df.columns[col_name],
+                df.iat[row_idx, col_name]
+            )
+        )
+    
+    return results
+
+# def clean_text(text):
+#     # replace bad things we know how to; remove all other non-typable
+#     bad_dashes = ['—', '⁻', '–', '‑', '‐', '−']
+#     bad_apostrophes = ['’', '′', '‘']
+#     bad_left_quote = "“"
+#     bad_right_quote = "”"
+#     for bad_dash in bad_dashes:
+#         text = [t.replace(bad_dash, '-') for t in text]
+#     for bad_apostrophe in bad_apostrophes:
+#         text = [t.replace(bad_apostrophe, "'") for t in text]
+#     text = [t.replace(bad_left_quote, '"') for t in text]
+#     text = [t.replace(bad_right_quote, '"') for t in text]
+#     text = [t.replace("\n", " ") for t in text]
+
+#     # remove non-typable
+#     allowed = set(string.printable)
+#     text = [''.join(ch for ch in s if ch in allowed) for s in text]
+#     return text
+
+# import math
 
 # def split_into_sentences(abstracts, labels):
 #     all_sentences = []
@@ -34,6 +84,45 @@ import math
 #     # import pdb; pdb.set_trace()
 #     return all_sentences, all_labels
 
+
+def create_blind_test(human_text, llm_text, n, title, seed=42):
+    """
+    Samples n entries from each list, shuffles them together,
+    and writes key.csv and test.csv.
+    """
+    assert n <= len(human_text), "n larger than human_text size"
+    assert n <= len(llm_text), "n larger than llm_text size"
+
+    random.seed(seed)
+
+    # Sample n from each
+    human_sample = random.sample(human_text, n)
+    llm_sample = random.sample(llm_text, n)
+
+    # import pdb; pdb.set_trace()
+
+    # Label them
+    combined = (
+        [(text, "human") for text in human_sample] +
+        [(text, "LLM") for text in llm_sample]
+    )
+
+    # Shuffle combined list
+    random.shuffle(combined)
+
+    # Write key.csv
+    with open(f"{title}_key.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["text", "writer"])
+        for text, label in combined:
+            writer.writerow([text, label])
+
+    # Write test.csv (same order, no labels)
+    with open(f"{title}_test.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["text"])
+        for text, _ in combined:
+            writer.writerow([text])
 
 def split_into_sentences(abstracts, labels, batch_size=200, n_process=1):
     all_sentences = []
@@ -217,6 +306,8 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     if not inject: pct_inject = 0
     
     arxiv_data = pd.read_parquet(split_dir)
+
+    import pdb; pdb.set_trace()
     # tmp = arxiv_data.copy(deep=True)
     num_inject = int(pct_inject * len(arxiv_data))
     print(f"injecting {num_inject} LLM-written abstracts ({pct_inject}) into pool of {len(arxiv_data)} abstracts")
@@ -246,8 +337,6 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
             llm_writing.append(original_rewrite)
     arxiv_data['ai_abstract'] = llm_writing
     assert(inject_counter == 0)
-
-    # import pdb; pdb.set_trace()
 
     wrong_labels = arxiv_data.iloc[:num_inject].reset_index(drop=True)
     right_labels = arxiv_data.iloc[num_inject:].reset_index(drop=True)
@@ -280,17 +369,38 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # print("removed sentences")
     # if split=="val": import pdb; pdb.set_trace()
     if sentence:
-        wrong_texts_human = wrong_labels_subset["human_abstract"].dropna().tolist()
-        wrong_texts_ai = wrong_labels_subset["ai_abstract"].dropna().tolist()
-        print("splitting into sentences")
-        wrong_texts, wrong_labels = split_into_sentences(wrong_texts_human + wrong_texts_ai, [0 for _ in range(len(wrong_texts_human))] + [1 for _ in range(len(wrong_texts_ai))])
+
+        positive_texts = wrong_labels_subset["ai_abstract"].dropna().tolist() + right_labels_subset["ai_abstract"].dropna().tolist()
+        u_positive_texts = wrong_labels_subset["human_abstract"].dropna().tolist()
+        u_negative_texts = right_labels_subset["human_abstract"].dropna().tolist()
+
+        positive_texts, _ = split_into_sentences(positive_texts, [0 for _ in range(len(positive_texts))])
+        u_positive_texts, _ = split_into_sentences(u_positive_texts, [0 for _ in range(len(u_positive_texts))])
+        u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
         # import pdb; pdb.set_trace()
-        # wrong_texts, wrong_labels = split_into_sentences(wrong_labels_subset["ai_abstract"].tolist(), [1 for _ in range(len(wrong_labels_subset))]) # wrong texts are only the double mirrors; we remove all the bad negative labels
-        if not inject: assert(len(wrong_texts) == 0)
-        right_texts, right_labels = split_into_sentences(right_labels_subset["human_abstract"].tolist() + right_labels_subset["ai_abstract"].tolist(), [0 for _ in range(len(right_labels_subset))] + [1 for _ in range(len(right_labels_subset))])
-        texts, labels = wrong_texts + right_texts, wrong_labels + right_labels
+        # create_blind_test(clean_text(u_negative_texts),clean_text(positive_texts),20,"sentence")
+        # create_blind_test(clean_text(right_labels['human_abstract'].tolist()),clean_text(right_labels['ai_abstract'].tolist()),10,"abstract")
+        # exit()
+        # Compute feasible T bounds
+        T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
+        T_neg = len(u_negative_texts) / (1 - alpha) if alpha < 1 else np.inf
+
+        T = int(min(T_pos, T_neg))
+
+        n_pos = int(alpha * T)
+        n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
+
         # import pdb; pdb.set_trace()
-        print(f"Pollution {split}: {sum(wrong_labels)} / {sum(wrong_labels)} + {sum(right_labels)} = {sum(wrong_labels) / (sum(right_labels) + sum(wrong_labels))}")
+
+        u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
+        u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
+        # import pdb; pdb.set_trace()
+
+        print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
+
+
+        texts = positive_texts + u_positive_texts + u_negative_texts
+        labels = [1 for _ in range(len(positive_texts))] + [0 for _ in range(len(u_positive_texts) + len(u_negative_texts))]
     
     else:
         human_texts = subset["human_abstract"].dropna().tolist()
@@ -391,6 +501,7 @@ def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, i
     return texts, labels
 
 def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False, flip=False):
+    # import pdb; pdb.set_trace()
     llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
     assert(llm in llm_cols or llm=="all"), f"{llm} not valid"
 
@@ -405,9 +516,17 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False,
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
             assert(len(tmp_subset)==2500)
 
-            tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
+            llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+
+            # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
             print(len(tmp_subset))
             tmp_subset["llm_writing"] = tmp_subset[llm2]
+
+            if split=="train":
+                tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)]
+            elif split=="val":
+                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
+
             if llm_subset is None:
                 llm_subset = tmp_subset
             else:
@@ -415,13 +534,13 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False,
     else:
         llm_subset = arxiv_data[arxiv_data[llm].notna() & (arxiv_data[llm] != "")].reset_index(drop=True) # isolate llm writing
 
-    # shuffle
-    llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+        # shuffle
+        llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
 
-    if split=="train":
-        llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
-    elif split=="val":
-        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+        if split=="train":
+            llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
+        elif split=="val":
+            llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
 
     llm_texts = llm_subset[llm if llm != "all" else "llm_writing"].tolist()
     human_texts = llm_subset['human_abstract'].tolist()
@@ -444,9 +563,18 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False,
         u_positive_texts, u_positive_labels = split_into_sentences(u_positive_texts, [1 for _ in range(len(u_positive_texts))])
         u_negative_texts, u_negative_labels = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
 
-    min_size = min(len(u_positive_texts), len(u_negative_texts))
-    n_pos = int(min_size * alpha)
-    n_neg = int(min_size * (1-alpha))
+    # min_size = min(len(u_positive_texts), len(u_negative_texts))
+    # n_pos = int(min_size * alpha)
+    # n_neg = int(min_size * (1-alpha))
+
+    # Compute feasible T bounds
+    T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
+    T_neg = len(u_negative_texts) / (1 - alpha) if alpha < 1 else np.inf
+
+    T = int(min(T_pos, T_neg))
+
+    n_pos = int(alpha * T)
+    n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
 
     u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
     u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))

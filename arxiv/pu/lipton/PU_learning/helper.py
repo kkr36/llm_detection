@@ -31,6 +31,7 @@ def clean_text(text):
         text = [t.replace(bad_apostrophe, "'") for t in text]
     text = [t.replace(bad_left_quote, '"') for t in text]
     text = [t.replace(bad_right_quote, '"') for t in text]
+    text = [re.sub(r"[\n\t]+", " ", t) for t in text] # consecutive tabs, newline
 
     # remove non-typable
     allowed = set(string.printable)
@@ -563,9 +564,9 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
     elif "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
         data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
-
-        train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence, gemini, flip)
-        test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence, gemini, flip)
+        # import pdb; pdb.set_trace()
+        train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence, alpha, gemini, flip)
+        test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence, alpha, gemini, flip)
         if clean:
             orig_train_len = sum([len(x) for x in train_texts])
             train_texts = clean_text(train_texts)

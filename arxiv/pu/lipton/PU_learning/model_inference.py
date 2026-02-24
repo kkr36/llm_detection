@@ -172,9 +172,136 @@ def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, 
         shuffle=False)
     return u_data_loader, u_texts, u_labels
 
+def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip):
+
+    def read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip):
+        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+        assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
+        
+        arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
+
+        llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
+
+        # shuffle
+        llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+
+        llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
+        human_texts = llm_subset['human_abstract'].tolist()
+        assert(len(llm_texts) == len(human_texts))
+
+        if flip:
+            # import pdb; pdb.set_trace()
+            positive_texts = human_texts[int(len(human_texts)*.75):]
+        else:
+            positive_texts = llm_texts[int(len(llm_texts)*.75):]
+
+        # sentence check
+        if sentence:
+            
+            positive_texts, _ = split_into_sentences(positive_texts, [1 for _ in range(len(positive_texts))])
+        
+        if clean:
+            positive_texts = clean_text(positive_texts)
+
+        return positive_texts
+
+
+    if data_type == "ArXiv_BERT":
+        p_texts = read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip)
+
+    # turn into dataloader
+    transform = initialize_bert_transform('distilbert-base-uncased')
+
+    train_dataset = IMDbBERTData(p_texts, [1 for _ in range(len(p_texts))], transform=transform)
+    p_data = PosData(transform=train_dataset.transform, \
+                    target_transform=train_dataset.target_transform, \
+                    data=train_dataset.p_data, index=np.array(range(len(train_dataset.p_data))), data_type=data_type)
+    p_data_loader = torch.utils.data.DataLoader(p_data, batch_size=16, \
+        shuffle=False)
+    return p_data_loader
+
+def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split="in"):
+
+    def read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split):
+        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+        assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
+        
+        arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
+
+        llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
+
+        # shuffle
+        llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+
+        llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
+        human_texts = llm_subset['human_abstract'].tolist()
+        assert(len(llm_texts) == len(human_texts))
+
+        if flip:
+            u_positive_texts = human_texts[:int(len(human_texts)*.75)]
+            u_negative_texts = llm_texts[:int(len(llm_texts)*.75)]
+        else:
+            u_positive_texts = llm_texts[:int(len(llm_texts)*.75)]
+            u_negative_texts = human_texts[:int(len(human_texts)*.75)]
+
+        # sentence check
+        if sentence:
+            u_positive_texts, _ = split_into_sentences(u_positive_texts, [1 for _ in range(len(u_positive_texts))])
+            u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
+
+        # Compute feasible T bounds
+        T_pos = len(u_positive_texts) / test_alpha if test_alpha > 0 else np.inf
+        T_neg = len(u_negative_texts) / (1 - test_alpha) if test_alpha < 1 else np.inf
+
+        T = int(min(T_pos, T_neg))
+
+        n_pos = int(test_alpha * T)
+        n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
+
+        u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
+        u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
+        print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
+        
+        if clean:
+            u_positive_texts = clean_text(u_positive_texts)
+            u_negative_texts = clean_text(u_negative_texts)
+
+        return u_positive_texts + u_negative_texts, [1 for _ in range(len(u_positive_texts))] + [0 for _ in range(len(u_negative_texts))]
+
+    if data_type == "ArXiv_BERT":
+        u_texts, u_labels = read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split)
+
+    pu, nu = sum(u_labels), len(u_labels) - sum(u_labels)
+    assert(round(pu / (pu+nu), 2) == test_alpha)    
+
+    # turn into dataloader
+    transform = initialize_bert_transform('distilbert-base-uncased')
+
+    train_dataset = IMDbBERTData(u_texts, u_labels, transform=transform)
+    u_data = UnlabelData(transform=train_dataset.transform, \
+                target_transform=train_dataset.target_transform, \
+                pos_data=train_dataset.p_data, neg_data=train_dataset.n_data, \
+                index=np.array(range(len(u_texts))),data_type=data_type)
+    u_data_loader = torch.utils.data.DataLoader(u_data, batch_size=16, \
+        shuffle=False)
+    return u_data_loader, u_texts, u_labels
+
 def get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip):
     p_data_loader = get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip)
     u_data_loader, _, _ = get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, "in")
+
+    # get preds with model
+    pos_probs = p_probs(net, device, p_data_loader)
+    unlabeled_probs, unlabeled_targets = u_probs(net, device, u_data_loader)
+
+    # return pos preds, u preds, u labels
+    return pos_probs, unlabeled_probs, unlabeled_targets
+
+def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sentence, clean, gemini, flip):
+    p_data_loader = get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip)
+    u_data_loader, _, _ = get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, "in")
 
     # get preds with model
     pos_probs = p_probs(net, device, p_data_loader)

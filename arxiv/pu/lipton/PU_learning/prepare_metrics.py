@@ -8,13 +8,17 @@ from tqdm import tqdm
 alpha = 0.5  # for plugin metric, adjust as needed
 threshold = 0.5  # classification threshold
 
-def bootstrap_metric_bbe(metric_fn, preds_p, preds_u, u_targets, n_bootstrap=1000, cis=[0.90], seed=42):
+def bootstrap_metric_bbe(metric_fn, preds_p_list, preds_u_list, u_targets_list, n_bootstrap=1000, cis=[0.90], seed=42):
     """Generic bootstrap function that returns (point_estimate, lower_bound, upper_bound)"""
     # Set seed for reproducibility
     np.random.seed(seed)
     
     estimates = []
-    for _ in tqdm(list(range(n_bootstrap)), smoothing=.3):
+    for i in tqdm(list(range(n_bootstrap)), smoothing=.3):
+
+        # import pdb; pdb.set_trace()
+
+        preds_p, preds_u, u_targets = preds_p_list[i%len(preds_p_list)], preds_u_list[i%len(preds_u_list)], u_targets_list[i%len(u_targets_list)]
         # Resample both positives and negatives
         idx_p = np.random.choice(len(preds_p), len(preds_p), replace=True)
         idx_u = np.random.choice(len(preds_u), len(preds_u), replace=True)
@@ -23,7 +27,8 @@ def bootstrap_metric_bbe(metric_fn, preds_p, preds_u, u_targets, n_bootstrap=100
         estimate = metric_fn(preds_p[idx_p], preds_u[idx_u], u_targets[idx_u])[0]
         estimates.append(estimate)
     
-    point_estimate, _, _ = metric_fn(preds_p, preds_u, u_targets)  # Use original data for point estimate
+    # point_estimate, _, _ = metric_fn(preds_p, preds_u, u_targets)  # Use original data for point estimate
+    point_estimate = np.mean(estimates)
     lowers = {}
     uppers = {}
     for ci in cis:
@@ -33,13 +38,17 @@ def bootstrap_metric_bbe(metric_fn, preds_p, preds_u, u_targets, n_bootstrap=100
         uppers[ci] = upper
     return point_estimate, lowers, uppers
 
-def bootstrap_metric(metric_fn, preds_p, preds_u, n_bootstrap=1000, cis=[0.90], seed=42):
+def bootstrap_metric(metric_fn, preds_p_list, preds_u_list, n_bootstrap=1000, cis=[0.90], seed=42):
     """Generic bootstrap function that returns (point_estimate, lower_bound, upper_bound)"""
     # Set seed for reproducibility
     np.random.seed(seed)
     
     estimates = []
-    for _ in tqdm(list(range(n_bootstrap)), smoothing=.3):
+    for i in tqdm(list(range(n_bootstrap)), smoothing=.3):
+
+        # import pdb; pdb.set_trace()
+        preds_p, preds_u = preds_p_list[i%len(preds_p_list)], preds_u_list[i%len(preds_u_list)]
+
         # Resample both positives and negatives
         idx_p = np.random.choice(len(preds_p), len(preds_p), replace=True)
         idx_u = np.random.choice(len(preds_u), len(preds_u), replace=True)
@@ -48,7 +57,8 @@ def bootstrap_metric(metric_fn, preds_p, preds_u, n_bootstrap=1000, cis=[0.90], 
         estimate = metric_fn(preds_p[idx_p], preds_u[idx_u])
         estimates.append(estimate)
     
-    point_estimate = metric_fn(preds_p, preds_u)  # Use original data for point estimate
+    # point_estimate = metric_fn(preds_p, preds_u)  # Use original data for point estimate
+    point_estimate = np.mean(estimates)
     lowers = {}
     uppers = {}
     for ci in cis:
