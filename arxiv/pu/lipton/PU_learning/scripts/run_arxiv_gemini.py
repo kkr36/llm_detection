@@ -5,12 +5,13 @@ import shlex
 if __name__ == "__main__":
 
     years = [2010, 2016, 2018, 2020][-1:]
+    seeds = [0,1,2,3,4]
 
     # alphas = [0, .1, .2, .3, .4, .5, .6][::-1][1:2]
     # alphas = [0]
     # alphas = [0.7, 0.8]
 
-    train_methods = ['TEDn', 'PN'][1:]
+    train_methods = ['TEDn', 'PN'][:]
 
     # llms = ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
     # llms=["all"]
@@ -36,17 +37,21 @@ if __name__ == "__main__":
 
     #                 subprocess.run(shlex.split(cmd))
 
-    n_models = 5
 
     for year in tqdm(years):
         for train_method in train_methods:
             alpha = 0 if train_method=="PN" else 0.5
             # for alpha in alphas:
+            if alpha == .5: continue
             for llm in llm_list:
-                for n in range(n_models):
+                for seed in seeds:
+                    assert(alpha == 0)
+                    if llm in ["Gemini_2.5_Pro", "Gemini_2.0_Flash-Lite"]: continue
+                    if llm == "Gemini_3_Preview" and seed <= 3: continue
                     lr = 0.00001
+                    # import pdb; pdb.set_trace()
                     # cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=2 --optimizer=AdamW --alpha=0 --beta=.6 --year={year} --log-dir=logging_accuracy_llm/{llm}_sentence"
-                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm_gemini/normal_sentence/alpha_{alpha}/{llm}_{n} --clean --gemini {'--flip' if train_method=='TEDn' else ''}"
+                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm_gemini/normal_sentence/alpha_{alpha}/{llm}_{seed} --seed={seed} --clean --gemini {'--flip' if train_method=='TEDn' else ''}"
 
                     print(cmd)
 

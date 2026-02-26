@@ -5,6 +5,7 @@ import shlex
 if __name__ == "__main__":
 
     years = [2010, 2016, 2018, 2020][-1:]
+    seeds = [0,1,2,3,4]
 
     # alphas = [0, .1, .2, .3, .4, .5, .6][::-1][1:2]
     # alphas = [0]
@@ -36,17 +37,17 @@ if __name__ == "__main__":
 
     #                 subprocess.run(shlex.split(cmd))
 
-    n_models = 5
 
     for year in tqdm(years):
         for train_method in train_methods:
             alpha = 0 if train_method=="PN" else 0.5
             # for alpha in alphas:
             for llm in llm_list:
-                for n in range(n_models):
+                if (alpha == .5 and llm in ["Gemini 2.5 Flash", "Gemini 3 Preview"]): continue
+                for seed in seeds:
                     lr = 0.00001
                     # cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=2 --optimizer=AdamW --alpha=0 --beta=.6 --year={year} --log-dir=logging_accuracy_llm/{llm}_sentence"
-                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm/normal_sentence/alpha_{alpha}/{llm}_{n} --clean --gemini {'--flip' if train_method=='TEDn' else ''}"
+                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm/normal_sentence/alpha_{alpha}/{llm}_{seed} --seed={seed} --clean {'--flip' if train_method=='TEDn' else ''}"
 
                     print(cmd)
 

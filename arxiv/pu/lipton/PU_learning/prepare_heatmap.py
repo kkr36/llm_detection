@@ -90,7 +90,7 @@ epochs = 3 # can toggle
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
 train_year = 2020
 llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"] if gemini else ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
-n_models = 5
+seeds = 5
 
 ### LOGIC ###
 
@@ -116,7 +116,7 @@ for train_llm in llms_list:
 
         nets = []
 
-        for n in range(n_models):
+        for n in range(seeds):
 
             alpha_dir = Path(f"{entrance_path}/normal_sentence/alpha_{train_alpha}/{train_llm_name}_{n}/llm_type_{train_llm_name}_{epochs}")
             # pts_pu = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "TEDn" in p.name][0]
@@ -150,8 +150,8 @@ for train_llm in llms_list:
 
                 preds_p_list, preds_u_list, u_targets_list = [], [], []
 
-                for n in range(n_models):
-                    pos_probs, unlabeled_probs, unlabeled_targets = get_preds_llm(data_type, nets[n], device, test_alpha, test_year, test_llm, sentence, clean, gemini, flip)
+                for n in range(seeds):
+                    pos_probs, unlabeled_probs, unlabeled_targets = get_preds_llm(data_type, nets[n], device, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, n)
                     preds_p_list.append(pos_probs)
                     preds_u_list.append(unlabeled_probs)
                     u_targets_list.append(unlabeled_targets)

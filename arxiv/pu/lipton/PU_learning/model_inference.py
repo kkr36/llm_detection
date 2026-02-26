@@ -58,6 +58,7 @@ def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split):
     num_inject = int(.2 * len(arxiv_data))
 
     right_labels = arxiv_data.iloc[num_inject:].reset_index(drop=True)
+    right_labels = right_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
     if split == "out":
         right_labels = right_labels.iloc[5700:6000].reset_index(drop=True)
     else:
@@ -103,7 +104,7 @@ def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split):
 
     return texts, labels
 
-def read_arxiv_positive(test_year, sentence, clean):
+def read_arxiv_positive(test_year, sentence, clean, seed):
     
     arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet")
 
@@ -117,6 +118,7 @@ def read_arxiv_positive(test_year, sentence, clean):
     num_inject = int(.2 * len(arxiv_data))
 
     right_labels = arxiv_data.iloc[num_inject:].reset_index(drop=True)
+    right_labels = right_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
     right_labels = right_labels.iloc[:999] # the first 1k should be seen by train set of all models 
 
     texts = right_labels["ai_abstract"].tolist()
@@ -130,12 +132,12 @@ def read_arxiv_positive(test_year, sentence, clean):
 
     return texts
 
-def get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip):
+def get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip, seed):
     if data_type == "ArXiv_BERT":
         p_texts = []
         years = [2016, 2018, 2020] if combine else [test_year]
         for year in years:
-            p_texts += read_arxiv_positive(year, sentence, clean)
+            p_texts += read_arxiv_positive(year, sentence, clean, seed)
 
     # turn into dataloader
     transform = initialize_bert_transform('distilbert-base-uncased')
@@ -148,12 +150,12 @@ def get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip):
         shuffle=False)
     return p_data_loader
 
-def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, split="in"):
+def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, split, seed):
     if data_type == "ArXiv_BERT":
         u_texts, u_labels = [], []
         years = [2016, 2018, 2020] if combine else [test_year]
         for year in years:
-            ut, ul = read_arxiv_unlabeled(test_alpha, year, sentence, clean, split)
+            ut, ul = read_arxiv_unlabeled(test_alpha, year, sentence, clean, split, seed)
             u_texts += ut
             u_labels += ul
 
@@ -172,9 +174,9 @@ def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, 
         shuffle=False)
     return u_data_loader, u_texts, u_labels
 
-def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip):
+def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip, seed):
 
-    def read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip):
+    def read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip, seed):
         llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
         assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
         
@@ -183,7 +185,7 @@ def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip
         llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
 
         # shuffle
-        llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
         llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
 
         llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
@@ -208,7 +210,7 @@ def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip
 
 
     if data_type == "ArXiv_BERT":
-        p_texts = read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip)
+        p_texts = read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip, seed)
 
     # turn into dataloader
     transform = initialize_bert_transform('distilbert-base-uncased')
@@ -221,9 +223,9 @@ def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip
         shuffle=False)
     return p_data_loader
 
-def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split="in"):
+def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split, seed):
 
-    def read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split):
+    def read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split, seed):
         llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
         assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
         
@@ -232,7 +234,7 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
         llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
 
         # shuffle
-        llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
         llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
 
         llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
@@ -271,7 +273,7 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
         return u_positive_texts + u_negative_texts, [1 for _ in range(len(u_positive_texts))] + [0 for _ in range(len(u_negative_texts))]
 
     if data_type == "ArXiv_BERT":
-        u_texts, u_labels = read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split)
+        u_texts, u_labels = read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split, seed)
 
     pu, nu = sum(u_labels), len(u_labels) - sum(u_labels)
     assert(round(pu / (pu+nu), 2) == test_alpha)    
@@ -288,9 +290,9 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
         shuffle=False)
     return u_data_loader, u_texts, u_labels
 
-def get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip):
-    p_data_loader = get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip)
-    u_data_loader, _, _ = get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, "in")
+def get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, seed):
+    p_data_loader = get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip, seed)
+    u_data_loader, _, _ = get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, "in", seed)
 
     # get preds with model
     pos_probs = p_probs(net, device, p_data_loader)
@@ -299,9 +301,9 @@ def get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, 
     # return pos preds, u preds, u labels
     return pos_probs, unlabeled_probs, unlabeled_targets
 
-def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sentence, clean, gemini, flip):
-    p_data_loader = get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip)
-    u_data_loader, _, _ = get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, "in")
+def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, seed):
+    p_data_loader = get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip, seed)
+    u_data_loader, _, _ = get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, "in", seed)
 
     # get preds with model
     pos_probs = p_probs(net, device, p_data_loader)

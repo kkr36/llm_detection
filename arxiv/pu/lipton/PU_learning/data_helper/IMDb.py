@@ -297,7 +297,8 @@ def read_arxiv_split_year(data_dir, label_year, unlabel_year, alpha=None, split=
 
 
 
-def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inject=True):
+def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inject=True, seed=None):
+    assert(seed is not None)
     # import os
     # if not(os.path.exists(split_dir)):
     # year = int(re.search(r"\d{4}", split_dir).group(0))
@@ -340,6 +341,9 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
 
     wrong_labels = arxiv_data.iloc[:num_inject].reset_index(drop=True)
     right_labels = arxiv_data.iloc[num_inject:].reset_index(drop=True)
+
+    wrong_labels = wrong_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
+    right_labels = right_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
 
     assert(split in ["train", "val"])
     if split == "train":
@@ -417,8 +421,9 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # import pdb; pdb.set_trace()
     return texts, labels
 
-def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, inject=True):
+def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, inject=True, seed=None):
     assert(inject)
+    assert(seed is not None)
     pct_inject = .2
     
     arxiv_data = pd.read_parquet(split_dir)
@@ -449,6 +454,9 @@ def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, i
 
     wrong_labels = arxiv_data.iloc[:num_inject].reset_index(drop=True)
     right_labels = arxiv_data.iloc[num_inject:int(num_inject + (2/3*num_inject))].reset_index(drop=True)
+
+    wrong_labels = wrong_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
+    right_labels = right_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
 
     assert(split in ["train", "val"])
     if split == "train":
@@ -500,7 +508,8 @@ def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, i
 
     return texts, labels
 
-def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False, flip=False):
+def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False, flip=False, seed=None):
+    assert(seed is not None)
     # import pdb; pdb.set_trace()
     llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
     assert(llm in llm_cols or llm=="all"), f"{llm} not valid"
@@ -516,7 +525,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False,
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
             assert(len(tmp_subset)==2500)
 
-            llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+            llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
 
             # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
             print(len(tmp_subset))
@@ -535,7 +544,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False,
         llm_subset = arxiv_data[arxiv_data[llm].notna() & (arxiv_data[llm] != "")].reset_index(drop=True) # isolate llm writing
 
         # shuffle
-        llm_subset = llm_subset.sample(frac=1, random_state=42).reset_index(drop=True)
+        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
 
         if split=="train":
             llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
