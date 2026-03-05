@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # alphas = [0]
     # alphas = [0.7, 0.8]
 
-    train_methods = ['TEDn', 'PN'][:1]
+    train_methods = ['TEDn', 'PN'][:]
 
     llms = ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
     # llms=["all"]
@@ -43,7 +43,7 @@ if __name__ == "__main__":
             alpha = 0 if train_method=="PN" else 0.5
             # for alpha in alphas:
             for llm in llm_list:
-                if (alpha == .5 and llm in ["Gemini 2.5 Flash", "Gemini 3 Preview"]): continue
+                if alpha == .5: continue
                 for seed in seeds:
                     lr = 0.00001
                     # cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=2 --optimizer=AdamW --alpha=0 --beta=.6 --year={year} --log-dir=logging_accuracy_llm/{llm}_sentence"

@@ -46,10 +46,10 @@ if __name__ == "__main__":
             for llm in llm_list:
                 for seed in seeds:
                     assert(alpha == 0)
-                    if llm in ["Gemini_2.5_Pro", "Gemini_2.0_Flash-Lite"]: continue
-                    if llm == "Gemini_3_Preview" and seed <= 3: continue
+                    # if llm in ["Gemini_2.5_Pro", "Gemini_2.0_Flash-Lite"]: continue
+                    if llm != "Gemini_3_Preview" or seed != 3: continue
                     lr = 0.00001
-                    # import pdb; pdb.set_trace()
+                    import pdb; pdb.set_trace()
                     # cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=2 --optimizer=AdamW --alpha=0 --beta=.6 --year={year} --log-dir=logging_accuracy_llm/{llm}_sentence"
                     cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm_gemini/normal_sentence/alpha_{alpha}/{llm}_{seed} --seed={seed} --clean --gemini {'--flip' if train_method=='TEDn' else ''}"
 

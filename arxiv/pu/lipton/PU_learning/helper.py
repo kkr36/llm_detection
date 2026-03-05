@@ -17,6 +17,7 @@ from model_helper import *
 # import spacy
 import string
 from tqdm import tqdm
+from unidecode import unidecode
 shuffle=True
 
 def clean_text(text):
@@ -31,7 +32,11 @@ def clean_text(text):
         text = [t.replace(bad_apostrophe, "'") for t in text]
     text = [t.replace(bad_left_quote, '"') for t in text]
     text = [t.replace(bad_right_quote, '"') for t in text]
+
+    # text = [unidecode(t) for t in text]
     text = [re.sub(r"[\n\t]+", " ", t) for t in text] # consecutive tabs, newline
+    # text = [re.sub(r"[ ]+", " ", t) for t in text] # consecutive spaces
+    # text = [t.strip() for t in text] # leading, trailing whitespace
 
     # remove non-typable
     allowed = set(string.printable)
@@ -209,8 +214,8 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
 
             data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-            train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, seed) # should have 15k each
-            test_texts_new, test_labels_new = load_fn(data_path, alpha, "val", sentence, seed) # should have 5k each
+            train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, True, seed) # should have 15k each
+            test_texts_new, test_labels_new = load_fn(data_path, alpha, "val", sentence, True, seed) # should have 5k each
             cal_texts_new, cal_labels_new = read_arxiv_split2(data_path, 0, "val", sentence, inject=False, seed=seed)
             if clean:
                 orig_train_len = sum([len(x) for x in train_texts_new])
@@ -382,6 +387,8 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
             val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
             test_texts_new, test_labels_new = read_arxiv_split2(val_path, 0, "val", sentence, inject=False, seed=seed)
+            # test_texts_new, test_labels_new = read_arxiv_single_double(val_path, "val", sentence, inject=True, seed=seed)
+
             if clean:
                 print("cleaning test set?")
                 orig_len = sum([len(x) for x in test_texts_new])
@@ -510,12 +517,15 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         test_texts, test_labels = [], []
 
         load_fn = read_arxiv_split_add if add else read_arxiv_split2
+        # load_fn = read_arxiv_single_double
 
         for year in years:
             data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
 
-            train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, seed)
-            test_texts_new, test_labels_new = read_arxiv_split2(data_path, alpha, "val", sentence, inject=False, seed=seed)
+            train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, True, seed)
+            # train_texts_new, train_labels_new = load_fn(data_path, "train", sentence, True, seed)
+            test_texts_new, test_labels_new = read_arxiv_split2(data_path, alpha, "val", sentence, inject=True, seed=seed)
+            # test_texts_new, test_labels_new = read_arxiv_single_double(data_path, "val", sentence, True, seed)
             if clean:
                 orig_train_len = sum([len(x) for x in train_texts_new])
                 train_texts_new = clean_text(train_texts_new)

@@ -370,11 +370,14 @@ class MLE():
                 # Store the estimated alpha
                 alpha_values_bootstrap.append(min_loss_alpha)
         # Calculate the 5th and 95th percentiles of the alpha estimates to form the confidence interval
-        cis = {}
-        for ci in test_cis:
-            diff = (1. - ci) / 2
-            cis[ci] = np.percentile(alpha_values_bootstrap, [diff, 1.-diff])
-        return cis
+        
+        return alpha_values_bootstrap
+
+        # cis = {}
+        # for ci in test_cis:
+        #     diff = (1. - ci) / 2
+        #     cis[ci] = np.percentile(alpha_values_bootstrap, [diff, 1.-diff])
+        # return cis
 
     def inference(self,inference_data,exploded_data=False, n_bootstrap=1000,test_cis = [.95]):
         """
@@ -411,14 +414,16 @@ class MLE():
         # Convert sentences to sets of tokens found in the vocabulary, here we use swifter to parallelize the process
         data = inference_data['inference_sentence'].swifter.progress_bar(False).apply(lambda x: set(token for token in x if token in self.all_tokens_set))
         # Infer the confidence interval for the mixing parameter alpha
-        confidence_intervals=self.bootstrap_alpha_inference(data, inference_data, n_bootstrap, test_cis)
-        # Calculate and round the mean of the confidence interval and its half-width
-        half_widths = {}
-        for ci in test_cis:
-            confidence_interval = confidence_intervals[ci]
-            if ci == max(test_cis):
-                solution=round(np.mean(confidence_interval), 3)
-            half_width = (confidence_interval[1] - confidence_interval[0]) / 2
-            half_width=round(half_width, 3)
-            half_widths[ci] = half_width
-        return solution, half_widths
+        bootstrapped_estimates = self.bootstrap_alpha_inference(data, inference_data, n_bootstrap, test_cis)
+        return bootstrapped_estimates
+        # confidence_intervals=self.bootstrap_alpha_inference(data, inference_data, n_bootstrap, test_cis)
+        # # Calculate and round the mean of the confidence interval and its half-width
+        # half_widths = {}
+        # for ci in test_cis:
+        #     confidence_interval = confidence_intervals[ci]
+        #     if ci == max(test_cis):
+        #         solution=round(np.mean(confidence_interval), 3)
+        #     half_width = (confidence_interval[1] - confidence_interval[0]) / 2
+        #     half_width=round(half_width, 3)
+        #     half_widths[ci] = half_width
+        # return solution, half_widths

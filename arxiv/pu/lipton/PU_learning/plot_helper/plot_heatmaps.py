@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
 
-input_file = "../logging_accuracy_llm_gemini_1.csv"
+input_file = "../logging_accuracy_llm_gemini.csv"
 import os
 output_folder = input_file.split("/")[-1].split(".csv")[0]
 if not os.path.exists(output_folder):
@@ -183,20 +183,23 @@ def make_heatmap(df, metrics, gemini):
             df, metric, llms_list, ci_level=0.95
         )
 
-        # Build annotation matrix
-        annot = point_df.copy().astype(str)
+        # ---- Apply BBE shift to the DATA (not just annotation)
+        plot_df = point_df.copy()
 
-        for i in range(point_df.shape[0]):
-            for j in range(point_df.shape[1]):
+        if metric == "bbe":
+            plot_df = plot_df - 0.5
+            lower_df = lower_df - 0.5
+            upper_df = upper_df - 0.5
 
-                val = point_df.iloc[i, j]
+        # ---- Build annotation matrix
+        annot = plot_df.copy().astype(str)
+
+        for i in range(plot_df.shape[0]):
+            for j in range(plot_df.shape[1]):
+
+                val = plot_df.iloc[i, j]
                 lo = lower_df.iloc[i, j]
                 hi = upper_df.iloc[i, j]
-
-                if metric == "bbe":
-                    val -= .5
-                    lo -= .5
-                    hi -= .5
 
                 if pd.isna(val):
                     annot.iloc[i, j] = ""
@@ -208,18 +211,17 @@ def make_heatmap(df, metrics, gemini):
 
         plt.figure(figsize=(20, 14))
 
-
-        # make range symmetric around 0 (recommended)
-        abs_max = np.nanmax(np.abs(point_df.values))
+        mean_val = np.nanmean(plot_df.values)
+        max_dev = np.nanmax(np.abs(plot_df.values - mean_val))
 
         sns.heatmap(
-            point_df,
+            plot_df,   # <-- use shifted data
             annot=annot,
             fmt="",
-            cmap="RdBu",          # red (neg) → white (0) → blue (pos)
-            center=np.mean(point_df.values),             # ensures 0 is white
-            # vmin=-abs_max,
-            # vmax=abs_max,
+            cmap="RdBu",
+            center=mean_val,
+            vmin=mean_val - max_dev,
+            vmax=mean_val + max_dev,
             cbar_kws={"label": name_to_name.get(metric, metric)},
         )
 

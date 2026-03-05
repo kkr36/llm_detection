@@ -295,9 +295,66 @@ def read_arxiv_split_year(data_dir, label_year, unlabel_year, alpha=None, split=
     labels = [1 for _ in range(len(positive_writing))] + [0 for _ in range(len(unlabeled_writing))]
     return texts, labels
 
+def read_arxiv_single_double(split_dir, split, sentence, inject, seed):
+    assert(seed is not None)
+    assert(False)
 
+    pct_inject = .2
+    if not inject: pct_inject = 0
+    
+    arxiv_data = pd.read_parquet(split_dir)
 
-def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inject=True, seed=None):
+    num_inject = int(pct_inject * len(arxiv_data))
+    print(f"injecting {num_inject} LLM-written abstracts ({pct_inject}) into pool of {len(arxiv_data)} abstracts")
+
+    llm_writing = []
+    inject_counter = num_inject
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    for i in tqdm(list(i for i in range(len(arxiv_data)))):
+        assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
+        original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
+
+        if inject_counter > 0 and arxiv_data.iloc[i][llm_cols[(i+1)%4]] is None:
+            import pdb; pdb.set_trace()
+        if inject_counter > 0 and len(arxiv_data.iloc[i][llm_cols[(i+1)%4]]) > 0:
+            if not inject:
+                assert(False), "should not be injecting"
+            mirror = arxiv_data.iloc[i][llm_cols[(i+1)%4]]
+            llm_writing.append(mirror)
+            arxiv_data.at[i, 'human_abstract'] = original_rewrite
+            inject_counter -= 1
+        else:
+            # assert(False)
+            llm_writing.append(original_rewrite)
+    arxiv_data['ai_abstract'] = llm_writing
+    assert(inject_counter == 0)
+
+    wrong_labels = arxiv_data.iloc[:num_inject].reset_index(drop=True)
+    wrong_labels = wrong_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+    assert(split in ["train", "val"])
+    if split == "train":
+        data = wrong_labels.iloc[:int(len(wrong_labels)*.75)]
+    elif split == "val":
+        data = wrong_labels.iloc[int(len(wrong_labels)*.75):]
+
+    if sentence:
+        single_texts, single_labels = split_into_sentences(data['human_abstract'].tolist(), [0 for _ in range(len(data))])
+        double_texts, double_labels = split_into_sentences(data['ai_abstract'].tolist(), [1 for _ in range(len(data))])
+
+        texts = single_texts + double_texts
+        labels = single_labels + double_labels
+    
+    else:
+        human_texts = data["human_abstract"].dropna().tolist()
+        ai_texts = data["ai_abstract"].dropna().tolist()
+        texts = human_texts + ai_texts
+        labels = [0 for _ in range(len(human_texts))] + [1 for _ in range(len(ai_texts))]
+
+    assert(len(texts) == len(labels))
+    return texts, labels
+
+def read_arxiv_split2(split_dir, alpha, split, sentence, inject, seed):
     assert(seed is not None)
     # import os
     # if not(os.path.exists(split_dir)):
@@ -308,7 +365,7 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     
     arxiv_data = pd.read_parquet(split_dir)
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     # tmp = arxiv_data.copy(deep=True)
     num_inject = int(pct_inject * len(arxiv_data))
     print(f"injecting {num_inject} LLM-written abstracts ({pct_inject}) into pool of {len(arxiv_data)} abstracts")
@@ -421,7 +478,7 @@ def read_arxiv_split2(split_dir, alpha=None, split="train", sentence=False, inje
     # import pdb; pdb.set_trace()
     return texts, labels
 
-def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, inject=True, seed=None):
+def read_arxiv_split_add(split_dir, alpha, split, sentence, inject, seed):
     assert(inject)
     assert(seed is not None)
     pct_inject = .2
@@ -508,7 +565,7 @@ def read_arxiv_split_add(split_dir, alpha=None, split="train", sentence=False, i
 
     return texts, labels
 
-def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha=0, gemini=False, flip=False, seed=None):
+def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, seed):
     assert(seed is not None)
     # import pdb; pdb.set_trace()
     llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]

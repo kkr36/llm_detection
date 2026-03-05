@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
 
-input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal_2.csv"
+input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal_3.csv"
 import os
 output_folder = input_file.split("/")[-1].split(".csv")[0]
 if not os.path.exists(output_folder):
@@ -57,7 +57,10 @@ def make_line_plot(metric, x_lab, title, data):
         linestyle = "--" if "2010" in label else ":" if "Alpha" in label else "-" 
         real_metric = metric if "Plug-In" not in label else "plugin-int"
         # if metric == "auc": import pdb; pdb.set_trace() 
-        y_plot = subset[real_metric] if metric != "bbe" else subset[real_metric]-subset[real_metric].tolist()[0]
+        try:
+            y_plot = subset[real_metric] if metric != "bbe" else subset[real_metric]-subset[real_metric].tolist()[0]
+        except:
+            import pdb; pdb.set_trace()
         y_upper = subset[f"{real_metric}_l_0.95"] if metric != "bbe" else subset[f"{real_metric}_l_0.95"]-subset[real_metric].tolist()[0]
         y_lower = subset[f"{real_metric}_u_0.95"] if metric != "bbe" else subset[f"{real_metric}_u_0.95"]-subset[real_metric].tolist()[0]
         plt.plot(
@@ -122,7 +125,7 @@ def plot_temporal_data(data, metrics):
 
     for metric in metrics:
         # removed ("PU 2010", pu_2010), 
-        make_line_plot(metric, "test_year", "temporal", [("PN 2010", pn_2010), ("Unachievable Optimal", pn_retrain_0)])
+        make_line_plot(metric, "test_year", "temporal", [("Supervised 2010", pn_2010), ("Unachievable Optimal", pn_retrain_0)])
 
 def plot_temporal_alpha(data, metrics):
     # get 2010 data
@@ -191,7 +194,7 @@ def plot_temporal_james(data, metrics):
 
     for metric in metrics:
         # removed ("PU 2010 (BBE)", pu_2010), ("PU Retrain (BBE)", pu_retrain_0)
-        make_line_plot(metric, "test_year", "james_temporal", [("Supervised 2010", pn_2010), ("Unachievable Optimal", pn_retrain_0), ("Liang et al 2010", james_2010), ("Supervised 2010 Rescaled (Plug-In)", platt_pn_2010)])
+        make_line_plot(metric, "test_year", "james_temporal", [("Supervised 2010", pn_2010), ("Unachievable Optimal", pn_retrain_0), ("Liang et al 2010", james_2010), ("Supervised 2010 Rescaled (Plug-In)", platt_pn_2010)][:-1])
 
 
 if __name__ == "__main__":

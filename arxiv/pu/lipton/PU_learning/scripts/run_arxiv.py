@@ -6,8 +6,8 @@ if __name__ == "__main__":
     # years = list(range(2010,2026))
     # years = [2020, 2023, 2025][1:2]
     # years = [2020, 2023, 2025][:]
-    # years = [2010, 2012, 2014, 2016, 2018, 2020]
-    years = [2014]
+    years = [2010, 2012, 2014, 2016, 2018, 2020][3:]
+    # years = [2014]
     # years = [2012, 2010, 2020, 2018, 2014, 2016]
     seeds = [0,1,2,3,4]
 
@@ -19,10 +19,10 @@ if __name__ == "__main__":
     for year in tqdm(years):
         for train_method in train_methods:
 
-            alpha = max(0, .15 * ((year - 2012) // 2))
+            # alpha = max(0, .15 * ((year - 2012) // 2))
             # alphas = [0] if (year != 2020 and year != 2010) else [0] if year == 2010 else [0, .15, .3, .45, .6][::-1]
 
-            alphas = [0] if year != 2020 else [0, .15, .3, .45, .6][::-1]
+            alphas = [0] if year != 2020 else [0, .15, .3, .45, .6][:]
 
             # for alpha in alphas:
                 # if train_method == 'PN':
@@ -39,6 +39,12 @@ if __name__ == "__main__":
 
             for alpha in alphas:
                 for seed in seeds:
+                    # if year != 2020 or (year == 2020 and alpha != 0 and train_method == "TEDn") or (year == 2020 and alpha == 0 and seed <= 3 and train_method == "TEDn"): continue
+
+                    # if year != 2020 or (year == 2020 and alpha != .45) or (year == 2020 and alpha == .45 and train_method == "TEDn"): continue
+
+                    if not (year == 2020 and alpha == .3 and train_method == "PN"): continue
+
                     # if train_method=="TEDn" and alpha < .45: continue
                     cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='ArXiv_BERT' --train-method={train_method} --net-type='DistilBert' --epochs={epochs} --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_temporal_alpha_full_sentence/sentence_{year}/{alpha}_{seed} --seed={seed} --clean"
 

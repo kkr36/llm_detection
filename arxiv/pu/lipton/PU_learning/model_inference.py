@@ -34,18 +34,19 @@ import random
 from james_methods import *
 from data_helper import *
 
-data_dir = '/Users/kkr36/Downloads'
+data_dir = '/share/garg/arxiv_kaggle'
 
-def get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split):
+def get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
     combine_str = '_combine' if combine else ''
     sentence_str = '_sentence' if sentence else ''
     clean_str = '_clean' if clean else ''
     add_str = '_add' if add else ''
     gemini_str = '_gemini' if gemini else ''
     flip_str = '_flip' if flip else ''
-    return f"arxiv_tokenized_{split}_{year}_{alpha}_{data_type}{combine_str}{sentence_str}{clean_str}{add_str}{gemini_str}{flip_str}.parquet"
+    llm_str = f'_{llm}' if llm else ''
+    return f"arxiv_tokenized_{split}_{year}_{alpha}_{data_type}{combine_str}{sentence_str}{clean_str}{add_str}{gemini_str}{flip_str}{llm_str}_{seed}.parquet"
 
-def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split):
+def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split, seed):
     arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet")
 
     llm_cols, llm_writing = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"], []
@@ -312,7 +313,7 @@ def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sente
     # return pos preds, u preds, u labels
     return pos_probs, unlabeled_probs, unlabeled_targets
 
-def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split):
+def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
     assert(sentence)
     u_texts, u_labels = [], []
     years = [2016, 2018, 2020] if combine else [year]
@@ -320,13 +321,20 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
 
     for year_tmp in years:
         if split == "val":
-            _, u_texts_tmp, u_labels_tmp = get_u_data(data_type, alpha, year_tmp, combine, sentence, clean, add, gemini, flip)
-        elif split == "train":
-            split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
-            if add:
-                u_texts_tmp, u_labels_tmp = read_arxiv_split_add(split_dir, alpha, "train", sentence, inject=True)
+            if llm is not None:
+                _, u_texts_tmp, u_labels_tmp = get_u_data_llm(data_type, alpha, year, llm, sentence, clean, gemini, flip, split, seed)
             else:
-                u_texts_tmp, u_labels_tmp = read_arxiv_split2(split_dir, alpha, "train", sentence, inject=True)
+                _, u_texts_tmp, u_labels_tmp = get_u_data(data_type, alpha, year_tmp, combine, sentence, clean, add, gemini, flip, split, seed)
+        elif split == "train":
+            if add:
+                split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
+                u_texts_tmp, u_labels_tmp = read_arxiv_split_add(split_dir, alpha, split, sentence, inject=True, seed=seed)
+            elif llm is not None:
+                split_dir = f'{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf_gemini_full.parquet"
+                u_texts_tmp, u_labels_tmp = read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, seed)
+            else:
+                split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
+                u_texts_tmp, u_labels_tmp = read_arxiv_split2(split_dir, alpha, split, sentence, inject=True, seed=seed)
         u_texts += u_texts_tmp
         u_labels += u_labels_tmp
 
@@ -372,13 +380,13 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
     # Save to Parquet
     # if not os.path.exists(f"{data_dir}/multillm/james_v_us"):
     #     os.makedirs(f"{data_dir}/james_v_us")
-    file_str = get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split)
+    file_str = get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm)
     save_path = f"{data_dir}/multillm/james_v_us/{file_str}"
     df.to_parquet(save_path, index=False)
 
-def estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, split):
+def estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
     assert(split=="train")
-    load_str = get_james_save_str(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, split)
+    load_str = get_james_save_str(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm)
     train_data = pd.read_parquet(f"{data_dir}/multillm/james_v_us/{load_str}")
 
     human_data = train_data[["human_sentence", "human_index"]]
@@ -388,7 +396,11 @@ def estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, 
 
     estimate_text_distribution(human_train, ai_train, f"{data_dir}/multillm/james_v_us/{load_str.replace('.parquet', '_logprob.parquet')}")
 
-def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, n_bootstrap):
+def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, n_bootstrap, seeds, llm):
+
+    train_llm, test_llm = None if llm is None else llm[0], None if llm is None else llm[1]
+    assert(gemini == (llm is not None))
+
     def df_to_val_set(df, t_alpha):
         human_data = df[["human_sentence", "human_index"]]
         human_subset = human_data[human_data['human_index'] != -1]
@@ -399,12 +411,32 @@ def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sent
         human_subset["inference_sentence"] = human_subset["human_sentence"]
         return pd.concat([ai_subset[["inference_sentence"]], human_subset[["inference_sentence"]]]) if t_alpha != 0 else pd.DataFrame(human_subset["inference_sentence"]) if t_alpha != 1 else pd.DataFrame(ai_subset["inference_sentence"])
 
-    logprob_str = get_james_save_str(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train")
-    logprob_path = f"{data_dir}/multillm/james_v_us/{logprob_str.replace('.parquet', '_logprob.parquet')}"
-    mle = MLE(logprob_path)
-    val_data_str = get_james_save_str(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val")
-    val_data_path = f"{data_dir}/multillm/james_v_us/{val_data_str}"
-    val_data = pd.read_parquet(val_data_path)
-    val_data = df_to_val_set(val_data, test_alpha)
-    solution, half_widths = mle.inference(val_data,True,n_bootstrap,test_cis)
+    estimates = []
+
+    for seed in range(seeds):
+        logprob_str = get_james_save_str(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train", seed, train_llm)
+        logprob_path = f"{data_dir}/multillm/james_v_us/{logprob_str.replace('.parquet', '_logprob.parquet')}"
+        mle = MLE(logprob_path)
+        val_data_str = get_james_save_str(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val", seed, test_llm)
+        val_data_path = f"{data_dir}/multillm/james_v_us/{val_data_str}"
+        val_data = pd.read_parquet(val_data_path)
+        val_data = df_to_val_set(val_data, test_alpha)
+        # solution, half_widths = mle.inference(val_data,True,n_bootstrap,test_cis)
+        bootstrap = mle.inference(val_data,True,n_bootstrap//seeds,test_cis)
+        estimates += bootstrap
+
+    cis = {}
+    for ci in test_cis:
+        diff = (1. - ci) / 2
+        cis[ci] = np.percentile(estimates, [diff, 1.-diff])
+
+    half_widths = {}
+    for ci in test_cis:
+        confidence_interval = cis[ci]
+        if ci == max(test_cis):
+            solution=round(np.mean(confidence_interval), 3)
+        half_width = (confidence_interval[1] - confidence_interval[0]) / 2
+        half_width=round(half_width, 3)
+        half_widths[ci] = half_width
+
     return solution, half_widths

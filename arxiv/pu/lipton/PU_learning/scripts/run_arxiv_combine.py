@@ -13,15 +13,15 @@ if __name__ == "__main__":
 
     # alphas = [0, .1, .2, .3, .4, .5, .6][:1]
 
-    train_methods = ['TEDn', 'PN'][:]
+    train_methods = ['TEDn', 'PN'][1:]
     epochs = 3
 
     for year in tqdm(years):
         for train_method in train_methods:
 
-            alpha = max(0, .15 * ((year - 2012) // 2))
-            alphas = [0, alpha] if (year != 2020 and year != 2010) else [0] if year == 2010 else [0, .15, .3, .45, .6][::-1]
-            # alphas = [0]
+            # alpha = max(0, .15 * ((year - 2012) // 2))
+            # alphas = [0, alpha] if (year != 2020 and year != 2010) else [0] if year == 2010 else [0, .15, .3, .45, .6][::-1]
+            alphas = [0]
 
             # for alpha in alphas:
                 # if train_method == 'PN':

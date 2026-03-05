@@ -23,11 +23,6 @@ from estimator import BBE_estimator
 import torch
 from platt_scaling import *
 
-# prior_csv = None # if something, will need to load
-# if prior_csv:
-#     prior_df = pd.read_csv(prior_csv)
-# exit_path = entrance_path if not prior_csv else f"{prior_csv.split('.csv')[0]}1.csv"
-
 def update_dict(metrics_dict, metric, point, lowers, uppers):
     metrics_dict[metric] = point
     for ci in uppers:
@@ -106,6 +101,8 @@ else:
 run_id = len(metrics_df)
 
 for train_llm in llms_list:
+    if train_llm == "Gemini 2.5 Pro" or train_llm == "Gemini 2.0 Flash-Lite": continue
+
     train_llm_name = train_llm.replace(' ', '_')
 
     alphas = [0, .5]

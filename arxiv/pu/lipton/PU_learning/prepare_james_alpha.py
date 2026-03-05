@@ -28,6 +28,7 @@ add = "add" in entrance_path
 
 output_csv = f"{entrance_path}_alpha_temporal_2.csv"
 
+seeds = 5
 
 # import pdb; pdb.set_trace()
 if not os.path.exists(os.path.expanduser(f"{data_dir}/multillm/james_v_us")):
@@ -44,21 +45,18 @@ run_id = len(metrics_df)
 for train_year in train_years:
     if train_year == 2020:
         alphas = [0, .15, .3, .45, .6]
-    elif train_year == 2018: 
-        alphas = [0, 0.44999999999999996] if train_year == 2018 else [0, .45]
-    elif train_year == 2016:
-        alphas = [0, .3]
-    elif train_year == 2014:
-        alphas = [0, .15]
-    elif train_year == 2010 or train_year == 2010:
+    else:
         alphas = [0]
 
-    # for each train_alpha:
+    # for each train_alpha and seed:
     for alpha in alphas:
-        # tokenize train
-        tokenize_fn(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train")
-        # do estimation on train
-        estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train")
+        
+        for seed in range(seeds):
+            # tokenize train
+            tokenize_fn(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train", seed, None)
+            # do estimation on train
+            estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, "train", seed, None)
+
         # get test_years, test_alpha
         test_alphas = [0.5]
         test_cis = [.9, .95, .99]
@@ -72,10 +70,12 @@ for train_year in train_years:
 
                 print(f"{train_year} {alpha} | {test_year} {test_alpha}")
 
-                # tokenize the test set
-                tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val")
+                for seed in range(seeds):
+                    # tokenize the test set
+                    tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val", seed, None)
+
                 # MLE with (train, test)
-                alpha_hat, half_widths = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, 2500)
+                alpha_hat, half_widths = MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, 2500, seeds, None)
                 # store results
                 row = {
                         "learning_method": "MLE",
