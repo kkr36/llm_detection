@@ -9,7 +9,7 @@ from tqdm import tqdm
 import re
 import random
 import csv
-nlp = spacy.load("en_core_web_sm", disable=["ner", "parser"])
+nlp = spacy.load("en_core_web_lg", disable=["ner", "parser"])
 nlp.enable_pipe("senter")
 
 import pandas as pd

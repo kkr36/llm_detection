@@ -2,6 +2,11 @@ import re
 import string
 import numpy as np
 from typing import Dict, List
+import torch
+from transformers import BertTokenizerFast, DistilBertTokenizerFast
+import spacy
+nlp = spacy.load("en_core_web_lg", disable=["ner", "parser"])
+nlp.enable_pipe("senter")
 
 def compute_abstract_stats(data: Dict[str, List[str]]) -> Dict[str, Dict[str, float]]:
     """
@@ -71,29 +76,80 @@ def compute_abstract_stats(data: Dict[str, List[str]]) -> Dict[str, Dict[str, fl
     return results
 
 
-def split_sentences(text: str) -> tuple[str, str]:
-    """
-    Splits text into the first 2 sentences and everything after.
+def split_into_sentences(abstract):
+    doc = nlp(abstract)
+    sentences = [sent.text.strip() for sent in doc.sents]
+    return sentences
 
-    Returns:
-        (first_two, remainder) — either may be empty string if not enough content.
-    """
-    # Match sentence-ending punctuation (. ! ?) optionally followed by quotes/parens,
-    # then whitespace. Handles abbreviations poorly by design (keep it simple).
-    pattern = r'(?<=[.!?])["\')]?\s+'
+def clean_text(text):
+    # replace bad things we know how to; remove all other non-typable
+    bad_dashes = ['—', '⁻', '–', '‑', '‐', '−']
+    bad_apostrophes = ['’', '′', '‘']
+    bad_left_quote = "“"
+    bad_right_quote = "”"
+    for bad_dash in bad_dashes:
+        text = [t.replace(bad_dash, '-') for t in text]
+    for bad_apostrophe in bad_apostrophes:
+        text = [t.replace(bad_apostrophe, "'") for t in text]
+    text = [t.replace(bad_left_quote, '"') for t in text]
+    text = [t.replace(bad_right_quote, '"') for t in text]
 
-    splits = list(re.finditer(pattern, text))
+    # text = [unidecode(t) for t in text]
+    text = [re.sub(r"[\n\t]+", " ", t) for t in text] # consecutive tabs, newline
+    # text = [re.sub(r"[ ]+", " ", t) for t in text] # consecutive spaces
+    # text = [t.strip() for t in text] # leading, trailing whitespace
 
-    if len(splits) == 0:
-        # No sentence boundary found — everything is "first two"
-        return text, ""
-    elif len(splits) == 1:
-        # Only one sentence boundary found
-        boundary = splits[0].end()
-        return text[:boundary].strip(), text[boundary:].strip()
-    else:
-        # Split after the 2nd sentence boundary
-        boundary = splits[1].end()
-        return text[:boundary].strip(), text[boundary:].strip()
-    
+    # remove non-typable
+    allowed = set(string.printable)
+    text = [''.join(ch for ch in s if ch in allowed) for s in text]
+    return text
+
 def pretty(i, data): return "\n".join(f"{key}: {data[key][i]}" for key in data)
+
+def getBertTokenizer(model):
+    if model == 'bert-base-uncased':
+        tokenizer = BertTokenizerFast.from_pretrained(model)
+    elif model == 'distilbert-base-uncased':
+        tokenizer = DistilBertTokenizerFast.from_pretrained(model)
+    else:
+        raise ValueError(f'Model: {model} not recognized.')
+
+    return tokenizer
+
+def initialize_bert_transform(net):
+    # assert 'bert' in config.model
+    # assert config.max_token_length is not None
+
+    tokenizer = getBertTokenizer(net)
+    def transform(text):
+        tokens = tokenizer(
+            text,
+            padding=True,
+            truncation=True)
+        if net == 'bert-base-uncased':
+            x = np.stack(
+                (tokens['input_ids'],
+                 tokens['attention_mask'],
+                 tokens['token_type_ids']),
+                axis=2)
+        elif net == 'distilbert-base-uncased':
+            x = np.stack(
+                (tokens['input_ids'],
+                 tokens['attention_mask']),
+                axis=2)
+        # x = np.squeeze(x) # First shape dim is always 1
+        return x
+    return transform
+
+def individual_predict(net, device, sample):
+    if isinstance(sample, str):
+        # transform to arr
+        transform = initialize_bert_transform('distilbert-base-uncased')
+        sample = transform([sample])
+    input = torch.from_numpy(sample)
+    net.eval()
+    with torch.no_grad():
+        input = input.to(device)
+        output = net(input)
+        probs = torch.nn.functional.softmax(output, dim=-1)[:,0] 
+    return output, probs
