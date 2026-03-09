@@ -1,6 +1,6 @@
 # Contains several example valid prompting stategies to produce LLM mirrors of scientific abstracts.
 # You are encouraged to use these as templates/inspiration when iterating on a good prompt!
-from util import compute_abstract_stats, split_sentences, pretty
+from util import compute_abstract_stats, split_into_sentences, pretty
 
 def rewrite_abstract_oneshot(prompt_model, abstract, model_name):
 
@@ -42,7 +42,7 @@ def rewrite_abstract_oneshot(prompt_model, abstract, model_name):
     return res2, model_name
 
 def rewrite_abstract_autocomplete(prompt_model, abstract, model_name):
-    first_sentences, _ = split_sentences(abstract)
+    first_sentences = split_into_sentences(abstract)
 
     # prompt1 = f"""
     # Write a scientific paper abstract (style of an ArXiv pre-print). Start with these sentences : {first_sentences}. Make the article (minus the provided sentences) about {len(abstract.split())} words long .
@@ -104,3 +104,5 @@ def rewrite_abstract_length_match(prompt_model, abstract, model_name):
     prompt3 = f"Here is the writing: {res2}"
     res3 = prompt_model(context3, prompt3)
     return res3, model_name
+
+# v0, autocomplete, length_match, oneshot

@@ -51,7 +51,7 @@ if __name__ == "__main__":
     new_text = [] # holds llm mirrors from current iteration, CURRENT_STRATEGY / CURRENT_TIMESTEP
     human_text = [] # holds human-written abstracts
 
-    to_rewrite = 5
+    to_rewrite = 10
     val_start = 2500
     test_start = 2600
 
@@ -107,10 +107,11 @@ if __name__ == "__main__":
         t_csv = pd.read_csv(output_csv.replace(str(CURRENT_TIMESTEP), str(CURRENT_TIMESTEP-1)))
         t_csv[f"mirror_{CURRENT_TIMESTEP}"] = abstract_dict[f"mirror_{CURRENT_TIMESTEP}"]
         t_csv[f"mirror_{CURRENT_TIMESTEP}_score"] = abstract_dict[f"mirror_{CURRENT_TIMESTEP}_score"]
+        t_csv[f"mirror_{CURRENT_TIMESTEP}_score_avg"] = abstract_dict[f"mirror_{CURRENT_TIMESTEP}_score_avg"]
     else:
         t_csv = pd.DataFrame(abstract_dict)
         
-    t_csv.to_csv(output_csv)
+    t_csv.to_csv(output_csv, index=False)
 
 
 

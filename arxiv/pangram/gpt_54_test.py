@@ -9,9 +9,9 @@ with open("/home/kkr36/creds.json", 'r') as handle:
     pangram_api_key = json.load(handle)['pangram_api_key']
 pangram_client = Pangram(api_key=pangram_api_key)
 
-years = [2010, 2016, 2020][:1]
-start_idx, end_idx = 50, 100
-cols = ['human_abstract', 'Llama 3.3 70b Instruct', 'Gemini 3 Preview', 'GPT OSS 120b', 'Gemini 2.5 Flash', 'ChatGPT 5.4'][:1]
+years = [2010]
+start_idx, end_idx = 0, 100
+cols = ['ChatGPT 5.4']
 final_dict = {
     "year": [],
     "idx": [],
@@ -63,13 +63,11 @@ def predict_with_backoff(pangram_client, text, max_retries=5, initial_delay=1):
 failed_requests = []
 
 for year in years:
-    data_path = f"all_100_2010.csv"
-    data = pd.read_csv(data_path)
+    data_path = f"gpt_54_100_2010.parquet"
+    data = pd.read_parquet(data_path)
         
     for col in cols:
-        assert not data[col].isna().any()
-        # assert len(data[col]) == end_idx - start_idx
-        texts = data[col].tolist()
+        texts = data[col].dropna().tolist()
         texts = texts[start_idx:end_idx]
         
         for idx, text in enumerate(tqdm(texts, desc=f"{year}-{col}")):
@@ -109,7 +107,7 @@ for year in years:
                 final_dict['window_ai_assistance_scores'].append(window_ai_assistance_scores)
                 final_dict['window_confidences'].append(window_confidences)
 
-                if idx == 0 and 'Llama' in col: import pdb; pdb.set_trace()
+                if idx == 0: import pdb; pdb.set_trace()
                                 
             except Exception as e:
                 print(f"Failed to process result for year={year}, col={col}, idx={idx}: {e}")
@@ -117,10 +115,15 @@ for year in years:
                 continue
 
 # Save results and failed requests
+existing_data = pd.read_parquet("results_0_50.parquet")
 df_results = pd.DataFrame(final_dict)
-df_results.to_parquet(f'results_human_{start_idx}_{end_idx}.parquet')
+
+import pdb; pdb.set_trace()
+
+df_results = pd.concat([existing_data, df_results])
+
+df_results.to_parquet(f'results_54_{start_idx}_{end_idx}.parquet')
 if failed_requests:
     print(f"\nFailed requests: {len(failed_requests)}")
     print(failed_requests)
-
                     
