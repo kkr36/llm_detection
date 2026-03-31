@@ -5,15 +5,34 @@ import numpy as np
 font = {
         # 'family' : 'normal',
         'weight' : 'bold',
-        'size'   : 18
+        'size'   : 40
     }
 import matplotlib
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
+from matplotlib.colors import LinearSegmentedColormap
 
-input_file = "../logging_accuracy_llm_gemini.csv"
+orange_white_purple = LinearSegmentedColormap.from_list(
+    "orange_white_purple", ["orange", "white", "purple"][::-1]
+)
+
+ci = False  # show confidence interval text in heatmap annotations
+
+def fmt(v):
+    s = f"{v:.2f}"
+    if s.startswith("0."):
+        s = s[1:]
+    elif s.startswith("-0."):
+        s = "-" + s[2:]
+    return s
+
+label_rename = {
+    "GPT OSS 120b": "GPT OSS 20b",
+}
+
+input_file = "../logging_accuracy_llm.csv"
 import os
-output_folder = input_file.split("/")[-1].split(".csv")[0]
+output_folder = input_file.split("/")[-1].split(".csv")[0] + "_test"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
@@ -27,6 +46,9 @@ plot_metrics = [
     "plugin",
     "plugin-int"
 ]
+
+binary_metrics = ["auc", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg"]
+diverging_metrics = ["bbe", "plugin", "plugin-int"]
 
 flip_metrics = [
     "pos_prob",
@@ -148,9 +170,9 @@ def make_heatmap(df, metrics, gemini):
 
         col_order_sorted = avg_point.sort_values(ascending=True).index.tolist()
 
-        pn_point = pn_point[col_order_sorted]
-        pn_lower = pn_lower[col_order_sorted]
-        pn_upper = pn_upper[col_order_sorted]
+        pn_point = pn_point.loc[col_order_sorted, col_order_sorted]
+        pn_lower = pn_lower.loc[col_order_sorted, col_order_sorted]
+        pn_upper = pn_upper.loc[col_order_sorted, col_order_sorted]
 
         pu_point = pu_point[col_order_sorted]
         pu_lower = pu_lower[col_order_sorted]
@@ -205,25 +227,38 @@ def make_heatmap(df, metrics, gemini):
                     annot.iloc[i, j] = ""
                 else:
                     annot.iloc[i, j] = (
-                        f"{val:.3f}\n"
-                        f"[{lo:.3f}, {hi:.3f}]"
+                        f"{fmt(val)}\n[{fmt(lo)}, {fmt(hi)}]" if ci else f"{fmt(val)}"
                     )
 
-        plt.figure(figsize=(20, 14))
+        plot_df = plot_df.rename(index=label_rename, columns=label_rename)
+        annot = annot.rename(index=label_rename, columns=label_rename)
 
-        mean_val = np.nanmean(plot_df.values)
-        max_dev = np.nanmax(np.abs(plot_df.values - mean_val))
+        plt.figure(figsize=(18, 20))
 
-        sns.heatmap(
+        if metric in binary_metrics:
+            cmap = "YlOrBr"
+            center = np.nanmean(plot_df.values)
+            max_dev = np.nanmax(np.abs(plot_df.values - center))
+            vmin, vmax = center - max_dev, center + max_dev
+        else:  # diverging_metrics
+            cmap = orange_white_purple
+            center = 0.0 if metric == "bbe" else 0.5
+            max_dev = np.nanmax(np.abs(plot_df.values - center))
+            vmin, vmax = center - max_dev, center + max_dev
+
+        ax = sns.heatmap(
             plot_df,   # <-- use shifted data
             annot=annot,
             fmt="",
-            cmap="RdBu",
-            center=mean_val,
-            vmin=mean_val - max_dev,
-            vmax=mean_val + max_dev,
-            cbar_kws={"label": name_to_name.get(metric, metric)},
+            cmap=cmap,
+            center=center,
+            vmin=vmin,
+            vmax=vmax,
+            # cbar_kws={"label": name_to_name.get(metric, metric)},
         )
+
+        # Bold divider between PN block (4x4) and the 2 summary rows below
+        ax.axhline(y=len(plot_df) - 2, color="black", linewidth=6)
 
         # sns.heatmap(
         #     point_df,
@@ -247,7 +282,140 @@ def make_heatmap(df, metrics, gemini):
         plt.clf()
 
 
+def make_mle_heatmap(df, gemini):
+    llms_list = ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"] if gemini else ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct"]
+
+    metric = "bbe"
+    lower_col = f"{metric}_l_0.95"
+    upper_col = f"{metric}_u_0.95"
+
+    # -------------------------
+    # MLE block
+    # -------------------------
+    mle = df[df["learning_method"] == "MLE"]
+
+    def pivot_metric(col):
+        return (
+            mle.pivot(index="train_llm", columns="test_llm", values=col)
+            .reindex(index=llms_list, columns=llms_list)
+        )
+
+    mle_point = pivot_metric(metric)
+    mle_lower = pivot_metric(lower_col)
+    mle_upper = pivot_metric(upper_col)
+
+    # -------------------------
+    # PU diagonal (same logic as make_heatmap for bbe)
+    # -------------------------
+    pu = df[df["learning_method"] == "PU"]
+    pu_diag = pu[pu["train_llm"] == pu["test_llm"]]
+
+    pu_point = pd.DataFrame(np.nan, index=["PU (diag)"], columns=llms_list)
+    pu_lower_df = pu_point.copy()
+    pu_upper_df = pu_point.copy()
+
+    for _, row in pu_diag.iterrows():
+        llm = row["train_llm"]
+        if llm not in llms_list:
+            continue
+        # bbe is in flip_metrics; base_metric stays "bbe" (no pos/neg to swap)
+        pu_point.loc["PU (diag)", llm] = 1 - row["bbe"]
+        pu_lower_df.loc["PU (diag)", llm] = 1 - row["bbe_u_0.95"]
+        pu_upper_df.loc["PU (diag)", llm] = 1 - row["bbe_l_0.95"]
+
+    # -------------------------
+    # Sort columns by MLE off-diagonal mean (ascending)
+    # -------------------------
+    mle_no_diag = mle_point.copy()
+    np.fill_diagonal(mle_no_diag.values, np.nan)
+    avg_point = mle_no_diag.mean(axis=0, skipna=True)
+    col_order_sorted = avg_point.sort_values(ascending=True).index.tolist()
+
+    mle_point = mle_point.loc[col_order_sorted, col_order_sorted]
+    mle_lower = mle_lower.loc[col_order_sorted, col_order_sorted]
+    mle_upper = mle_upper.loc[col_order_sorted, col_order_sorted]
+    pu_point = pu_point[col_order_sorted]
+    pu_lower_df = pu_lower_df[col_order_sorted]
+    pu_upper_df = pu_upper_df[col_order_sorted]
+
+    # -------------------------
+    # Average off-diag MLE row
+    # -------------------------
+    mle_no_diag_sorted = mle_point.copy()
+    np.fill_diagonal(mle_no_diag_sorted.values, np.nan)
+    mle_no_diag_lower = mle_lower.copy()
+    np.fill_diagonal(mle_no_diag_lower.values, np.nan)
+    mle_no_diag_upper = mle_upper.copy()
+    np.fill_diagonal(mle_no_diag_upper.values, np.nan)
+
+    avg_point = mle_no_diag_sorted.mean(axis=0, skipna=True)
+    avg_lower = mle_no_diag_lower.mean(axis=0, skipna=True)
+    avg_upper = mle_no_diag_upper.mean(axis=0, skipna=True)
+
+    avg_point.name = "Average (off-diag MLE)"
+    avg_lower.name = "Average (off-diag MLE)"
+    avg_upper.name = "Average (off-diag MLE)"
+
+    # -------------------------
+    # Combine
+    # -------------------------
+    point_df = pd.concat([mle_point, pu_point, avg_point.to_frame().T])
+    lower_df = pd.concat([mle_lower, pu_lower_df, avg_lower.to_frame().T])
+    upper_df = pd.concat([mle_upper, pu_upper_df, avg_upper.to_frame().T])
+
+    # BBE shift
+    plot_df = point_df - 0.5
+    lower_df = lower_df - 0.5
+    upper_df = upper_df - 0.5
+
+    # ---- Build annotation matrix
+    annot = plot_df.copy().astype(str)
+    for i in range(plot_df.shape[0]):
+        for j in range(plot_df.shape[1]):
+            val = plot_df.iloc[i, j]
+            lo = lower_df.iloc[i, j]
+            hi = upper_df.iloc[i, j]
+            if pd.isna(val):
+                annot.iloc[i, j] = ""
+            else:
+                annot.iloc[i, j] = f"{fmt(val)}\n[{fmt(lo)}, {fmt(hi)}]" if ci else f"{fmt(val)}"
+
+    plot_df = plot_df.rename(index=label_rename, columns=label_rename)
+    annot = annot.rename(index=label_rename, columns=label_rename)
+
+    plt.figure(figsize=(18, 20))
+    center = 0.0  # bbe is shifted by -0.5, so 0.5 in original space → 0
+    max_dev = np.nanmax(np.abs(plot_df.values - center))
+
+    ax = sns.heatmap(
+        plot_df,
+        annot=annot,
+        fmt="",
+        cmap=orange_white_purple,
+        center=center,
+        vmin=center - max_dev,
+        vmax=center + max_dev,
+        cbar_kws={"label": r'Test $\hat{\alpha}$ (MLE)'},
+    )
+
+    # Bold divider between MLE block and the 2 summary rows below
+    ax.axhline(y=len(plot_df) - 2, color="black", linewidth=6)
+
+    plt.title(r"Test $\hat{\alpha}$ — MLE (95% CI)")
+    plt.xlabel("Test LLM")
+    plt.ylabel("Train LLM / Method")
+
+    plt.tight_layout()
+    plt.savefig(
+        f"{output_folder}/heatmap_mle_bbe_ci.pdf",
+        format="pdf",
+        bbox_inches="tight"
+    )
+    plt.clf()
+
+
 if __name__ == "__main__":
 
     data = pd.read_csv(input_file)
     make_heatmap(data, plot_metrics, "gemini" in input_file)
+    make_mle_heatmap(data, "gemini" in input_file)

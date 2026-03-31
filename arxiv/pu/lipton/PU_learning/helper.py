@@ -299,6 +299,42 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         net = get_model(net_type)
         net = net.to(device)
 
+    elif data_type == "xy":
+        llm = "rewrite_X"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+        train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pu_train", sentence, alpha, gemini, flip, seed)
+        test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "pu_val", sentence, alpha, gemini, flip, seed)
+        if clean:
+            orig_train_len = sum([len(x) for x in train_texts])
+            train_texts = clean_text(train_texts)
+            new_train_len = sum([len(x) for x in train_texts])
+            test_texts = clean_text(test_texts)
+            print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
+        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
+
+        p_traindata, u_traindata = get_PUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8, \
+            shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, \
+            shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
+            shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
+            shuffle=shuffle)
+
+        ## Initialize model
+        net = get_model(net_type)
+        net = net.to(device)
+
     elif data_type == "paramveer":
 
         data_path = '/share/garg/kkr36/Author-Style-Personalization/data/Human-AI_anon.json'
@@ -446,6 +482,28 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
             # p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(1-alpha)/(2-alpha),data_type=data_type)
         # else:
             # p_validdata, u_validdata = get_PUDataSplits(test_dataset, pos_size=int(np_test - alpha*np_test), alpha=alpha, beta=(np_test / (nn_test + np_test)),data_type=data_type)
+
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
+            shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
+            shuffle=shuffle)
+
+    elif data_type == "xy":
+        llm = "rewrite_X"
+        val_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+        test_texts, test_labels = read_arxiv_split_xy(val_path, llm, "cal", sentence, alpha, gemini, flip, seed)
+        if clean:
+            print("cleaning test set?")
+            orig_len = sum([len(x) for x in test_texts])
+            test_texts = clean_text(test_texts)
+            new_len = sum([len(x) for x in test_texts])
+            print(f"cleaned test text of {new_len - orig_len} funny chars")
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
+
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type)
 
         p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, \
             shuffle=shuffle)
@@ -601,6 +659,36 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
             shuffle=shuffle)
 
         ## Initialize model 
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type == "xy":
+        llm = "rewrite_X"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+        train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pn_train", sentence, alpha, gemini, flip, seed)
+        test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "cal", sentence, 0, gemini, flip, seed)
+        if clean:
+            orig_train_len = sum([len(x) for x in train_texts])
+            train_texts = clean_text(train_texts)
+            new_train_len = sum([len(x) for x in train_texts])
+            test_texts = clean_text(test_texts)
+            print(f"cleaned train text of {orig_train_len - new_train_len} funny chars")
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_dataset = IMDbBERTData(train_texts, train_labels, transform=transform)
+        test_dataset = IMDbBERTData(test_texts, test_labels, transform=transform)
+
+        np_train, nn_train = len(train_dataset.p_data), len(train_dataset.n_data)
+        np_test, nn_test = len(test_dataset.p_data), len(test_dataset.n_data)
+
+        u_traindata = get_PNDataSplits(train_dataset, pos_size=np_train, neg_size=nn_train)
+        u_validdata = get_PNDataSplits(test_dataset, pos_size=np_test, neg_size=nn_test)
+
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        ## Initialize model
         net = get_model(net_type)
         net = net.to(device)
 

@@ -38,6 +38,7 @@ gemini = False
 add = "_add_" in entrance_path
 epochs = 3 # can toggle
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9][:1]
 
 ### LOGIC ###
 
@@ -64,53 +65,45 @@ for train_year in train_years:
         alphas = [0]
 
     for alpha in alphas:
-        alpha_dir = Path(f"{entrance_path}/{'sentence' if sentence else 'abstract'}_{train_year}/{alpha}/ArXiv_BERT_{epochs}")
-        pts_pu = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "TEDn" in p.name][0]
-        pts_pn = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "PN" in p.name][0]
-        pts = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt")]
-        assert(len(pts) == 2)
+        model_nets = {"PU": {}, "PN": {}}
 
-        model_paths = {
-            "PU": pts_pu,
-            "PN": pts_pn 
-        }
+        for seed in seeds:
+            alpha_dir = Path(f"{entrance_path}/{'sentence' if sentence else 'abstract'}_{train_year}/{alpha}_{seed}/ArXiv_BERT_{epochs}")
+            pts_pu = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "TEDn" in p.name][0]
+            pts_pn = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and "PN" in p.name][0]
 
-        for model_name, model_path in model_paths.items():
-            net = get_model("DistilBert")
-            state_dict = torch.load(model_path, map_location=device)
-            state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
-            net.load_state_dict(state_dict)
-            net.eval()
-            net.to(device)
-
-            if platt:
-                assert(not combine)
-                scale_year = 2010 # might want to change? if not scaling to 2010 every time
-                u_data_loader, _, _ = get_u_data(data_type, 0.5, scale_year, combine, sentence, clean, add, gemini, flip, split="out")
-                # 2. fit Platt scaling
-                platt = fit_platt_scaler(
-                    model=net,
-                    calib_loader=u_data_loader,
-                    device=device
-                )
-
-                # 3. build calibrated model
-                net = PlattCalibratedClassifier(net, platt)
+            for model_name, model_path in [("PU", pts_pu), ("PN", pts_pn)]:
+                net = get_model("DistilBert")
+                state_dict = torch.load(model_path, map_location=device)
+                state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
+                net.load_state_dict(state_dict)
                 net.eval()
+                net.to(device)
+                model_nets[model_name][seed] = net
 
-            test_alphas = [0.5]
-            test_years = [train_year] if train_year != 2010 else [2010, 2016, 2020]
+        test_years = [train_year] if train_year != 2010 else [2010, 2016, 2020]
 
-            for test_alpha in test_alphas:
-                for test_year in test_years:
-                    print(f"train: {model_name} {train_year} {alpha} | test: {test_year} {test_alpha}")
-                    pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip)
-                    unlabeled_probs = unlabeled_probs[:,0]
+        for model_name, nets in model_nets.items():
+            for test_year in test_years:
+                print(f"train: {model_name} {train_year} {alpha} | test: {test_year}")
+                all_probs = []
+                all_targets = []
 
-                    if train_year == 2010:
-                        temp_dict[model_name][test_year] = (unlabeled_probs, unlabeled_targets)
-                    elif train_year == 2020:
-                        alpha_dict[model_name][alpha] = (unlabeled_probs, unlabeled_targets)
+                for seed, net in nets.items():
+                    _, unlabeled_probs, unlabeled_targets_seed = get_preds(
+                        data_type, net, device, 0.5, test_year,
+                        combine, sentence, clean, add, gemini, flip, seed
+                    )
+                    all_probs.append(unlabeled_probs[:, 0])
+                    all_targets.append(unlabeled_targets_seed)
+
+                avg_probs = np.concatenate(all_probs)
+                unlabeled_targets = np.concatenate(all_targets)
+
+                if train_year == 2010:
+                    temp_dict[model_name][test_year] = (avg_probs, unlabeled_targets)
+                elif train_year == 2020:
+                    alpha_dict[model_name][alpha] = (avg_probs, unlabeled_targets)
                     
 import numpy as np
 import matplotlib.pyplot as plt
@@ -139,7 +132,7 @@ def plot_overlaid_hists(
       - label == 1 (CDF)
       - label == 0 (CDF)
     """
-    cols = ["red", "purple", "blue"]  # ordered, perceptual
+    cols = ["blue", "purple", "red"]  # ordered, perceptual
 
     def plot_ecdf(ax, x, label, color):
         x = np.sort(x)
@@ -166,7 +159,7 @@ def plot_overlaid_hists(
     if "year" in title_prefix.lower():
         ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
 
-    ax.set_xlabel("Predicted probability")
+    ax.set_xlabel("P(LLM)")
     ax.set_ylabel("Density" if density else "Count")
     ax.legend(title=title_prefix)
     plt.tight_layout()
@@ -189,7 +182,7 @@ def plot_overlaid_hists(
     if "year" in title_prefix.lower():
         ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
 
-    ax.set_xlabel("Predicted probability")
+    ax.set_xlabel("P(LLM)")
     ax.set_ylabel("CDF")
     ax.legend(title=title_prefix)
     plt.tight_layout()
@@ -208,7 +201,7 @@ def plot_overlaid_hists(
         mask = targets == 1
 
         ax.hist(
-            probs[mask],
+            1 - probs[mask],
             bins=bins,
             density=density,
             alpha=alpha,
@@ -220,7 +213,7 @@ def plot_overlaid_hists(
     if "year" in title_prefix.lower():
         ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
 
-    ax.set_xlabel("Predicted probability")
+    ax.set_xlabel("P(human)")
     ax.set_ylabel("Density" if density else "Count")
     ax.legend(title=title_prefix)
     plt.tight_layout()
@@ -238,12 +231,12 @@ def plot_overlaid_hists(
         targets = np.asarray(targets)
         mask = targets == 1
 
-        plot_ecdf(ax, probs[mask], label=str(key), color=cols[i])
+        plot_ecdf(ax, 1 - probs[mask], label=str(key), color=cols[i])
 
     if "year" in title_prefix.lower():
         ax.xaxis.set_major_locator(MaxNLocator(nbins=3, integer=True))
 
-    ax.set_xlabel("Predicted probability")
+    ax.set_xlabel("P(human)")
     ax.set_ylabel("CDF")
     ax.legend(title=title_prefix)
     plt.tight_layout()

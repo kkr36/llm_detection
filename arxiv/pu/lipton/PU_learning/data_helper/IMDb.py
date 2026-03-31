@@ -653,6 +653,84 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
     assert(len(final_texts) == len(final_labels))
     return final_texts, final_labels
 
+def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, seed):
+    assert(seed is not None)
+    assert("pu" in split or "pn" in split or split == "cal")
+
+    # load in data
+    arxiv_data = pd.read_parquet(split_dir)
+    arxiv_data = arxiv_data.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+    if "pu" in split:
+        assert(flip)
+        human_writing = arxiv_data.iloc[:4000]["human_abstract"].tolist()
+        u_positive_texts = arxiv_data.iloc[4000:4000+int(4000*alpha)]["human_abstract"].tolist()
+        u_negative_texts = arxiv_data.iloc[4000+int(4000*alpha):8000]["rewrite_Y"].tolist()
+
+        if "train" in split:
+            human_writing = human_writing[:3000]
+            u_positive_texts = u_positive_texts[:-int(1000*alpha)]
+            u_negative_texts = u_negative_texts[:-int(1000*(1-alpha))]
+        elif "val" in split:
+            human_writing = human_writing[3000:]
+            u_positive_texts = u_positive_texts[-int(1000*alpha):]
+            u_negative_texts = u_negative_texts[-int(1000*(1-alpha)):]
+
+    elif "pn" in split:
+        assert(alpha == 0 and not flip)
+        human_writing = arxiv_data.iloc[:4000]["human_abstract"].tolist()
+        ai_writing = arxiv_data.iloc[4000:8000]["rewrite_X"].tolist()
+
+    elif "cal" in split:
+        human_writing = arxiv_data.iloc[-2000:]["human_abstract"].tolist()
+        ai_writing = arxiv_data.iloc[-2000:]["rewrite_Y"].tolist()
+
+
+    if sentence:
+        if "pn" in split or "cal" in split:
+            negative_texts, _ = split_into_sentences(human_writing, [0 for _ in range(len(human_writing))])
+            positive_texts, _ = split_into_sentences(ai_writing, [0 for _ in range(len(ai_writing))])
+
+            texts = negative_texts + positive_texts
+            labels = [0 for _ in range(len(negative_texts))] + [1 for _ in range(len(positive_texts))]
+
+        elif "pu" in split:
+
+            positive_texts, _ = split_into_sentences(human_writing, [0 for _ in range(len(human_writing))])
+            u_positive_texts, _ = split_into_sentences(u_positive_texts, [0 for _ in range(len(u_positive_texts))])
+            u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
+
+            # Compute feasible T bounds
+            T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
+            T_neg = len(u_negative_texts) / (1 - alpha) if alpha < 1 else np.inf
+
+            T = int(min(T_pos, T_neg))
+
+            n_pos = int(alpha * T)
+            n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
+
+            u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
+            u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
+
+            print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
+
+            texts = positive_texts + u_positive_texts + u_negative_texts
+            labels = [1 for _ in range(len(positive_texts))] + [0 for _ in range(len(u_positive_texts) + len(u_negative_texts))]
+        
+    else:
+        assert(False)
+        # if "pn" in split or "cal" in split:
+        #     texts = human_writing + ai_writing
+        #     labels = [0 for _ in range(len(human_writing))] + [1 for _ in range(len(ai_writing))]
+        #     print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
+        # elif "pu" in split:
+
+    # import pdb; pdb.set_trace()
+
+
+    assert(len(texts) == len(labels))
+    return texts, labels
+
 
 def arxiv_len_eda(sentence=False):
     year = 2020

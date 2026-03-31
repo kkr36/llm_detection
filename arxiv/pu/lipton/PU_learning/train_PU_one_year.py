@@ -206,6 +206,11 @@ elif "Arxiv_year" in data_type:
         p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
             get_dataset_val2(data_dir, data_type,net_type, device, valalpha, beta, batch_size, None, sentence, ft, clean, gemini, flip, combine, add, seed)
         varied_vals[valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
+elif data_type == "xy":
+    for valalpha in val_alphas:
+        p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
+            get_dataset_val2(data_dir, data_type, net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed)
+        varied_vals[valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 
 # import pdb; pdb.set_trace()
 
@@ -585,7 +590,7 @@ elif train_method=='CVIR' or train_method=="TEDn":
 
             actual_mpe = 1 - np.mean(unlabeled_targets)
             neg_acc = np.mean(preds == unlabeled_targets)
-            pos_acc = np.mean(np.round(pos_probs) == 1) 
+            pos_acc = np.mean(np.round(pos_probs) == 1)
             our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
             scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
             EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
@@ -593,6 +598,55 @@ elif train_method=='CVIR' or train_method=="TEDn":
 
             outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
             # plot_cal_curves(1-unlabeled_targets, unlabeled_probs[:,0], f"{save_dir_cal}/{year}/calibration_test_{valalpha}.pdf")
+    elif estimate_alpha and data_type == "xy":
+        for valalpha in varied_vals:
+            (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valalpha]
+            pos_probs = p_probs(net, device, p_validloader)
+            pos_prob = np.mean(pos_probs)
+            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+            preds = np.argmax(unlabeled_probs, axis=1)
+            neg_probs = 1-unlabeled_probs[:,1]
+            neg_prob = np.mean(neg_probs)
+
+            y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+            y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+            auc = roc_auc_score(y_true, y_scores)
+            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+            bins = np.linspace(
+                min(pos_probs.min(), neg_probs.min()),
+                max(pos_probs.max(), neg_probs.max()),
+                50
+            )
+
+            plt.figure()
+            plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+            plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+            plt.legend()
+            plt.tight_layout()
+
+            plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            plt.figure()
+            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+            plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.legend()
+            plt.tight_layout()
+
+            plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            actual_mpe = 1 - np.mean(unlabeled_targets)
+            neg_acc = np.mean(preds == unlabeled_targets)
+            pos_acc = np.mean(np.round(pos_probs) == 1)
+            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+
+            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
 
 elif train_method=='uPU': 
 
@@ -777,6 +831,55 @@ elif train_method=="PN":
                 scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
                 EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
                 outfile.write("{}, {}, {}, {}, {}, {}\n".format(key, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate))
+    elif estimate_alpha and data_type == "xy":
+        for valalpha in varied_vals:
+            (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valalpha]
+            pos_probs = p_probs(net, device, p_validloader)
+            pos_prob = np.mean(pos_probs)
+            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+            neg_probs = 1-unlabeled_probs[:,1]
+            neg_prob = np.mean(neg_probs)
+            naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
+            preds = np.argmax(unlabeled_probs, axis=1)
+
+            y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+            y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+            auc = roc_auc_score(y_true, y_scores)
+            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+            bins = np.linspace(
+                min(pos_probs.min(), neg_probs.min()),
+                max(pos_probs.max(), neg_probs.max()),
+                50
+            )
+
+            plt.figure()
+            plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+            plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+            plt.legend()
+            plt.tight_layout()
+
+            plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            plt.figure()
+            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+            plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.legend()
+            plt.tight_layout()
+
+            plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            neg_acc = np.mean(preds == unlabeled_targets)
+            pos_acc = np.mean(np.round(pos_probs) == 1)
+            actual_mpe = 1 - np.mean(unlabeled_targets)
+            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
 
 elif train_method=="TiCE" or train_method=="KM": 
     print("here")

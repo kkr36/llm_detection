@@ -291,6 +291,47 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
         shuffle=False)
     return u_data_loader, u_texts, u_labels
 
+def get_u_data_xy(test_alpha, flip, seed, sentence, clean):
+    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+    arxiv_data = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
+    cal_data = arxiv_data.iloc[-2000:].reset_index(drop=True)
+
+    u_rows = cal_data.iloc[500:]
+    u_human = u_rows["human_abstract"].tolist()
+    u_ai = u_rows["rewrite_Y"].tolist()
+
+    if sentence:
+        u_human, _ = split_into_sentences(u_human, [0]*len(u_human))
+        u_ai, _    = split_into_sentences(u_ai,    [0]*len(u_ai))
+
+    if flip:
+        u_pos_sents, u_neg_sents = u_human, u_ai
+    else:
+        u_pos_sents, u_neg_sents = u_ai, u_human
+
+    T_pos = len(u_pos_sents) / test_alpha if test_alpha > 0 else np.inf
+    T_neg = len(u_neg_sents) / (1 - test_alpha) if test_alpha < 1 else np.inf
+    T = int(min(T_pos, T_neg))
+    n_pos = int(test_alpha * T)
+    n_neg = T - n_pos
+    rng = np.random.default_rng(seed)
+    u_pos_sents = list(rng.choice(u_pos_sents, size=n_pos, replace=False))
+    u_neg_sents = list(rng.choice(u_neg_sents, size=n_neg, replace=False))
+    u_texts  = u_pos_sents + u_neg_sents
+    u_labels = [1]*n_pos + [0]*n_neg
+
+    if clean:
+        u_texts = clean_text(u_texts)
+
+    transform = initialize_bert_transform('distilbert-base-uncased')
+    u_dataset = IMDbBERTData(u_texts, u_labels, transform=transform)
+    u_data = UnlabelData(transform=u_dataset.transform,
+                         target_transform=u_dataset.target_transform,
+                         pos_data=u_dataset.p_data, neg_data=u_dataset.n_data,
+                         index=np.array(range(len(u_texts))), data_type="xy")
+    u_data_loader = torch.utils.data.DataLoader(u_data, batch_size=16, shuffle=False)
+    return u_data_loader, u_texts, u_labels
+
 def get_preds(data_type, net, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, seed):
     p_data_loader = get_p_data(data_type, test_year, sentence, clean, combine, gemini, flip, seed)
     u_data_loader, _, _ = get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, "in", seed)
@@ -313,6 +354,37 @@ def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sente
     # return pos preds, u preds, u labels
     return pos_probs, unlabeled_probs, unlabeled_targets
 
+def get_preds_xy(net, device, test_alpha, flip, seed, sentence, clean):
+    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+    arxiv_data = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
+    cal_data = arxiv_data.iloc[-2000:].reset_index(drop=True)
+
+    # Positive set: first 500 rows, human_abstract only
+    pos_texts = cal_data.iloc[:500]["human_abstract"].tolist()
+
+    if sentence:
+        pos_texts, _ = split_into_sentences(pos_texts, [1]*len(pos_texts))
+
+    if clean:
+        pos_texts = clean_text(pos_texts)
+
+    transform = initialize_bert_transform('distilbert-base-uncased')
+    pos_dataset = IMDbBERTData(pos_texts, [1]*len(pos_texts), transform=transform)
+    p_data = PosData(transform=pos_dataset.transform,
+                     target_transform=pos_dataset.target_transform,
+                     data=pos_dataset.p_data,
+                     index=np.array(range(len(pos_dataset.p_data))), data_type="xy")
+    p_loader = torch.utils.data.DataLoader(p_data, batch_size=16, shuffle=False)
+
+    u_loader, _, _ = get_u_data_xy(test_alpha, flip, seed, sentence, clean)
+
+    pos_probs = p_probs(net, device, p_loader)
+    if not flip:
+        # import pdb; pdb.set_trace()
+        pos_probs = 1 - pos_probs
+    unlabeled_probs, unlabeled_targets = u_probs(net, device, u_loader)
+    return pos_probs, unlabeled_probs, unlabeled_targets
+
 def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
     assert(sentence)
     u_texts, u_labels = [], []
@@ -321,7 +393,9 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
 
     for year_tmp in years:
         if split == "val":
-            if llm is not None:
+            if llm == "xy":
+                _, u_texts_tmp, u_labels_tmp = get_u_data_xy(alpha, flip, seed, sentence, clean)
+            elif llm is not None:
                 _, u_texts_tmp, u_labels_tmp = get_u_data_llm(data_type, alpha, year, llm, sentence, clean, gemini, flip, split, seed)
             else:
                 _, u_texts_tmp, u_labels_tmp = get_u_data(data_type, alpha, year_tmp, combine, sentence, clean, add, gemini, flip, split, seed)
@@ -329,6 +403,9 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
             if add:
                 split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_add(split_dir, alpha, split, sentence, inject=True, seed=seed)
+            elif llm == "xy":
+                data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+                u_texts_tmp, u_labels_tmp = read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, seed)
             elif llm is not None:
                 split_dir = f'{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf_gemini_full.parquet"
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, seed)

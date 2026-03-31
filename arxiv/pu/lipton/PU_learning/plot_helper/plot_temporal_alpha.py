@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
 
-input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal_3.csv"
+input_file = "../logging_accuracy_temporal_alpha_full_sentence_alpha_temporal.csv"
 import os
 output_folder = input_file.split("/")[-1].split(".csv")[0]
 if not os.path.exists(output_folder):
@@ -115,11 +115,11 @@ def make_line_plot(metric, x_lab, title, data):
 def plot_temporal_data(data, metrics):
     # get 2010 data
     rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"]==0) & (data['test_alpha']==0.5)]
-    pu_2010 = rows_2010[rows_2010["learning_method"]=="PU"]
+    pu_2010 = rows_2010[(rows_2010["learning_method"]=="PU") | (rows_2010["learning_method"]=="TEDn")]
     pn_2010 = rows_2010[rows_2010["learning_method"]=="PN"]
 
     rows_retrain_0 = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0)]
-    pu_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PU"]
+    pu_retrain_0 = rows_retrain_0[(rows_retrain_0["learning_method"]=="PU") | (rows_retrain_0["learning_method"]=="TEDn")]
     pn_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PN"]
     # import pdb; pdb.set_trace()
 
@@ -130,12 +130,12 @@ def plot_temporal_data(data, metrics):
 def plot_temporal_alpha(data, metrics):
     # get 2010 data
     rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"]==0) & (data['test_alpha']==0.5)]
-    pu_2010 = rows_2010[rows_2010["learning_method"]=="PU"]
+    pu_2010 = rows_2010[(rows_2010["learning_method"]=="PU") | (rows_2010["learning_method"]=="TEDn")]
     pn_2010 = rows_2010[rows_2010["learning_method"]=="PN"]
 
     # get retrain 0 data
     rows_retrain_0 = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0)]
-    pu_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PU"]
+    pu_retrain_0 = rows_retrain_0[(rows_retrain_0["learning_method"]=="PU") | (rows_retrain_0["learning_method"]=="TEDn")]
     pn_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PN"]
 
     # get retrain alpha data
@@ -153,7 +153,7 @@ def plot_temporal_alpha(data, metrics):
     rows_retrain_alpha = same_year[
         same_year["train_alpha"] == max_alpha_per_year
     ]
-    pu_retrain_alpha = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PU"]
+    pu_retrain_alpha = rows_retrain_alpha[(rows_retrain_alpha["learning_method"]=="PU") | (rows_retrain_alpha["learning_method"]=="TEDn")]
     pn_retrain_alpha = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PN"]
     for metric in metrics:
         # removed ("PU 2010", pu_2010)
@@ -161,7 +161,7 @@ def plot_temporal_alpha(data, metrics):
 
 def plot_alpha(data, metrics):
     rows = data[data["train_year"] == 2020]
-    rows_pu = rows[rows["learning_method"]=="PU"]
+    rows_pu = rows[(rows["learning_method"]=="PU") | (rows["learning_method"]=="TEDn")]
     rows_pn = rows[rows["learning_method"]=="PN"]
 
     for metric in metrics:
@@ -169,7 +169,7 @@ def plot_alpha(data, metrics):
 
 def plot_alpha_james(data, metrics):
     rows = data[data["train_year"] == 2020]
-    rows_pu = rows[rows["learning_method"]=="PU"]
+    rows_pu = rows[(rows["learning_method"]=="PU") | (rows["learning_method"]=="TEDn")]
     rows_pn = rows[rows["learning_method"]=="PN"]
     rows_james = rows[rows["learning_method"]=="MLE"]
     rows_pn = rows[rows["learning_method"]=="PN"]
@@ -180,12 +180,12 @@ def plot_alpha_james(data, metrics):
 def plot_temporal_james(data, metrics):
     # get 2010 data
     rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"]==0) & (data['test_alpha']==0.5)]
-    pu_2010 = rows_2010[rows_2010["learning_method"]=="PU"]
+    pu_2010 = rows_2010[(rows_2010["learning_method"]=="PU") | (rows_2010["learning_method"]=="TEDn")]
     pn_2010 = rows_2010[rows_2010["learning_method"]=="PN"]
     james_2010 = rows_2010[rows_2010["learning_method"]=="MLE"]
 
     rows_retrain_0 = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0)]
-    pu_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PU"]
+    pu_retrain_0 = rows_retrain_0[(rows_retrain_0["learning_method"]=="PU") | (rows_retrain_0["learning_method"]=="TEDn")]
     pn_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="PN"]
     james_retrain_0 = rows_retrain_0[rows_retrain_0["learning_method"]=="MLE"]
     # import pdb; pdb.set_trace()
@@ -194,7 +194,7 @@ def plot_temporal_james(data, metrics):
 
     for metric in metrics:
         # removed ("PU 2010 (BBE)", pu_2010), ("PU Retrain (BBE)", pu_retrain_0)
-        make_line_plot(metric, "test_year", "james_temporal", [("Supervised 2010", pn_2010), ("Unachievable Optimal", pn_retrain_0), ("Liang et al 2010", james_2010), ("Supervised 2010 Rescaled (Plug-In)", platt_pn_2010)][:-1])
+        make_line_plot(metric, "test_year", "james_temporal", [("Supervised 2010", pn_2010), ("Unachievable Optimal", pn_retrain_0), ("Liang et al 2010", james_2010), ("Supervised 2010 Rescaled (Plug-In)", platt_pn_2010)][:])
 
 
 if __name__ == "__main__":

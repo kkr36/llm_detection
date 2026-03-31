@@ -78,19 +78,21 @@ flip = False
 combine = "combine" in entrance_path
 sentence = True 
 clean = True 
-platt = False 
+platt = True 
 gemini = False
 add = "_add_" in entrance_path
 epochs = 3 # can toggle
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
-seeds = 5
+seeds = [0,1,2,3,4,5,6,7,8,9]
 
 ### LOGIC ###
 
 metrics_dict = defaultdict(list)
 
-train_years = [2010, 2012, 2014, 2016, 2018, 2020][-1:]
+train_years = [2010, 2012, 2014, 2016, 2018, 2020][:1]
 if combine: train_years = [2020]
+
+train_methods = ["PN", "TEDn"][:1]
 
 output_csv = f"{entrance_path}_alpha_temporal.csv"
 
@@ -116,11 +118,13 @@ for train_year in train_years:
 
     for alpha in alphas:
 
-        for train_method in ["PN", "TEDn"]:
+        for train_method in train_methods:
 
-            nets = []
+            # if train_year != 2020 or (train_year == 2020 and alpha == 0) or (train_year == 2020 and alpha == .15 and train_method == "PN"): continue
 
-            for seed in range(seeds):
+            nets = {}
+
+            for seed in seeds:
                 alpha_dir = Path(f"{entrance_path}/sentence_{train_year}/{alpha}_{seed}/ArXiv_BERT_{epochs}")
                 pts = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and train_method in p.name]
                 assert(len(pts) == 1)
@@ -133,7 +137,7 @@ for train_year in train_years:
                 net.load_state_dict(state_dict)
                 net.eval()
                 net.to(device)
-                nets.append(net)
+                nets[seed] = net
 
 
             test_alphas = [0.5]
@@ -149,22 +153,23 @@ for train_year in train_years:
                     preds_p_list, preds_u_list, u_targets_list = [], [], []
 
                     ### iterate thru models
-                    for seed in range(seeds):
+                    for seed in seeds:
+                        seednet = nets[seed]
                         if platt:
                             assert(not combine)
                             scale_year = 2010 # might want to change? if not scaling to 2010 every time
-                            u_data_loader, _, _ = get_u_data(data_type, 0.5, scale_year, combine, sentence, clean, add, gemini, flip, split="out")
+                            u_data_loader, _, _ = get_u_data(data_type, 0.5, scale_year, combine, sentence, clean, add, gemini, flip, "out", seed)
                             # 2. fit Platt scaling
                             platt = fit_platt_scaler(
-                                model=net,
+                                model=seednet,
                                 calib_loader=u_data_loader,
                                 device=device
                             )
 
                             # 3. build calibrated model
-                            net = PlattCalibratedClassifier(net, platt)
-                            net.eval()
-                        pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, nets[seed], device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, seed)
+                            seednet = PlattCalibratedClassifier(seednet, platt)
+                            seednet.eval()
+                        pos_probs, unlabeled_probs, unlabeled_targets = get_preds(data_type, seednet, device, test_alpha, test_year, combine, sentence, clean, add, gemini, flip, seed)
                         preds_p_list.append(pos_probs)
                         preds_u_list.append(unlabeled_probs)
                         u_targets_list.append(unlabeled_targets)

@@ -101,7 +101,7 @@ else:
 run_id = len(metrics_df)
 
 for train_llm in llms_list:
-    if train_llm == "Gemini 2.5 Pro" or train_llm == "Gemini 2.0 Flash-Lite": continue
+    # if train_llm == "Gemini 2.5 Pro" or train_llm == "Gemini 2.0 Flash-Lite": continue
 
     train_llm_name = train_llm.replace(' ', '_')
 
@@ -144,6 +144,7 @@ for train_llm in llms_list:
             for test_llm in llms_list:
                 print(f"train: {model_name} {train_llm} {train_alpha} | test: {test_llm} {test_alpha}")
 
+                if not (train_llm_name == "Llama_3.3_70b_Instruct" and test_llm == "GPT OSS 120b"): continue
 
                 preds_p_list, preds_u_list, u_targets_list = [], [], []
 
@@ -174,6 +175,8 @@ for train_llm in llms_list:
                 }
 
                 metrics = get_metrics(preds_p_list, preds_u_list, u_targets_list, test_cis=test_cis, n_bootstrap=2500)
+
+                import pdb; pdb.set_trace()
 
                 # one row per experiment
                 row = {}
