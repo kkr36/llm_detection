@@ -1,4 +1,5 @@
-### DO NOT OVERWRITE, EDIT, OR TOUCH ANYTHING IN THIS FILE ###
+### MOCK VERSION of inner_loop.py
+### All LLM API calls (query_fns) are replaced with a mock that returns a default abstract.
 # must be run using conda env *llm_master*!
 
 import os
@@ -6,8 +7,6 @@ import json
 from tqdm import tqdm
 from collections import defaultdict
 import pandas as pd
-from openai_api import openai_oss_query
-from gemini_api import call_gemini_3
 from util import individual_predict, split_into_sentences, clean_text
 from strategy import CURRENT_STRATEGY, CURRENT_TIMESTEP
 from pathlib import Path
@@ -19,18 +18,22 @@ from model_helper import get_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-query_fns = [call_gemini_3, openai_oss_query]
+MOCK_ABSTRACT = "This paper presents a novel approach to the problem at hand. We propose a method that achieves state-of-the-art performance on standard benchmarks. Experimental results demonstrate the effectiveness of the proposed approach. Our method outperforms existing baselines by a significant margin. We conclude with a discussion of limitations and future work."
+
+def mock_strategy(query_fn, orig_abs, llm_label):
+    return MOCK_ABSTRACT, None
+
 llm_labels = ["Gemini 3 Preview", "GPT OSS 120b"]
-assert(len(query_fns) == len(llm_labels))
 
 output_csv = f"results_{CURRENT_TIMESTEP}.csv"
 
 if __name__ == "__main__":
+    print(f"starting generation for t={CURRENT_TIMESTEP} (MOCK MODE)")
     ### FIXED PARAMS
     subsample_size = 20000
     category = "cs."
     train_year = 2010
-    nets = [] # get pre-trained AI detectors; they take in text (a sentence) and output P(LLM) = 1 - P(human); we want to minimize this with our LLM mirrors; i.e., fool the detector
+    nets = [] # get pre-trained AI detectors
     seeds = 5
     for seed in range(seeds):
         path_to_pretrained = Path(f"/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/logging_accuracy_temporal_alpha_full_sentence/sentence_{train_year}/{0}_{seed}/ArXiv_BERT_3")
@@ -47,9 +50,11 @@ if __name__ == "__main__":
         net.to(device)
         nets.append(net)
 
-    old_text = [] # holds llm mirrors from a previous iteration, t=-1
-    new_text = [] # holds llm mirrors from current iteration, CURRENT_STRATEGY / CURRENT_TIMESTEP
-    human_text = [] # holds human-written abstracts
+    print("loaded models")
+
+    old_text = []
+    new_text = []
+    human_text = []
 
     to_rewrite = 10
     val_start = 2500
@@ -59,22 +64,17 @@ if __name__ == "__main__":
     arxiv_data = pd.read_parquet(fpath)
     llms = [i % len(llm_labels) for i in range(len(arxiv_data))]
 
-    # generate to_rewrite mirrors
+    # generate to_rewrite mirrors (mocked)
+    print("generating mirrors (MOCKED)")
     for i in tqdm(range(val_start, val_start + to_rewrite)):
         row = arxiv_data.iloc[i]
         orig_abs = row['human_abstract']
-        # llm_abs = row[llm_labels[llms[i]]]
-        # assert llm_abs is not None and len(llm_abs) > 0 # make sure the old mirror exists
 
-        new_abs, _ = CURRENT_STRATEGY(query_fns[llms[i]], orig_abs, llm_labels[llms[i]])
+        new_abs, _ = mock_strategy(None, orig_abs, llm_labels[llms[i]])
 
-        # old_text.append(llm_abs)
         new_text.append(new_abs)
         human_text.append(orig_abs)
-    
-    # pass through pre-trained classification model -- higher numbers = lower P(human); we want to MINIMIZE the scores of this classifier
-    # specifically, the average score over new_text should be lower than the average score over old_text (meaning CURRENT_STRATEGY is better than the original), and approach average score over human abstracts
-    # each row of abstract_dict represents sentences of one human abstract, the sentences of its llm mirror, and scores per sentence
+
     abstract_dict = {
         "human": [],
         "human_score": [],
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         f"mirror_{CURRENT_TIMESTEP}_score": [],
         f"mirror_{CURRENT_TIMESTEP}_score_avg": []
     }
-    
+
     for i, (human_abstract, mirror_t) in enumerate(list(zip(human_text, new_text))):
         for abstract, label in [(human_abstract, "human"), (mirror_t, f"mirror_{CURRENT_TIMESTEP}")]:
             sentences = clean_text(split_into_sentences(abstract))
@@ -96,13 +96,11 @@ if __name__ == "__main__":
                     avg_score_buffer.append(score)
                 sentence_scores.append(np.mean(avg_score_buffer))
 
-            # update dict with sentences, scores
             abstract_dict[f"{label}_score"].append(sentence_scores)
             abstract_dict[f"{label}_score_avg"].append(np.mean(sentence_scores))
             abstract_dict[label].append(sentences)
         abstract_dict["mirroring_llm"].append(llm_labels[llms[i]])
 
-    # write results to csv for analysis prior to next iteration, CURRENT_TIMESTEP+1
     if CURRENT_TIMESTEP != 1:
         t_csv = pd.read_csv(output_csv.replace(str(CURRENT_TIMESTEP), str(CURRENT_TIMESTEP-1)))
         t_csv[f"mirror_{CURRENT_TIMESTEP}"] = abstract_dict[f"mirror_{CURRENT_TIMESTEP}"]
@@ -110,9 +108,5 @@ if __name__ == "__main__":
         t_csv[f"mirror_{CURRENT_TIMESTEP}_score_avg"] = abstract_dict[f"mirror_{CURRENT_TIMESTEP}_score_avg"]
     else:
         t_csv = pd.DataFrame(abstract_dict)
-        
+
     t_csv.to_csv(output_csv, index=False)
-
-
-
-    

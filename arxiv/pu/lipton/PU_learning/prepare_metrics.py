@@ -16,8 +16,6 @@ def bootstrap_metric_bbe(metric_fn, preds_p_list, preds_u_list, u_targets_list, 
     estimates = []
     for i in tqdm(list(range(n_bootstrap)), smoothing=.3):
 
-        # import pdb; pdb.set_trace()
-
         preds_p, preds_u, u_targets = preds_p_list[i%len(preds_p_list)], preds_u_list[i%len(preds_u_list)], u_targets_list[i%len(u_targets_list)]
         # Resample both positives and negatives
         idx_p = np.random.choice(len(preds_p), len(preds_p), replace=True)
@@ -46,7 +44,6 @@ def bootstrap_metric(metric_fn, preds_p_list, preds_u_list, n_bootstrap=1000, ci
     estimates = []
     for i in tqdm(list(range(n_bootstrap)), smoothing=.3):
 
-        # import pdb; pdb.set_trace()
         preds_p, preds_u = preds_p_list[i%len(preds_p_list)], preds_u_list[i%len(preds_u_list)]
 
         # Resample both positives and negatives

@@ -7,6 +7,7 @@ from transformers import BertTokenizerFast, DistilBertTokenizerFast
 import spacy
 nlp = spacy.load("en_core_web_lg", disable=["ner", "parser"])
 nlp.enable_pipe("senter")
+import time
 
 def compute_abstract_stats(data: Dict[str, List[str]]) -> Dict[str, Dict[str, float]]:
     """
@@ -153,3 +154,35 @@ def individual_predict(net, device, sample):
         output = net(input)
         probs = torch.nn.functional.softmax(output, dim=-1)[:,0] 
     return output, probs
+
+def predict_with_backoff(pangram_client, text, max_retries=5, initial_delay=1):
+    """
+    Call pangram_client.predict with exponential backoff retry logic.
+    
+    Args:
+        pangram_client: The Pangram client instance
+        text: Text to predict on
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay in seconds (doubles with each retry)
+    
+    Returns:
+        API response dict or None if all retries failed
+    """
+    delay = initial_delay
+    
+    for attempt in range(max_retries):
+        try:
+            result = pangram_client.predict(text)
+            return result
+        except Exception as e:
+            if attempt == max_retries - 1:
+                # Last attempt failed
+                print(f"Failed after {max_retries} attempts: {e}")
+                return None
+            
+            # Exponential backoff
+            print(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2  # Double the delay for next attempt
+    
+    return {}

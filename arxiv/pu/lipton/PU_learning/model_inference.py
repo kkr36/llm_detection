@@ -291,23 +291,29 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
         shuffle=False)
     return u_data_loader, u_texts, u_labels
 
-def get_u_data_xy(test_alpha, flip, seed, sentence, clean):
-    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+def get_u_data_xy(test_alpha, flip, seed, sentence, clean, llm_col):
+    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
     arxiv_data = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
     cal_data = arxiv_data.iloc[-2000:].reset_index(drop=True)
 
     u_rows = cal_data.iloc[500:]
     u_human = u_rows["human_abstract"].tolist()
-    u_ai = u_rows["rewrite_Y"].tolist()
+    if "all" in llm_col:
+        x_texts = u_rows["rewrite_X"].tolist()
+        y_texts = u_rows["rewrite_Y"].tolist()
+        u_ai = [t for pair in zip(x_texts, y_texts) for t in pair]
+        u_ai += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+    else:
+        u_ai = u_rows[llm_col].tolist()
 
     if sentence:
         u_human, _ = split_into_sentences(u_human, [0]*len(u_human))
         u_ai, _    = split_into_sentences(u_ai,    [0]*len(u_ai))
 
-    if flip:
-        u_pos_sents, u_neg_sents = u_human, u_ai
-    else:
-        u_pos_sents, u_neg_sents = u_ai, u_human
+    # if flip:
+    u_pos_sents, u_neg_sents = u_human, u_ai # human is always positive
+    # else:
+    #     u_pos_sents, u_neg_sents = u_ai, u_human
 
     T_pos = len(u_pos_sents) / test_alpha if test_alpha > 0 else np.inf
     T_neg = len(u_neg_sents) / (1 - test_alpha) if test_alpha < 1 else np.inf
@@ -354,8 +360,8 @@ def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sente
     # return pos preds, u preds, u labels
     return pos_probs, unlabeled_probs, unlabeled_targets
 
-def get_preds_xy(net, device, test_alpha, flip, seed, sentence, clean):
-    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
+def get_preds_xy(net, device, test_alpha, flip, seed, sentence, clean, llm_col):
+    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
     arxiv_data = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
     cal_data = arxiv_data.iloc[-2000:].reset_index(drop=True)
 
@@ -376,13 +382,15 @@ def get_preds_xy(net, device, test_alpha, flip, seed, sentence, clean):
                      index=np.array(range(len(pos_dataset.p_data))), data_type="xy")
     p_loader = torch.utils.data.DataLoader(p_data, batch_size=16, shuffle=False)
 
-    u_loader, _, _ = get_u_data_xy(test_alpha, flip, seed, sentence, clean)
+    u_loader, _, _ = get_u_data_xy(test_alpha, flip, seed, sentence, clean, llm_col)
 
     pos_probs = p_probs(net, device, p_loader)
+    unlabeled_probs, unlabeled_targets = u_probs(net, device, u_loader)
     if not flip:
         # import pdb; pdb.set_trace()
         pos_probs = 1 - pos_probs
-    unlabeled_probs, unlabeled_targets = u_probs(net, device, u_loader)
+        unlabeled_probs = 1 - unlabeled_probs
+
     return pos_probs, unlabeled_probs, unlabeled_targets
 
 def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
@@ -392,26 +400,29 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
     print(years)
 
     for year_tmp in years:
-        if split == "val":
-            if llm == "xy":
-                _, u_texts_tmp, u_labels_tmp = get_u_data_xy(alpha, flip, seed, sentence, clean)
+        if "val" in split:
+            if llm in ("X", "Y", "all"):
+                llm_col = f"rewrite_{llm}"
+                _, u_texts_tmp, u_labels_tmp = get_u_data_xy(alpha, flip, seed, sentence, clean, llm_col)
             elif llm is not None:
                 _, u_texts_tmp, u_labels_tmp = get_u_data_llm(data_type, alpha, year, llm, sentence, clean, gemini, flip, split, seed)
             else:
                 _, u_texts_tmp, u_labels_tmp = get_u_data(data_type, alpha, year_tmp, combine, sentence, clean, add, gemini, flip, split, seed)
-        elif split == "train":
+        elif "train" in split:
             if add:
                 split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_add(split_dir, alpha, split, sentence, inject=True, seed=seed)
-            elif llm == "xy":
-                data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
-                u_texts_tmp, u_labels_tmp = read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, seed)
+            elif llm in ("X", "Y", "all"):
+                data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+                llm_col = f"rewrite_{llm}"
+                u_texts_tmp, u_labels_tmp = read_arxiv_split_xy(data_path, llm, split, sentence, alpha, gemini, flip, seed, llm_col)
             elif llm is not None:
                 split_dir = f'{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf_gemini_full.parquet"
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, seed)
             else:
                 split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
                 u_texts_tmp, u_labels_tmp = read_arxiv_split2(split_dir, alpha, split, sentence, inject=True, seed=seed)
+        else: import pdb; pdb.set_trace()
         u_texts += u_texts_tmp
         u_labels += u_labels_tmp
 
@@ -462,7 +473,7 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
     df.to_parquet(save_path, index=False)
 
 def estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
-    assert(split=="train")
+    assert("train" in split)
     load_str = get_james_save_str(data_type, train_year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm)
     train_data = pd.read_parquet(f"{data_dir}/multillm/james_v_us/{load_str}")
 
@@ -476,7 +487,9 @@ def estimate_train(data_type, train_year, alpha, combine, sentence, clean, add, 
 def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, n_bootstrap, seeds, llm):
 
     train_llm, test_llm = None if llm is None else llm[0], None if llm is None else llm[1]
-    assert(gemini == (llm is not None))
+    xy_modes = {"X", "Y", "all"}
+    is_xy_mode = llm is not None and (llm[0] in xy_modes or llm[1] in xy_modes)
+    assert(is_xy_mode or gemini == (llm is not None))
 
     def df_to_val_set(df, t_alpha):
         human_data = df[["human_sentence", "human_index"]]

@@ -187,7 +187,7 @@ def get_PNDataSplits(data_obj, pos_size, neg_size, data_type=None):
                 index=np.array(range(pos_size + neg_size)),data_type=data_type)
 
 
-def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed): 
+def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None):
 
     p_trainloader=None
     u_trainloader=None
@@ -300,10 +300,10 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         net = net.to(device)
 
     elif data_type == "xy":
-        llm = "rewrite_X"
-        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
-        train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pu_train", sentence, alpha, gemini, flip, seed)
-        test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "pu_val", sentence, alpha, gemini, flip, seed)
+        llm_col = f"rewrite_{llm}"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pu_train", sentence, alpha, gemini, flip, seed, llm_col)
+        test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "pu_val", sentence, alpha, gemini, flip, seed, llm_col)
         if clean:
             orig_train_len = sum([len(x) for x in train_texts])
             train_texts = clean_text(train_texts)
@@ -406,7 +406,7 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
     return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata
 
 
-def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed): # TODO fix
+def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None): # TODO fix
     p_validloader=None
     u_validloader=None
     # import pdb; pdb.set_trace()
@@ -489,9 +489,9 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
             shuffle=shuffle)
 
     elif data_type == "xy":
-        llm = "rewrite_X"
-        val_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
-        test_texts, test_labels = read_arxiv_split_xy(val_path, llm, "cal", sentence, alpha, gemini, flip, seed)
+        llm_col = f"rewrite_{llm}"
+        val_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        test_texts, test_labels = read_arxiv_split_xy(val_path, llm, "cal", sentence, alpha, gemini, flip, seed, llm_col)
         if clean:
             print("cleaning test set?")
             orig_len = sum([len(x) for x in test_texts])
@@ -560,7 +560,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         
     return p_validloader, u_validloader, p_validdata, u_validdata    
 
-def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed): 
+def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None): 
 
     u_trainloader=None
     u_validloader=None
@@ -663,10 +663,10 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         net = net.to(device)
 
     elif data_type == "xy":
-        llm = "rewrite_X"
-        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xy_cs._10000_fronthalf.parquet"
-        train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pn_train", sentence, alpha, gemini, flip, seed)
-        test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "cal", sentence, 0, gemini, flip, seed)
+        llm_col = f"rewrite_{llm}"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pn_train", sentence, alpha, gemini, flip, seed, llm_col)
+        test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "cal", sentence, 0, gemini, flip, seed, llm_col)
         if clean:
             orig_train_len = sum([len(x) for x in train_texts])
             train_texts = clean_text(train_texts)

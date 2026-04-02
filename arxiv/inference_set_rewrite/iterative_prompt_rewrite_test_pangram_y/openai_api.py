@@ -3,7 +3,14 @@ import json
 from botocore.exceptions import ClientError
 import time
 import random
+import os
 
+with open("/home/kkr36/creds.json", "r") as f:
+    keys = json.load(f)
+
+aws_key = keys["aws_key"]
+
+os.environ["AWS_BEARER_TOKEN_BEDROCK"] = aws_key
 bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
 
 def oss_query(context, prompt, max_retries=5, base_delay=1.0):
@@ -78,28 +85,83 @@ client = OpenAI(
     api_key=aws_key # Replace with actual API key
 )
 
-def openai_oss_query(context, prompt):
-  completion = client.chat.completions.create(
-      max_completion_tokens = 1000,
-      temperature = 0.5,
-      reasoning_effort='low',
-      model="openai.gpt-oss-20b-1:0",
-      messages=[
-          {
-              "role": "developer",
-              "content": context + "\nMINIMIZE REASONING (< 100 WORDS)."
-          },
-          {
-              "role": "user",
-              "content": prompt
-          }
-      ]
-  )
-  # import pdb; pdb.set_trace()
-  res = completion.choices[0].message.content.split("reasoning>")[-1]
-  if len(res) == 0: print("badbadnotgood", completion.choices[0].message.content)
+import re
 
-  return res
+def openai_oss_query(context, prompt, max_retries=3):
+    messages = [
+        {
+            "role": "developer",
+            "content": (
+                context
+                # "\nBe concise. Output your final answer directly. No preamble."
+            )
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+
+    for attempt in range(max_retries):
+        completion = client.chat.completions.create(
+            max_completion_tokens=1300,
+            temperature=0.5,
+            reasoning_effort='low',
+            model="openai.gpt-oss-120b-1:0",
+            messages=messages
+        )
+
+        raw = completion.choices[0].message.content
+
+        # Strip reasoning blocks (closed and unclosed)
+        res = re.sub(r'<reasoning>.*?</reasoning>', '', raw, flags=re.DOTALL)
+        res = re.sub(r'<reasoning>.*$', '', res, flags=re.DOTALL)
+        res = res.strip()
+
+        if res:
+            # import pdb; pdb.set_trace()
+            return res
+
+        # If empty, reasoning ate the whole budget — retry with stronger directive
+        messages = [
+            {
+                "role": "developer",
+                "content": (
+                    context +
+                    "\nCRITICAL: Output ONLY the final answer. Do not reason. Do not think step by step."
+                )
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+
+    print("badbadnotgood after all retries", raw)
+    return ""
+
+# def openai_oss_query(context, prompt):
+#   completion = client.chat.completions.create(
+#       max_completion_tokens = 1300,
+#       temperature = 0.5,
+#       reasoning_effort='low',
+#       model="openai.gpt-oss-20b-1:0",
+#       messages=[
+#           {
+#               "role": "developer",
+#               "content": context + "\nMINIMIZE REASONING (< 100 WORDS)."
+#           },
+#           {
+#               "role": "user",
+#               "content": prompt
+#           }
+#       ]
+#   )
+#   # import pdb; pdb.set_trace()
+#   res = completion.choices[0].message.content.split("reasoning>")[-1]
+#   if len(res) == 0: print("badbadnotgood", completion.choices[0].message.content)
+
+#   return res
 
 
   # Parse and print the message for each choice in the chat completion

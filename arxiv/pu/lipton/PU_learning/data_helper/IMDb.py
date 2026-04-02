@@ -653,9 +653,11 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
     assert(len(final_texts) == len(final_labels))
     return final_texts, final_labels
 
-def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, seed):
+def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, seed, llm_col):
     assert(seed is not None)
     assert("pu" in split or "pn" in split or split == "cal")
+    # if "all" in llm_col:
+    #     assert("pu" in split or "cal" in split), f"llm_col='all' is only valid for pu splits, got split='{split}'"
 
     # load in data
     arxiv_data = pd.read_parquet(split_dir)
@@ -665,7 +667,18 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
         assert(flip)
         human_writing = arxiv_data.iloc[:4000]["human_abstract"].tolist()
         u_positive_texts = arxiv_data.iloc[4000:4000+int(4000*alpha)]["human_abstract"].tolist()
-        u_negative_texts = arxiv_data.iloc[4000+int(4000*alpha):8000]["rewrite_Y"].tolist()
+        if "all" in llm_col:
+            # assert(alpha == 1/3)
+            neg_start = 4000 + int(4000*alpha)
+            neg_mid = neg_start + (8000 - neg_start) // 2
+            x_texts = arxiv_data.iloc[neg_start:neg_mid]["rewrite_X"].tolist()
+            y_texts = arxiv_data.iloc[neg_mid:8000]["rewrite_Y"].tolist()
+            u_negative_texts = [t for pair in zip(x_texts, y_texts) for t in pair]
+            # append leftover if one list is longer
+            u_negative_texts += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+            # import pdb; pdb.set_trace()
+        else:
+            u_negative_texts = arxiv_data.iloc[4000+int(4000*alpha):8000][llm_col].tolist()
 
         if "train" in split:
             human_writing = human_writing[:3000]
@@ -679,11 +692,27 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
     elif "pn" in split:
         assert(alpha == 0 and not flip)
         human_writing = arxiv_data.iloc[:4000]["human_abstract"].tolist()
-        ai_writing = arxiv_data.iloc[4000:8000]["rewrite_X"].tolist()
+        if "all" in llm_col:
+            pn_data = arxiv_data.iloc[4000:8000]
+            mid = len(pn_data) // 2
+            x_texts = pn_data.iloc[:mid]["rewrite_X"].tolist()
+            y_texts = pn_data.iloc[mid:]["rewrite_Y"].tolist()
+            ai_writing = [t for pair in zip(x_texts, y_texts) for t in pair]
+            ai_writing += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+        else:
+            ai_writing = arxiv_data.iloc[4000:8000][llm_col].tolist()
 
     elif "cal" in split:
         human_writing = arxiv_data.iloc[-2000:]["human_abstract"].tolist()
-        ai_writing = arxiv_data.iloc[-2000:]["rewrite_Y"].tolist()
+        if "all" in llm_col:
+            cal_data = arxiv_data.iloc[-2000:]
+            mid = len(cal_data) // 2
+            x_texts = cal_data.iloc[:mid]["rewrite_X"].tolist()
+            y_texts = cal_data.iloc[mid:]["rewrite_Y"].tolist()
+            ai_writing = [t for pair in zip(x_texts, y_texts) for t in pair]
+            ai_writing += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+        else:
+            ai_writing = arxiv_data.iloc[-2000:][llm_col].tolist()
 
 
     if sentence:

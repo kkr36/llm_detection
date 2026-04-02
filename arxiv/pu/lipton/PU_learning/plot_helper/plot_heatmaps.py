@@ -50,30 +50,17 @@ plot_metrics = [
 binary_metrics = ["auc", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg"]
 diverging_metrics = ["bbe", "plugin", "plugin-int"]
 
-flip_metrics = [
-    "pos_prob",
-    "neg_prob",
-    "bbe",
-    "plugin",
-    "plugin-int"
-]
-
-swap_metrics = [
-    "entropy_pos",
-    "entropy_neg"
-]
-
 name_to_name = {
     "train_alpha": r"Train ${\alpha}$",
     "test_year": "Test Year",
     "auc": "AUC",
-    "pos_prob": "Avg Pred LLM",
-    "neg_prob": "Avg Pred Human",
-    "entropy_pos": "Avg Entropy LLM",
-    "entropy_neg": "Avg Entropy Human",
+    "pos_prob": "Avg Pred Human",
+    "neg_prob": "Avg Pred LLM",
+    "entropy_pos": "Avg Entropy Human",
+    "entropy_neg": "Avg Entropy LLM",
     "bbe": r'Test $\hat{\alpha}$',
     "plugin": "Plug-In Alpha",
-    "plugin-int": "Avg P(LLM)"
+    "plugin-int": "Avg P(Human)"
 }
 
 def make_heatmap(df, metrics, gemini):
@@ -114,44 +101,10 @@ def make_heatmap(df, metrics, gemini):
             if llm not in col_order:
                 continue
 
-            pos_bool = "pos" in metric
-
-            # ---------- Helper ----------
-            def transform(val, lower=False, upper=False):
-                base_metric = metric
-                if metric in swap_metrics:
-                    base_metric = metric.replace(
-                        "pos" if pos_bool else "neg",
-                        "neg" if pos_bool else "pos"
-                    )
-                    return row[
-                        f"{base_metric}_{'l' if lower else 'u' if upper else ''}_{ci_level}"
-                    ] if (lower or upper) else row[base_metric]
-
-                elif metric in flip_metrics:
-                    base_metric = metric.replace(
-                        "pos" if pos_bool else "neg",
-                        "neg" if pos_bool else "pos"
-                    )
-
-                    if lower:
-                        return 1 - row[f"{base_metric}_u_{ci_level}"]
-                    elif upper:
-                        return 1 - row[f"{base_metric}_l_{ci_level}"]
-                    else:
-                        return 1 - row[base_metric]
-
-                else:
-                    if lower:
-                        return row[lower_col]
-                    elif upper:
-                        return row[upper_col]
-                    else:
-                        return row[metric]
-
-            pu_point.loc["PU (diag)", llm] = transform(row)
-            pu_lower.loc["PU (diag)", llm] = transform(row, lower=True)
-            pu_upper.loc["PU (diag)", llm] = transform(row, upper=True)
+            # Both PN and PU are now in P(human) space; read directly
+            pu_point.loc["PU (diag)", llm] = row[metric]
+            pu_lower.loc["PU (diag)", llm] = row[lower_col]
+            pu_upper.loc["PU (diag)", llm] = row[upper_col]
 
         # -------------------------
         # Off-diagonal PN average
@@ -318,10 +271,10 @@ def make_mle_heatmap(df, gemini):
         llm = row["train_llm"]
         if llm not in llms_list:
             continue
-        # bbe is in flip_metrics; base_metric stays "bbe" (no pos/neg to swap)
-        pu_point.loc["PU (diag)", llm] = 1 - row["bbe"]
-        pu_lower_df.loc["PU (diag)", llm] = 1 - row["bbe_u_0.95"]
-        pu_upper_df.loc["PU (diag)", llm] = 1 - row["bbe_l_0.95"]
+        # Both PN and PU now estimate alpha_human; read directly
+        pu_point.loc["PU (diag)", llm] = row["bbe"]
+        pu_lower_df.loc["PU (diag)", llm] = row["bbe_l_0.95"]
+        pu_upper_df.loc["PU (diag)", llm] = row["bbe_u_0.95"]
 
     # -------------------------
     # Sort columns by MLE off-diagonal mean (ascending)

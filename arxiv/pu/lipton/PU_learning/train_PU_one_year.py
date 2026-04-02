@@ -66,6 +66,7 @@ parser.add_argument('--flip', default=False, action='store_true', help='pos is l
 # line plot args 
 parser.add_argument('--combine', default=False, action='store_true', help='use hardcoded years 2014/6/8/20')
 parser.add_argument('--add', default=False, action='store_true', help='strictly add positives wrt alpha')
+parser.add_argument('--llm', type=str, default=None, help='xy column suffix, e.g. Y or X')
 
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
@@ -131,6 +132,7 @@ flip = args.flip
 combine = args.combine
 add = args.add
 seed = args.seed
+llm = args.llm
 
 # val_alphas = [0.01,.05,.1,.2,.3,.5]
 # val_alphas = [0, .1, .25, .5]
@@ -162,12 +164,12 @@ varied_vals = {}
 
 if train_method=='PN': 
     # import pdb; pdb.set_trace()
-    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed)
+    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm)
     # import pdb; pdb.set_trace()
 
 else:
     p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
-        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence,ft, clean, gemini, flip, combine, add, seed)
+        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence,ft, clean, gemini, flip, combine, add, seed, llm)
     # import pdb; pdb.set_trace()
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)
@@ -209,7 +211,7 @@ elif "Arxiv_year" in data_type:
 elif data_type == "xy":
     for valalpha in val_alphas:
         p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-            get_dataset_val2(data_dir, data_type, net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed)
+            get_dataset_val2(data_dir, data_type, net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm)
         varied_vals[valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 
 # import pdb; pdb.set_trace()

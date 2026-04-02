@@ -73,15 +73,17 @@ def call_gemini_3(context: str, prompt: str,
     response = client.models.generate_content(
         model=model,
         config=types.GenerateContentConfig(
-            max_output_tokens=700,
-            temperature=0.5,
-            system_instruction=context,
+            max_output_tokens=2500,
+            temperature=0,
+            # system_instruction= "MINIMIZE REASONING (< 100 WORDS)\n." + context,
+            system_instruction = context,
             thinking_config=types.ThinkingConfig(
                 thinking_level=thinking_level
             )
         ),
         contents=prompt
     )
+    # import pdb; pdb.set_trace()
     return response.text
 
 @retry_with_backoff()

@@ -109,7 +109,7 @@ for train_llm in llms_list:
 
     for train_alpha in alphas:
 
-        flip = train_alpha==0.5
+        eval_flip = True  # always human=positive for eval
 
         nets = []
 
@@ -144,12 +144,14 @@ for train_llm in llms_list:
             for test_llm in llms_list:
                 print(f"train: {model_name} {train_llm} {train_alpha} | test: {test_llm} {test_alpha}")
 
-                if not (train_llm_name == "Llama_3.3_70b_Instruct" and test_llm == "GPT OSS 120b"): continue
-
                 preds_p_list, preds_u_list, u_targets_list = [], [], []
 
                 for n in range(seeds):
-                    pos_probs, unlabeled_probs, unlabeled_targets = get_preds_llm(data_type, nets[n], device, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, n)
+                    pos_probs, unlabeled_probs, unlabeled_targets = get_preds_llm(data_type, nets[n], device, test_alpha, test_year, test_llm, sentence, clean, gemini, eval_flip, n)
+                    # PN model outputs P(LLM); negate to get P(human), mirroring get_preds_xy
+                    if model_name == "PN":
+                        pos_probs = 1 - pos_probs
+                        unlabeled_probs = 1 - unlabeled_probs
                     preds_p_list.append(pos_probs)
                     preds_u_list.append(unlabeled_probs)
                     u_targets_list.append(unlabeled_targets)
@@ -169,14 +171,12 @@ for train_llm in llms_list:
                     "sentence": sentence,
                     # "add": add,
                     "gemini": gemini,
-                    "flip": flip,
+                    "eval_flip": eval_flip,
                     "model_path": model_path,
                     "run_id": run_id
                 }
 
                 metrics = get_metrics(preds_p_list, preds_u_list, u_targets_list, test_cis=test_cis, n_bootstrap=2500)
-
-                import pdb; pdb.set_trace()
 
                 # one row per experiment
                 row = {}
