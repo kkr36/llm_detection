@@ -11,6 +11,14 @@ from estimator import BBE_estimator
 import torch
 
 
+PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
+
+def save_preds(path, pos_probs, unlabeled_probs, unlabeled_targets):
+    if os.path.exists(path):
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.savez_compressed(path, pos_probs=pos_probs, unlabeled_probs=unlabeled_probs, unlabeled_targets=unlabeled_targets)
+
 def update_dict(metrics_dict, metric, point, lowers, uppers):
     metrics_dict[metric] = point
     for ci in uppers:
@@ -46,6 +54,7 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
     update_dict(metrics_dict, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "bce", *bootstrap_metric(balanced_cross_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=n_bootstrap, cis=test_cis))
 
     return metrics_dict
@@ -64,18 +73,26 @@ test_cis = [.9, .95, .99]
 # For PN: alpha=0, flip=False (AI=positive)
 # For TEDn: alpha=0.25, flip=True (human=positive)
 configs = [
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "X"},
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "Y"},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "Y"},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "all"},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "X"},
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "Z"},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "Z"},
-][-2:]
+    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "X"},
+    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "Y"},
+    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "Y"},
+    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "all"},
+    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "X"},
+    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "Z"},
+    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "Z"},
+    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "X", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][:1]},
+    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xz",  "eval_cols": ["rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][:1]},
+    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][2:3]},
+    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xzzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][-1:]},
+    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "X", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PN", "rewrite_Z_2_PN"][:2]},
+    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "xz",  "eval_cols": ["rewrite_Z_1_PN", "rewrite_Z_2_PN"][:1]},
+    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "xzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PN", "rewrite_Z_2_PN"][-1:]},
+    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "xzzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PN", "rewrite_Z_2_PN"][-1:]},
+]
 
 ### LOGIC ###
 
-output_csv = f"{entrance_path}.csv"
+output_csv = f"{entrance_path}.csv".replace("xy", "xz")
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -107,7 +124,10 @@ for cfg in configs:
         net.to(device)
         nets[seed] = net
 
-    for eval_llm_col in ["rewrite_X", "rewrite_Y"]:
+    eval_cols = ["rewrite_X", "rewrite_Y", "rewrite_Z"] if "eval_cols" not in cfg.keys() else cfg["eval_cols"]
+    print(cfg, eval_cols)
+
+    for eval_llm_col in eval_cols:
         print(f"Evaluating {train_method} llm={llm} (flip={flip}, train_alpha={train_alpha}) "
               f"on eval_col={eval_llm_col} across {len(nets)} seeds")
 
@@ -115,6 +135,10 @@ for cfg in configs:
         for seed, net in nets.items():
             pos_probs, unlabeled_probs, unlabeled_targets = get_preds_xy(
                 net, device, test_alpha, flip, seed, sentence, clean, eval_llm_col)
+            save_preds(
+                f"{PREDS_BASE}/optimization/{train_method}/{llm}/{eval_llm_col}/seed_{seed}.npz",
+                pos_probs, unlabeled_probs, unlabeled_targets,
+            )
             preds_p_list.append(pos_probs)
             preds_u_list.append(unlabeled_probs)
             u_targets_list.append(unlabeled_targets)

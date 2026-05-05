@@ -212,7 +212,7 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
 
         for year in years:
 
-            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
 
             train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, True, seed) # should have 15k each
             test_texts_new, test_labels_new = load_fn(data_path, alpha, "val", sentence, True, seed) # should have 5k each
@@ -263,8 +263,8 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
 
     elif "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
-        data_path = f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet" if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
-        # if llm != "all" else f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
+        data_path = f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet" if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
+        # if llm != "all" else f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen_v2.parquet'
 
         train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence, alpha, gemini, flip, seed) # should have 15k each
         test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence, alpha, gemini, flip, seed) # should have 5k each
@@ -413,14 +413,14 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
     if data_type=="ArXiv_BERT": 
         # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._20000.parquet'
 
-        # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet'
+        # val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen_v2.parquet'
 
         years = [2010, 2012, 2014, 2016, 2018, 2020][-3:] if combine else [year]
         # years = [year]
         test_texts, test_labels = [], []
 
         for year in years:
-            val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+            val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
 
             test_texts_new, test_labels_new = read_arxiv_split2(val_path, 0, "val", sentence, inject=False, seed=seed)
             # test_texts_new, test_labels_new = read_arxiv_single_double(val_path, "val", sentence, inject=True, seed=seed)
@@ -459,7 +459,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
             shuffle=shuffle)
     elif "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
-        val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
+        val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
 
         test_texts, test_labels = read_arxiv_split_llm(val_path, llm, "val", sentence, alpha, gemini, flip, seed)
         if clean:
@@ -491,6 +491,7 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
     elif data_type == "xy":
         llm_col = f"rewrite_{llm}"
         val_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        # import pdb; pdb.set_trace()
         test_texts, test_labels = read_arxiv_split_xy(val_path, llm, "cal", sentence, alpha, gemini, flip, seed, llm_col)
         if clean:
             print("cleaning test set?")
@@ -578,7 +579,7 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         # load_fn = read_arxiv_single_double
 
         for year in years:
-            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf.parquet'
+            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
 
             train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, True, seed)
             # train_texts_new, train_labels_new = load_fn(data_path, "train", sentence, True, seed)
@@ -631,7 +632,7 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
 
     elif "llm_type_" in data_type:
         llm = data_type.split("llm_type_")[-1].replace("_", " ")
-        data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
+        data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
         # import pdb; pdb.set_trace()
         train_texts, train_labels = read_arxiv_split_llm(data_path, llm, "train", sentence, alpha, gemini, flip, seed)
         test_texts, test_labels = read_arxiv_split_llm(data_path, llm, "val", sentence, alpha, gemini, flip, seed)

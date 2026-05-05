@@ -11,9 +11,9 @@ if __name__ == "__main__":
     # alphas = [0]
     # alphas = [0.7, 0.8]
 
-    train_methods = ['TEDn', 'PN'][:]
+    train_methods = ['TEDn', 'PN'][:1]
 
-    llms = ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
+    llms = ["Qwen", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][-1:]
     # llms=["all"]
     # llms = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "all"][:-1]
 
@@ -43,8 +43,9 @@ if __name__ == "__main__":
             alpha = 0 if train_method=="PN" else 0.5
             # for alpha in alphas:
             for llm in llm_list:
-                if alpha == .5: continue
+                # if alpha == .5: continue
                 for seed in seeds:
+                    if train_method == "TEDn" and llm == "Qwen" and seed <= 2: continue
                     lr = 0.00001
                     # cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=2 --optimizer=AdamW --alpha=0 --beta=.6 --year={year} --log-dir=logging_accuracy_llm/{llm}_sentence"
                     cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm/normal_sentence/alpha_{alpha}/{llm}_{seed} --seed={seed} --clean {'--flip' if train_method=='TEDn' else ''}"

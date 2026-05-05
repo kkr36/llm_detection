@@ -6,10 +6,11 @@ if __name__ == "__main__":
     # years = list(range(2010,2026))
     # years = [2020, 2023, 2025][1:2]
     # years = [2020, 2023, 2025][:]
-    years = [2010, 2012, 2014, 2016, 2018, 2020][:-1]
+    years = [2010, 2012, 2014, 2016, 2018, 2020][-2:-1]
     # years = [2014]
     # years = [2012, 2010, 2020, 2018, 2014, 2016]
-    seeds = [5,6,7,8,9]
+    # seeds = [5,6,7,8,9]
+    seeds = [0,1,2,3,4,5,6,7,8,9][:]
 
     # alphas = [0, .1, .2, .3, .4, .5, .6][:1]
 
@@ -22,7 +23,9 @@ if __name__ == "__main__":
             # alpha = max(0, .15 * ((year - 2012) // 2))
             # alphas = [0] if (year != 2020 and year != 2010) else [0] if year == 2010 else [0, .15, .3, .45, .6][::-1]
 
-            alphas = [0] if year != 2020 else [0, .15, .3, .45, .6][:]
+            # alphas = [0] if year != 2020 else [0, .15, .3, .45, .6][:]
+            # alphas = [0.5]
+            alphas = [0] if train_method == "PN" else [0.5]
 
             # for alpha in alphas:
                 # if train_method == 'PN':
@@ -39,9 +42,10 @@ if __name__ == "__main__":
 
             for alpha in alphas:
                 for seed in seeds:
+                    if(year in [2010, 2012]) or (year == 2014 and seed <= 1) or (year == 2016 and train_method == "PN" and seed <= 4) or (year == 2016 and train_method == "TEDn") or (year == 2018 and train_method == "TEDn") or (year == 2020 and train_method == "TEDn" and seed == 0): continue
                     # if (year == 2010 and train_method == "TEDn") or (year == 2020 and alpha == 0 and train_method == "TEDn"): continue
-                    if (year in [2010,2012,2014,2016]) or (year == 2018 and seed != 9 and train_method == "TEDn") or (year == 2020 and train_method == "TEDn") or (year == 2020 and alpha < .45 and train_method == "PN") or (year == 2020 and alpha == .45 and seed in [5,6] and train_method == "PN"): 
-                        continue
+                    # if (year in [2010,2012,2014,2016]) or (year == 2018 and seed != 9 and train_method == "TEDn") or (year == 2020 and train_method == "TEDn") or (year == 2020 and alpha < .45 and train_method == "PN") or (year == 2020 and alpha == .45 and seed in [5,6] and train_method == "PN"): 
+                        # continue
 
                     # if year != 2020 or (year == 2020 and alpha != 0 and train_method == "TEDn") or (year == 2020 and alpha == 0 and seed <= 3 and train_method == "TEDn"): continue
 

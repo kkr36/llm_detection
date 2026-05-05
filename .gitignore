@@ -13,3 +13,8 @@ ssrn/secrets.json
 *ArXiv_BERT*
 .python-version
 virtualenv
+*.md
+*.npz
+*.log
+*.yml
+*.sh

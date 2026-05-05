@@ -102,55 +102,80 @@ def openai_oss_query(context, prompt):
   return res
 
 
-  # Parse and print the message for each choice in the chat completion
-  # response_body = json.loads(response['body'].read().decode('utf-8'))
-  # assert(len(response_body['choices']) == 1)
+import functools
+import re
 
+def retry_with_backoff(max_retries=5, initial_delay=3, backoff_factor=2):
+    """Decorator for exponential backoff on any exception."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = initial_delay
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        print("Too many retries!")
+                        raise  # re-raise last exception
+                    print(f"[Retry {attempt+1}/{max_retries}] Error: {e}. "
+                          f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    delay *= backoff_factor
+        return wrapper
+    return decorator
 
-  # for choice in response_body['choices']:
-  #     print(choice['message']['content'])
-  # return response_body
+@retry_with_backoff()
+def openai_oss_120b_query(context, prompt, max_retries=3):
+    messages = [
+        {
+            "role": "developer",
+            "content": (
+                context
+                # "\nBe concise. Output your final answer directly. No preamble."
+            )
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
 
-# def oss_query(client, context, prompt, max_retries=5, base_delay=1.0):
+    raw = None
+    for attempt in range(max_retries):
+        completion = client.chat.completions.create(
+            max_completion_tokens=1500,
+            temperature=0.5,
+            reasoning_effort='low',
+            model="openai.gpt-oss-120b-1:0",
+            messages=messages
+        )
 
-#     model_id = 'openai.gpt-oss-120b-1:0'
+        raw = completion.choices[0].message.content
 
-#     native_request = {
-#       "model": model_id, # You can omit this field
-#       "messages": [
-#         {
-#           "role": "system",
-#           "content": context
-#         },
-#         {
-#           "role": "user",
-#           "content": prompt
-#         }
-#       ],
-#       "max_completion_tokens": 512,
-#       "temperature": 0.5,
-#       "top_p": 0.9
-#     }
+        # Strip reasoning blocks (closed and unclosed)
+        res = re.sub(r'<reasoning>.*?</reasoning>', '', raw, flags=re.DOTALL)
+        res = re.sub(r'<reasoning>.*$', '', res, flags=re.DOTALL)
+        res = res.strip()
 
-#     # Convert the native request to JSON.
-#     request = json.dumps(native_request)
+        if res:
+            # import pdb; pdb.set_trace()
+            return res
 
-#     for attempt in range(max_retries):
-#       try:
-#         response = client.invoke_model(
-#             modelId=model_id,
-#             body=json.dumps(native_request)
-#           )
-#         model_response = json.loads(response["body"].read())
-#         return model_response["generation"]
-#       except (ClientError, Exception) as e:
-#           wait_time = base_delay * (2 ** attempt) + random.uniform(0, 0.25)
-#           print(
-#               f"[Attempt {attempt+1}/{max_retries}] Error invoking '{model_id}': {e}\n"
-#               f"Retrying in {wait_time:.2f}s..."
-#           )
-#           time.sleep(wait_time)
+        # If empty, reasoning ate the whole budget — retry with stronger directive
+        messages = [
+            {
+                "role": "developer",
+                "content": (
+                    context +
+                    "\nCRITICAL: Output ONLY the final answer. Do not reason. Do not think step by step."
+                )
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
 
-#     # If all retries fail:
-#     print(f"ERROR: Exhausted retries for '{model_id}'. Giving up.")
-#     raise RuntimeError(f"Failed to invoke model '{model_id}' after {max_retries} attempts.")
+    print("badbadnotgood after all retries", raw)
+    return ""

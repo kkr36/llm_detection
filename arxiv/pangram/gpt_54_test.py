@@ -118,7 +118,7 @@ for year in years:
 existing_data = pd.read_parquet("results_0_50.parquet")
 df_results = pd.DataFrame(final_dict)
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 
 df_results = pd.concat([existing_data, df_results])
 

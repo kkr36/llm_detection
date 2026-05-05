@@ -23,6 +23,14 @@ from estimator import BBE_estimator
 import torch
 from platt_scaling import *
 
+PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
+
+def save_preds(path, pos_probs, unlabeled_probs, unlabeled_targets):
+    if os.path.exists(path):
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.savez_compressed(path, pos_probs=pos_probs, unlabeled_probs=unlabeled_probs, unlabeled_targets=unlabeled_targets)
+
 def update_dict(metrics_dict, metric, point, lowers, uppers):
     metrics_dict[metric] = point
     for ci in uppers:
@@ -64,6 +72,7 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
     update_dict(metrics_dict, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "bce", *bootstrap_metric(balanced_cross_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     # import pdb; pdb.set_trace()
     update_dict(metrics_dict, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=n_bootstrap, cis=test_cis))
     
@@ -72,7 +81,7 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
 # SWITCHES
-entrance_path = "logging_accuracy_llm"
+entrance_path = "logging_accuracy_llm_gemini"
 data_type = "ArXiv_BERT"
 # flip = False
 combine = "combine" in entrance_path
@@ -84,14 +93,14 @@ add = "_add_" in entrance_path
 epochs = 3 # can toggle
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
 train_year = 2020
-llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"] if gemini else ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
+llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "all"][-2:-1] if gemini else ["Qwen", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:]
 seeds = 5
 
 ### LOGIC ###
 
 metrics_dict = defaultdict(list)
 
-output_csv = f"{entrance_path}.csv"
+output_csv = f"{entrance_path}_3.csv"
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -100,12 +109,12 @@ else:
 
 run_id = len(metrics_df)
 
-for train_llm in llms_list:
+for train_llm in llms_list[:]:
     # if train_llm == "Gemini 2.5 Pro" or train_llm == "Gemini 2.0 Flash-Lite": continue
 
     train_llm_name = train_llm.replace(' ', '_')
 
-    alphas = [0, .5]
+    alphas = [0, .5][-1:]
 
     for train_alpha in alphas:
 
@@ -141,17 +150,24 @@ for train_llm in llms_list:
         # import pdb; pdb.set_trace()
 
         for test_alpha in test_alphas:
-            for test_llm in llms_list:
+            llms_list_eval = ["all"]
+            # llms_list_eval = llms_list
+            for test_llm in llms_list_eval:
                 print(f"train: {model_name} {train_llm} {train_alpha} | test: {test_llm} {test_alpha}")
 
                 preds_p_list, preds_u_list, u_targets_list = [], [], []
 
+                test_llm_name = test_llm.replace(" ", "_")
                 for n in range(seeds):
                     pos_probs, unlabeled_probs, unlabeled_targets = get_preds_llm(data_type, nets[n], device, test_alpha, test_year, test_llm, sentence, clean, gemini, eval_flip, n)
                     # PN model outputs P(LLM); negate to get P(human), mirroring get_preds_xy
                     if model_name == "PN":
                         pos_probs = 1 - pos_probs
                         unlabeled_probs = 1 - unlabeled_probs
+                    save_preds(
+                        f"{PREDS_BASE}/heatmap/{model_name}/train_{train_llm_name}/alpha_{train_alpha}/test_{test_llm_name}/seed_{n}.npz",
+                        pos_probs, unlabeled_probs, unlabeled_targets,
+                    )
                     preds_p_list.append(pos_probs)
                     preds_u_list.append(unlabeled_probs)
                     u_targets_list.append(unlabeled_targets)

@@ -94,3 +94,15 @@ def format_time(seconds):
     if f == '':
         f = '0ms'
     return f
+
+import pandas as pd
+
+def combine_csvs(csvs):
+    final = None
+    for csv in csvs:
+        df = pd.read_csv(csv)
+        if final is None:
+            final = df
+        else:
+            final = pd.concat([final, df]).reset_index(drop=True)
+    return final

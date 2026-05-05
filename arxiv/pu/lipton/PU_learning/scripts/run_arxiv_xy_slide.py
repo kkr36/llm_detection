@@ -1,0 +1,34 @@
+import subprocess
+from tqdm import tqdm
+import shlex
+
+if __name__ == "__main__":
+
+    years = [2010, 2016, 2018, 2020][-1:]
+    seeds = [0,1,2,3,4][:]
+
+
+    train_methods = ['TEDn', 'PN'][1:]
+
+    for year in tqdm(years):
+        for train_method in train_methods:
+            alpha = 0 if train_method=="PN" else 0.25
+
+            for seed in seeds:
+                lr = 0.00001
+                fracs = [round(.1*n, 1) for n in range(11)]
+                # llm_vals = ["Y", "xz", "xzz", "X", "Z"][2:3] if train_method == "TEDn" else ["X", "Y", "xz", "xzz", "Z"][3:4]
+                # for llm_val in llm_vals:
+                for frac in fracs:
+                    if train_method == "PN":
+                        if not (seed == 2 and frac == 0.9): continue
+                        # if (seed == 0) or (seed == 1) or (seed == 2 and frac != 1.0): continue
+                    # elif train_method == "TEDn":
+                        # if (seed == 0) or (seed == 1) or (seed == 2) or (seed == 3) or (seed == 4 and frac <= 0.4): continue
+                    # import pdb; pdb.set_trace()
+                    llm_val = f"xz_{frac}"
+                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='xy' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_xy/normal_sentence/alpha_{alpha}/{seed}/{llm_val} --seed={seed} --clean --llm={llm_val} {'--flip' if train_method=='TEDn' else ''}"
+
+                    print(cmd)
+
+                    subprocess.run(shlex.split(cmd))

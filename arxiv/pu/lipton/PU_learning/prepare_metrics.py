@@ -127,3 +127,10 @@ def binary_entropy_neg_fn(preds_p, preds_u):
     eps = 1e-15
     preds = np.clip(preds_u, eps, 1 - eps)
     return -np.mean(preds * np.log(preds) + (1 - preds) * np.log(1 - preds))
+
+def balanced_cross_entropy_fn(preds_p, preds_u):
+    """Balanced cross-entropy: average of CE on positives (label=1) and negatives (label=0)"""
+    eps = 1e-15
+    ce_pos = -np.mean(np.log(np.clip(preds_p, eps, 1 - eps)))
+    ce_neg = -np.mean(np.log(np.clip(1 - preds_u, eps, 1 - eps)))
+    return (ce_pos + ce_neg) / 2

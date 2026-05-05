@@ -3,9 +3,28 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import seaborn as sns
 import numpy as np
+import ast
 
 # Read the results
-df = pd.read_csv('results_everything_100_2010.csv')
+# df = pd.read_csv('results_everything_100_2010.csv')
+df = pd.read_csv('results_everything_100_2010_2.csv')
+
+# Parse window_ai_assistance_score (stored as list or stringified list) → row average
+def parse_score_list(val):
+    if isinstance(val, list):
+        scores = val
+    else:
+        try:
+            scores = ast.literal_eval(str(val))
+        except (ValueError, SyntaxError):
+            return np.nan
+    if not scores:
+        return np.nan
+    return float(np.mean([s for s in scores if s is not None]))
+
+df['avg_window_ai_assistance_score'] = df['window_ai_assistance_scores'].apply(parse_score_list)
+
+df['source'] = df['source'].replace('ChatGPT 5.4', 'GPT 5.4')
 
 # Set style
 sns.set_style("whitegrid")
@@ -17,7 +36,8 @@ numeric_cols = [
     'fraction_ai',
     'fraction_ai_assisted',
     'fraction_human',
-    'num_ai_segments'
+    'num_ai_segments',
+    'avg_window_ai_assistance_score',
 ]
 
 # =========================
@@ -44,11 +64,66 @@ bar_width = 0.8 / n_sources          # keep total bar group width ≤ 0.8
 palette = sns.color_palette("tab10", n_sources)
 
 # =========================
-# Plot
+# Plot helpers
+# =========================
+def _plot_grouped_bars(ax, cols, sources, means, cis, palette):
+    n_src = len(sources)
+    x = np.arange(len(cols))
+    bar_width = 0.8 / n_src
+    for i, source in enumerate(sources):
+        offsets = x + (i - (n_src - 1) / 2) * bar_width
+        heights = means.loc[source, cols].values
+        errors  = cis.loc[source, cols].values
+        ax.bar(offsets, heights, width=bar_width, color=palette[i],
+               label=source, alpha=0.85, zorder=3)
+        ax.errorbar(offsets, heights, yerr=errors, fmt='none', ecolor='black',
+                    elinewidth=1.2, capsize=4, capthick=1.2, zorder=4)
+    tick_labels = [c.replace("_", " ").replace("avg ", "Avg ").title() for c in cols]
+    ax.set_xticks(x)
+    ax.set_xticklabels(tick_labels, fontsize=16)
+    ax.tick_params(axis='y', labelsize=15)
+    ax.set_ylabel("Mean Value", fontsize=17)
+    ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
+    ax.grid(axis='y', which='major', linewidth=0.8, zorder=0)
+    ax.grid(axis='y', which='minor', linewidth=0.4, linestyle=':', zorder=0)
+    ax.set_axisbelow(True)
+    n_cols_legend = min(n_src, (n_src + 1) // 2)
+    ax.legend(title="Source", title_fontsize=13, fontsize=12,
+              loc='upper center', bbox_to_anchor=(0.5, -0.18),
+              ncol=n_cols_legend, framealpha=0.9)
+
+
+def plot_fraction_bars(sources, means, cis, palette):
+    cols = ['fraction_ai', 'fraction_ai_assisted', 'fraction_human']
+    fig, ax = plt.subplots(figsize=(10, 7))
+    _plot_grouped_bars(ax, cols, sources, means, cis, palette)
+    # ax.set_title("AI/Assisted/Human Fractions by LLM Source\n(Mean ± 95% CI)",
+    #              fontsize=16, fontweight="bold", pad=14)
+    plt.tight_layout()
+    plt.savefig('ai_detection_fractions.pdf', dpi=300, bbox_inches='tight')
+    plt.clf()
+    print("Saved: ai_detection_fractions.pdf")
+
+
+def plot_segment_score_bars(sources, means, cis, palette):
+    cols = ['num_ai_segments', 'avg_window_ai_assistance_score']
+    fig, ax = plt.subplots(figsize=(10, 7))
+    _plot_grouped_bars(ax, cols, sources, means, cis, palette)
+    # ax.set_title("AI Segments & Avg Window Score by LLM Source\n(Mean ± 95% CI)",
+                #  fontsize=16, fontweight="bold", pad=14)
+    plt.tight_layout()
+    plt.savefig('ai_detection_segments_score.pdf', dpi=300, bbox_inches='tight')
+    plt.clf()
+    print("Saved: ai_detection_segments_score.pdf")
+
+
+# =========================
+# Plot (original — all metrics combined)
 # =========================
 fig, ax = plt.subplots()
 
 for i, source in enumerate(sources):
+    # import pdb; pdb.set_trace()
     offsets = x + (i - (n_sources - 1) / 2) * bar_width
     heights = means.loc[source].values
     errors  = cis.loc[source].values
@@ -76,8 +151,9 @@ for i, source in enumerate(sources):
     )
 
 # Axis formatting
+tick_labels = [m.replace("_", " ").replace("avg ", "Avg ").title() for m in numeric_cols]
 ax.set_xticks(x)
-ax.set_xticklabels([m.replace("_", " ").title() for m in numeric_cols], fontsize=12)
+ax.set_xticklabels(tick_labels, fontsize=11)
 ax.set_ylabel("Mean Value", fontsize=12)
 ax.set_title(
     "AI Detection Metrics by LLM Source\n(Mean ± 95% CI)",
@@ -103,6 +179,9 @@ plt.tight_layout()
 plt.savefig('ai_detection_grouped_bars.pdf', dpi=300, bbox_inches='tight')
 plt.clf()
 print("Saved: ai_detection_grouped_bars.pdf")
+
+plot_fraction_bars(sources, means, cis, palette)
+plot_segment_score_bars(sources, means, cis, palette)
 
 # =========================
 # Print summary statistics

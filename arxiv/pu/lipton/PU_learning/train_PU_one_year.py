@@ -85,8 +85,6 @@ def batch_decode(batch):
         skip_special_tokens=True
     )
 
-import numpy as np
-
 def topk_small_large(probs, validdata, k=10):
     order = np.argsort(probs)
 
@@ -196,7 +194,7 @@ elif data_type=="paramveer":
         varied_vals['ft'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=True, clean=clean, gemini=gemini, flip=flip, combine=combine, add=add, seed=seed)
         varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean, gemini=gemini, flip=flip, combine=combine, add=add, seed=seed)
 elif "llm_type_" in data_type:
-    llm_list = ["Gemini 3 Preview", "Gemini 2.5 Flash", "GPT OSS 120b", "Llama 3.3 70b Instruct"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+    llm_list = ["Gemini 3 Preview", "Qwen", "GPT OSS 120b", "Llama 3.3 70b Instruct"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
     for llm in tqdm(llm_list):
         varied_vals[llm] = {}
         for valalpha in val_alphas:

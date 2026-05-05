@@ -26,7 +26,7 @@ def fmt(v):
         s = "-" + s[2:]
     return s
 
-input_file = "../logging_accuracy_xy.csv"
+input_file = "../logging_accuracy_xz.csv"
 output_folder = input_file.split("/")[-1].split(".csv")[0] + "_plots"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
@@ -37,22 +37,26 @@ plot_metrics = [
     "neg_prob",
     "entropy_pos",
     "entropy_neg",
+    "entropy",
+    "bce",
     "bbe",
     "plugin",
     "plugin-int"
 ]
 
-binary_metrics    = ["auc", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg"]
+binary_metrics    = ["auc", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg", "entropy", "bce"]
 diverging_metrics = ["bbe", "plugin", "plugin-int"]
 flip_metrics      = ["pos_prob", "neg_prob", "bbe", "plugin", "plugin-int"]
 swap_metrics      = ["entropy_pos", "entropy_neg"]
 
 name_to_name = {
     "auc"        : "AUC",
-    "pos_prob"   : "Avg Pred Human",
-    "neg_prob"   : "Avg Pred LLM",
+    "pos_prob"   : "Avg P(human | human)",
+    "neg_prob"   : "Avg P(human | LLM)",
     "entropy_pos": "Avg Entropy Human",
     "entropy_neg": "Avg Entropy LLM",
+    "entropy"    : "Avg Binary Entropy",
+    "bce"        : "Balanced Cross-Entropy",
     "bbe"        : r'BiasTest $\hat{\alpha}$',
     "plugin"     : "Bias Plug-In Alpha",
     "plugin-int" : "Bias Avg P(Human)"
@@ -179,7 +183,7 @@ def make_optimization_heatmap(df, metrics):
             boundary += sum(1 for mm, _ in row_keys if mm == m)
             ax.axhline(y=boundary, color="black", linewidth=6)
 
-        plt.title(f"{name_to_name.get(metric, metric)} (95% CI)")
+        # plt.title(f"{name_to_name.get(metric, metric)} (95% CI)")
         plt.xlabel("Eval Prompt")
         plt.ylabel("Train Method / Prompt")
 

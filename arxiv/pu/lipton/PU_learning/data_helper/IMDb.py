@@ -4,12 +4,14 @@ import torch
 from transformers import BertTokenizerFast, DistilBertTokenizerFast
 import pandas as pd
 import json
-import spacy
+# import spacy
 from tqdm import tqdm
 import re
 import random
 import csv
-nlp = spacy.load("en_core_web_lg", disable=["ner", "parser"])
+# nlp = spacy.load("en_core_web_lg", disable=["ner", "parser"])
+import en_core_web_lg
+nlp = en_core_web_lg.load(disable=["ner","parser"])
 nlp.enable_pipe("senter")
 
 import pandas as pd
@@ -278,7 +280,7 @@ def read_arxiv_split_year(data_dir, label_year, unlabel_year, alpha=None, split=
     # for the unlabeled data, replace alpha % with llm mirror
     unlabeled_writing = []
 
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
     inject_counter = int(alpha * len(arxiv_data_unlabel))
     for i in tqdm(list(i for i in range(len(arxiv_data_unlabel)))):
         assert(len(arxiv_data_unlabel.iloc[i][llm_cols[i % 4]]) > 0)
@@ -309,7 +311,7 @@ def read_arxiv_single_double(split_dir, split, sentence, inject, seed):
 
     llm_writing = []
     inject_counter = num_inject
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
@@ -372,7 +374,7 @@ def read_arxiv_split2(split_dir, alpha, split, sentence, inject, seed):
 
     llm_writing = []
     inject_counter = num_inject
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
@@ -489,7 +491,7 @@ def read_arxiv_split_add(split_dir, alpha, split, sentence, inject, seed):
 
     llm_writing = []
     inject_counter = num_inject
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
@@ -568,7 +570,7 @@ def read_arxiv_split_add(split_dir, alpha, split, sentence, inject, seed):
 def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, seed):
     assert(seed is not None)
     # import pdb; pdb.set_trace()
-    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
     assert(llm in llm_cols or llm=="all"), f"{llm} not valid"
 
     # flip = False
@@ -582,16 +584,16 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
             tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
             assert(len(tmp_subset)==2500)
 
-            llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+            tmp_subset = tmp_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
 
             # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
             print(len(tmp_subset))
             tmp_subset["llm_writing"] = tmp_subset[llm2]
 
             if split=="train":
-                tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)]
+                tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
             elif split=="val":
-                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
+                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
 
             if llm_subset is None:
                 llm_subset = tmp_subset
@@ -653,64 +655,228 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
     assert(len(final_texts) == len(final_labels))
     return final_texts, final_labels
 
+def _is_xz_col(llm_col):
+    """Returns True for llm_col values like 'rewrite_xz', 'rewrite_xzz', 'rewrite_xzzz', etc."""
+    return bool(re.match(r'^rewrite_xz+$', llm_col))
+
+def _is_xz_float_col(llm_col):
+    """Matches 'rewrite_xz_.5', 'rewrite_xz_0.5', 'rewrite_xz_1', 'rewrite_xz_1.', 'rewrite_xz_1.0', etc."""
+    return bool(re.match(r'^rewrite_xz_(\d+(\.\d*)?|\.\d+)$', llm_col))
+
+def _is_xz_count_col(llm_col):
+    """Matches 'rewrite_xz_nx{N}_nz{M}_nh{H}' where N, M, H are non-negative integers."""
+    return bool(re.match(r'^rewrite_xz_nx\d+_nz\d+_nh\d+$', llm_col))
+
+def _parse_xz_counts(llm_col):
+    """Returns (n_x, n_z, n_h) parsed from 'rewrite_xz_nx{N}_nz{M}_nh{H}'."""
+    m = re.search(r'nx(\d+)_nz(\d+)_nh(\d+)', llm_col)
+    return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+def _interleave_xz_cols_counts(df_slice, n_x_sents, n_z_sents):
+    """Sentence-splits rewrite_X and rewrite_Z from df_slice, takes n_x_sents from X
+    and n_z_sents from Z, and returns them interleaved proportionally."""
+    x_sents, _ = split_into_sentences(df_slice["rewrite_X"].tolist(), [0] * len(df_slice))
+    z_sents, _ = split_into_sentences(df_slice["rewrite_Z"].tolist(), [0] * len(df_slice))
+    # import pdb; pdb.set_trace()
+    x_sents = x_sents[:n_x_sents]
+    z_sents = z_sents[:n_z_sents]
+    total = len(x_sents) + len(z_sents)
+    if total == 0:
+        return []
+    frac = len(z_sents) / total
+    result, i, j = [], 0, 0
+    n_x, n_z = len(x_sents), len(z_sents)
+    while i < n_x or j < n_z:
+        if j < n_z and (i == 0 or j / (i + j) < frac):
+            result.append(z_sents[j]); j += 1
+        elif i < n_x:
+            result.append(x_sents[i]); i += 1
+    return result
+
+def _get_human_sentences(df_slice, n_h_sents):
+    """Sentence-splits human_abstract from df_slice and returns the first n_h_sents."""
+    h_sents, _ = split_into_sentences(df_slice["human_abstract"].tolist(), [0] * len(df_slice))
+    # import pdb; pdb.set_trace()
+    return h_sents[:n_h_sents]
+
+def _interleave_xz_cols(df_slice, llm_col, method):
+    """Splits df_slice into k equal chunks and round-robin interleaves k columns,
+    where k = number of z's in llm_col + 1.
+    t=0 is always rewrite_Z; t>0 uses rewrite_Z_{t}_{method}.
+    e.g. 'rewrite_xz'   -> [rewrite_X, rewrite_Z]
+         'rewrite_xzz'  -> [rewrite_X, rewrite_Z, rewrite_Z_1_{method}]
+         'rewrite_xzzz' -> [rewrite_X, rewrite_Z, rewrite_Z_1_{method}, rewrite_Z_2_{method}]
+    """
+    n_zs = llm_col.count('z')
+    cols = ["rewrite_X", "rewrite_Z"] + [f"rewrite_Z_{t}_{method}" for t in range(1, n_zs)]
+    k = len(cols)
+    n = len(df_slice)
+    chunk = n // k
+    all_texts = []
+    for i, col in enumerate(cols):
+        start = i * chunk
+        end = (i + 1) * chunk if i < k - 1 else n
+        all_texts.append(df_slice.iloc[start:end][col].tolist())
+    interleaved = [t for group in zip(*all_texts) for t in group]
+    min_len = min(len(t) for t in all_texts)
+    for texts in all_texts:
+        interleaved += texts[min_len:]
+    # import pdb; pdb.set_trace()
+    return interleaved
+
+import re
+
+def _interleave_xz_cols_frac(df_slice, llm_col, method):
+    """
+    Interleave rewrite_X and rewrite_Z so that ~frac of outputs come from rewrite_Z,
+    where frac is parsed from llm_col like 'rewrite_xz_0.3'.
+
+    Remaining fraction (1 - frac) comes from rewrite_X.
+    """
+    match = re.search(r'(\d+(\.\d*)?|\.\d+)$', llm_col)
+    if not match:
+        raise ValueError(f"Could not parse float from llm_col: {llm_col}")
+    
+    frac = float(match.group(0))
+    frac = max(0.0, min(1.0, frac))  # clamp to [0, 1]
+
+    n = len(df_slice)
+    n_z = int(round(n * frac))
+    n_x = n - n_z
+
+    x_texts = df_slice["rewrite_X"].tolist()[:n_x]
+    z_texts = df_slice["rewrite_Z"].tolist()[:n_z]
+
+    # interleave proportionally
+    result = []
+    i = j = 0
+    while i < n_x or j < n_z:
+        if (j < n_z) and (i == 0 or j / (i + j) < frac):
+            result.append(z_texts[j])
+            j += 1
+        elif i < n_x:
+            result.append(x_texts[i])
+            i += 1
+
+    return result
+
 def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, seed, llm_col):
     assert(seed is not None)
     assert("pu" in split or "pn" in split or split == "cal")
+    method = "PN" if "pn" in split else "PU"
     # if "all" in llm_col:
     #     assert("pu" in split or "cal" in split), f"llm_col='all' is only valid for pu splits, got split='{split}'"
 
     # load in data
     arxiv_data = pd.read_parquet(split_dir)
     arxiv_data = arxiv_data.sample(frac=1, random_state=seed).reset_index(drop=True)
+    is_count_format = False
 
     if "pu" in split:
         assert(flip)
         human_writing = arxiv_data.iloc[:4000]["human_abstract"].tolist()
         u_positive_texts = arxiv_data.iloc[4000:4000+int(4000*alpha)]["human_abstract"].tolist()
-        if "all" in llm_col:
+        if _is_xz_col(llm_col):
+            neg_start = 4000 + int(4000 * alpha)
+            neg_slice = arxiv_data.iloc[neg_start:8000].reset_index(drop=True)
+            u_negative_texts = _interleave_xz_cols(neg_slice, llm_col, method)
+        elif _is_xz_float_col(llm_col):
+            neg_start = 4000 + int(4000 * alpha)
+            neg_slice = arxiv_data.iloc[neg_start:8000].reset_index(drop=True)
+            u_negative_texts = _interleave_xz_cols_frac(neg_slice, llm_col, method)
+        elif _is_xz_count_col(llm_col):
+            is_count_format = True
+            n_x_sents, n_z_sents, n_h_sents = _parse_xz_counts(llm_col)
+            train_pool = arxiv_data.iloc[4000:7000].reset_index(drop=True)
+            val_pool = arxiv_data.iloc[7000:8000].reset_index(drop=True)
+            if "train" in split:
+                u_positive_texts = _get_human_sentences(train_pool, n_h_sents - n_h_sents // 4)
+                u_negative_texts = _interleave_xz_cols_counts(train_pool, n_x_sents - n_x_sents // 4, n_z_sents - n_z_sents // 4)
+            elif "val" in split:
+                u_positive_texts = _get_human_sentences(val_pool, n_h_sents // 4)
+                u_negative_texts = _interleave_xz_cols_counts(val_pool, n_x_sents // 4, n_z_sents // 4)
+            # import pdb; pdb.set_trace()
+        elif "xyz" in llm_col:
             # assert(alpha == 1/3)
             neg_start = 4000 + int(4000*alpha)
-            neg_mid = neg_start + (8000 - neg_start) // 2
-            x_texts = arxiv_data.iloc[neg_start:neg_mid]["rewrite_X"].tolist()
-            y_texts = arxiv_data.iloc[neg_mid:8000]["rewrite_Y"].tolist()
-            u_negative_texts = [t for pair in zip(x_texts, y_texts) for t in pair]
-            # append leftover if one list is longer
-            u_negative_texts += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+            n = 8000 - neg_start
+            neg_third1 = neg_start + n // 3
+            neg_third2 = neg_start + 2 * (n // 3)
+            x_texts = arxiv_data.iloc[neg_start:neg_third1]["rewrite_X"].tolist()
+            y_texts = arxiv_data.iloc[neg_third1:neg_third2]["rewrite_Y"].tolist()
+            z_texts = arxiv_data.iloc[neg_third2:8000]["rewrite_Z"].tolist()
+            u_negative_texts = [t for triple in zip(x_texts, y_texts, z_texts) for t in triple]
+            # append leftovers if lists differ in length
+            min_len = min(len(x_texts), len(y_texts), len(z_texts))
+            u_negative_texts += x_texts[min_len:] + y_texts[min_len:] + z_texts[min_len:]
             # import pdb; pdb.set_trace()
         else:
             u_negative_texts = arxiv_data.iloc[4000+int(4000*alpha):8000][llm_col].tolist()
 
         if "train" in split:
             human_writing = human_writing[:3000]
-            u_positive_texts = u_positive_texts[:-int(1000*alpha)]
-            u_negative_texts = u_negative_texts[:-int(1000*(1-alpha))]
+            if not is_count_format:
+                u_positive_texts = u_positive_texts[:-int(1000*alpha)]
+                u_negative_texts = u_negative_texts[:-int(1000*(1-alpha))]
         elif "val" in split:
             human_writing = human_writing[3000:]
-            u_positive_texts = u_positive_texts[-int(1000*alpha):]
-            u_negative_texts = u_negative_texts[-int(1000*(1-alpha)):]
+            if not is_count_format:
+                u_positive_texts = u_positive_texts[-int(1000*alpha):]
+                u_negative_texts = u_negative_texts[-int(1000*(1-alpha)):]
 
     elif "pn" in split:
+        # assert(False)
         assert(alpha == 0 and not flip)
         human_writing = arxiv_data.iloc[:4000]["human_abstract"].tolist()
-        if "all" in llm_col:
+        if _is_xz_col(llm_col):
+            pn_slice = arxiv_data.iloc[4000:8000].reset_index(drop=True)
+            ai_writing = _interleave_xz_cols(pn_slice, llm_col, method)
+        elif _is_xz_float_col(llm_col):
+            pn_slice = arxiv_data.iloc[4000:8000].reset_index(drop=True)
+            ai_writing = _interleave_xz_cols_frac(pn_slice, llm_col, method)
+        elif _is_xz_count_col(llm_col):
+            is_count_format = True
+            n_x_sents, n_z_sents, _ = _parse_xz_counts(llm_col)
+            pn_slice = arxiv_data.iloc[4000:8000].reset_index(drop=True)
+            ai_writing = _interleave_xz_cols_counts(pn_slice, n_x_sents, n_z_sents)
+        elif "xyz" in llm_col:
             pn_data = arxiv_data.iloc[4000:8000]
-            mid = len(pn_data) // 2
-            x_texts = pn_data.iloc[:mid]["rewrite_X"].tolist()
-            y_texts = pn_data.iloc[mid:]["rewrite_Y"].tolist()
-            ai_writing = [t for pair in zip(x_texts, y_texts) for t in pair]
-            ai_writing += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+            n = len(pn_data)
+            third1 = n // 3
+            third2 = 2 * (n // 3)
+            x_texts = pn_data.iloc[:third1]["rewrite_X"].tolist()
+            y_texts = pn_data.iloc[third1:third2]["rewrite_Y"].tolist()
+            z_texts = pn_data.iloc[third2:]["rewrite_Z"].tolist()
+            ai_writing = [t for triple in zip(x_texts, y_texts, z_texts) for t in triple]
+            min_len = min(len(x_texts), len(y_texts), len(z_texts))
+            ai_writing += x_texts[min_len:] + y_texts[min_len:] + z_texts[min_len:]
         else:
             ai_writing = arxiv_data.iloc[4000:8000][llm_col].tolist()
 
     elif "cal" in split:
         human_writing = arxiv_data.iloc[-2000:]["human_abstract"].tolist()
-        if "all" in llm_col:
+        if _is_xz_col(llm_col):
+            cal_slice = arxiv_data.iloc[-2000:].reset_index(drop=True)
+            ai_writing = _interleave_xz_cols(cal_slice, llm_col, method)
+        elif _is_xz_float_col(llm_col):
+            cal_slice = arxiv_data.iloc[-2000:].reset_index(drop=True)
+            ai_writing = _interleave_xz_cols_frac(cal_slice, llm_col, method)
+        elif _is_xz_count_col(llm_col):
+            is_count_format = True
+            n_x_sents, n_z_sents, _ = _parse_xz_counts(llm_col)
+            cal_slice = arxiv_data.iloc[-2000:].reset_index(drop=True)
+            ai_writing = _interleave_xz_cols_counts(cal_slice, n_x_sents, n_z_sents)
+        elif "xyz" in llm_col:
             cal_data = arxiv_data.iloc[-2000:]
-            mid = len(cal_data) // 2
-            x_texts = cal_data.iloc[:mid]["rewrite_X"].tolist()
-            y_texts = cal_data.iloc[mid:]["rewrite_Y"].tolist()
-            ai_writing = [t for pair in zip(x_texts, y_texts) for t in pair]
-            ai_writing += x_texts[len(y_texts):] + y_texts[len(x_texts):]
+            n = len(cal_data)
+            third1 = n // 3
+            third2 = 2 * (n // 3)
+            x_texts = cal_data.iloc[:third1]["rewrite_X"].tolist()
+            y_texts = cal_data.iloc[third1:third2]["rewrite_Y"].tolist()
+            z_texts = cal_data.iloc[third2:]["rewrite_Z"].tolist()
+            ai_writing = [t for triple in zip(x_texts, y_texts, z_texts) for t in triple]
+            min_len = min(len(x_texts), len(y_texts), len(z_texts))
+            ai_writing += x_texts[min_len:] + y_texts[min_len:] + z_texts[min_len:]
         else:
             ai_writing = arxiv_data.iloc[-2000:][llm_col].tolist()
 
@@ -718,7 +884,10 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
     if sentence:
         if "pn" in split or "cal" in split:
             negative_texts, _ = split_into_sentences(human_writing, [0 for _ in range(len(human_writing))])
-            positive_texts, _ = split_into_sentences(ai_writing, [0 for _ in range(len(ai_writing))])
+            if is_count_format:
+                positive_texts = ai_writing  # already sentences from _interleave_xz_cols_counts
+            else:
+                positive_texts, _ = split_into_sentences(ai_writing, [0 for _ in range(len(ai_writing))])
 
             texts = negative_texts + positive_texts
             labels = [0 for _ in range(len(negative_texts))] + [1 for _ in range(len(positive_texts))]
@@ -726,22 +895,26 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
         elif "pu" in split:
 
             positive_texts, _ = split_into_sentences(human_writing, [0 for _ in range(len(human_writing))])
-            u_positive_texts, _ = split_into_sentences(u_positive_texts, [0 for _ in range(len(u_positive_texts))])
-            u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
+            if is_count_format:
+                # u_positive_texts and u_negative_texts are already sentence lists with exact counts
+                pass
+            else:
+                u_positive_texts, _ = split_into_sentences(u_positive_texts, [0 for _ in range(len(u_positive_texts))])
+                u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
 
-            # Compute feasible T bounds
-            T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
-            T_neg = len(u_negative_texts) / (1 - alpha) if alpha < 1 else np.inf
+                # Compute feasible T bounds
+                T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
+                T_neg = len(u_negative_texts) / (1 - alpha) if alpha < 1 else np.inf
 
-            T = int(min(T_pos, T_neg))
+                T = int(min(T_pos, T_neg))
 
-            n_pos = int(alpha * T)
-            n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
+                n_pos = int(alpha * T)
+                n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
 
-            u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
-            u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
+                u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
+                u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
 
-            print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
+                print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
 
             texts = positive_texts + u_positive_texts + u_negative_texts
             labels = [1 for _ in range(len(positive_texts))] + [0 for _ in range(len(u_positive_texts) + len(u_negative_texts))]
@@ -771,7 +944,7 @@ def arxiv_len_eda(sentence=False):
     arxiv_data = pd.read_parquet(split_dir)
 
     llm_writing = []
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
@@ -811,7 +984,7 @@ def arxiv_len_eda_llm(sentence=False):
     
     arxiv_data = pd.read_parquet(split_dir)
 
-    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"]
+    llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
     length_dict = {}
     for llm in llm_cols:
         llm_subset = arxiv_data[arxiv_data[llm].notna() & (arxiv_data[llm] != "")].reset_index(drop=True)

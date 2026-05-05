@@ -1,4 +1,38 @@
+from huggingface_hub import configure_http_backend
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+def backend_factory():
+    session = requests.Session()
+
+    retries = Retry(
+        total=5,
+        backoff_factor=2,
+        status_forcelist=[502, 503, 504],
+    )
+
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+
+    # force timeout globally
+    original_request = session.request
+    def request_with_timeout(method, url, **kwargs):
+        kwargs.setdefault("timeout", 16)
+        return original_request(method, url, **kwargs)
+
+    session.request = request_with_timeout
+    return session
+
+configure_http_backend(backend_factory=backend_factory)
+
 from transformers import DistilBertForSequenceClassification, DistilBertModel
+
+import os
+
+os.environ["HF_HUB_TIMEOUT"] = "16"
+os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "16"
 
 class DistilBertClassifier(DistilBertForSequenceClassification):
     def __init__(self, config):

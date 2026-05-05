@@ -47,9 +47,9 @@ def get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, ge
     return f"arxiv_tokenized_{split}_{year}_{alpha}_{data_type}{combine_str}{sentence_str}{clean_str}{add_str}{gemini_str}{flip_str}{llm_str}_{seed}.parquet"
 
 def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split, seed):
-    arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet")
+    arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet")
 
-    llm_cols, llm_writing = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"], []
+    llm_cols, llm_writing = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"], []
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
@@ -106,10 +106,10 @@ def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split, seed):
     return texts, labels
 
 def read_arxiv_positive(test_year, sentence, clean, seed):
-    
-    arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet")
 
-    llm_cols, llm_writing = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Gemini 2.5 Flash"], []
+    arxiv_data = pd.read_parquet(f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet")
+
+    llm_cols, llm_writing = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"], []
     for i in tqdm(list(i for i in range(len(arxiv_data)))):
         assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
         original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
@@ -178,12 +178,31 @@ def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, 
 def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip, seed):
 
     def read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip, seed):
-        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
         assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
-        
-        arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
 
-        llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
+        arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
+
+        if test_llm=="all":
+            llm_subset=None
+
+            for i, llm2 in enumerate(llm_cols):
+                tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
+                assert(len(tmp_subset)==2500)
+
+                tmp_subset = tmp_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+                # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
+                print(len(tmp_subset))
+                tmp_subset["llm_writing"] = tmp_subset[llm2]
+                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
+
+                if llm_subset is None:
+                    llm_subset = tmp_subset
+                else:
+                    llm_subset = pd.concat([llm_subset, tmp_subset]).reset_index(drop=True)
+        else:
+            llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
 
         # shuffle
         llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
@@ -227,16 +246,36 @@ def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip
 def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split, seed):
 
     def read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split, seed):
-        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Gemini 2.5 Flash", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
         assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
+
+        arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
         
-        arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
+        if test_llm=="all":
+            llm_subset=None
 
-        llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
+            for i, llm2 in enumerate(llm_cols):
+                tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
+                assert(len(tmp_subset)==2500)
 
-        # shuffle
-        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
-        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+                tmp_subset = tmp_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+                # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
+                print(len(tmp_subset))
+                tmp_subset["llm_writing"] = tmp_subset[llm2]
+                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
+
+                if llm_subset is None:
+                    llm_subset = tmp_subset
+                else:
+                    llm_subset = pd.concat([llm_subset, tmp_subset]).reset_index(drop=True)
+            # import pdb; pdb.set_trace()
+        else:
+            llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
+
+            # shuffle
+            llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+            llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
 
         llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
         human_texts = llm_subset['human_abstract'].tolist()
@@ -410,17 +449,17 @@ def tokenize_fn(data_type, year, alpha, combine, sentence, clean, add, gemini, f
                 _, u_texts_tmp, u_labels_tmp = get_u_data(data_type, alpha, year_tmp, combine, sentence, clean, add, gemini, flip, split, seed)
         elif "train" in split:
             if add:
-                split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
+                split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_add(split_dir, alpha, split, sentence, inject=True, seed=seed)
             elif llm in ("X", "Y", "all"):
                 data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
                 llm_col = f"rewrite_{llm}"
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_xy(data_path, llm, split, sentence, alpha, gemini, flip, seed, llm_col)
             elif llm is not None:
-                split_dir = f'{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf_gemini_full.parquet"
+                split_dir = f'{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{year_tmp}_ai_cs._10000_fronthalf_gemini_full.parquet"
                 u_texts_tmp, u_labels_tmp = read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, seed)
             else:
-                split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf.parquet'
+                split_dir = f'{data_dir}/multillm/double_rewrite/arxiv_{year_tmp}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
                 u_texts_tmp, u_labels_tmp = read_arxiv_split2(split_dir, alpha, split, sentence, inject=True, seed=seed)
         else: import pdb; pdb.set_trace()
         u_texts += u_texts_tmp
@@ -489,7 +528,8 @@ def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sent
     train_llm, test_llm = None if llm is None else llm[0], None if llm is None else llm[1]
     xy_modes = {"X", "Y", "all"}
     is_xy_mode = llm is not None and (llm[0] in xy_modes or llm[1] in xy_modes)
-    assert(is_xy_mode or gemini == (llm is not None))
+    # import pdb; pdb.set_trace()
+    # assert(is_xy_mode or gemini == (llm is not None))
 
     def df_to_val_set(df, t_alpha):
         human_data = df[["human_sentence", "human_index"]]

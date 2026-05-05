@@ -50,13 +50,13 @@ clean = True
 gemini = "gemini" in entrance_path
 add = "_add_" in entrance_path
 train_year = 2020
-llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"] if gemini else ["Gemini 2.5 Flash", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
+llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash"] if gemini else ["Qwen", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:-1]
 seeds = 5
 flip = False
 
 ### LOGIC ###
 
-output_csv = f"{entrance_path}.csv"
+output_csv = f"{entrance_path}_2.csv"
 
 if not os.path.exists(os.path.expanduser(f"{data_dir}/multillm/james_v_us")):
     os.makedirs(os.path.expanduser(f"{data_dir}/multillm/james_v_us"))
@@ -79,6 +79,7 @@ for train_llm in llms_list:
         tokenize_fn(data_type, train_year, train_alpha, combine, sentence, clean, add, gemini, flip, "train", seed, train_llm)
         # do estimation on train
         estimate_train(data_type, train_year, train_alpha, combine, sentence, clean, add, gemini, flip, "train", seed, train_llm)
+        # pass
 
     test_alphas = [0.5]
     test_cis = [.9, .95, .99]
@@ -91,6 +92,7 @@ for train_llm in llms_list:
             for seed in range(seeds):
                 # tokenize the test set
                 tokenize_fn(data_type, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, "val", seed, test_llm)
+                # pass
 
             # MLE with (train, test)
             alpha_hat, half_widths = MLE_james(data_type, train_year, train_alpha, test_year, test_alpha, combine, sentence, clean, add, gemini, flip, test_cis, 2500, seeds, [train_llm, test_llm])
