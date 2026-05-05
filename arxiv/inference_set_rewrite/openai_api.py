@@ -3,6 +3,7 @@ import json
 from botocore.exceptions import ClientError
 import time
 import random
+import functools
 
 bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
 
@@ -100,6 +101,96 @@ def openai_oss_query(context, prompt):
   if len(res) == 0: print("badbadnotgood", completion.choices[0].message.content)
 
   return res
+
+def retry_with_backoff(max_retries=5, initial_delay=3, backoff_factor=2):
+    """Decorator for exponential backoff on any exception."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = initial_delay
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        print("Too many retries!")
+                        raise  # re-raise last exception
+                    print(f"[Retry {attempt+1}/{max_retries}] Error: {e}. "
+                          f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    delay *= backoff_factor
+        return wrapper
+    return decorator
+
+
+from openai import OpenAI
+import json
+with open("/home/kkr36/creds.json", "r") as f:
+    keys = json.load(f)
+
+aws_key = keys["aws_key"]
+
+client = OpenAI(
+    base_url="https://bedrock-runtime.us-west-2.amazonaws.com/openai/v1", 
+    api_key=aws_key # Replace with actual API key
+)
+
+import re
+
+@retry_with_backoff()
+def openai_oss_120b_query(context, prompt, max_retries=3):
+    messages = [
+        {
+            "role": "developer",
+            "content": (
+                context
+                # "\nBe concise. Output your final answer directly. No preamble."
+            )
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+
+    raw = None
+    for attempt in range(max_retries):
+        completion = client.chat.completions.create(
+            max_completion_tokens=1500,
+            temperature=0.5,
+            reasoning_effort='low',
+            model="openai.gpt-oss-120b-1:0",
+            messages=messages
+        )
+
+        raw = completion.choices[0].message.content
+
+        # Strip reasoning blocks (closed and unclosed)
+        res = re.sub(r'<reasoning>.*?</reasoning>', '', raw, flags=re.DOTALL)
+        res = re.sub(r'<reasoning>.*$', '', res, flags=re.DOTALL)
+        res = res.strip()
+
+        if res:
+            # import pdb; pdb.set_trace()
+            return res
+
+        # If empty, reasoning ate the whole budget — retry with stronger directive
+        messages = [
+            {
+                "role": "developer",
+                "content": (
+                    context +
+                    "\nCRITICAL: Output ONLY the final answer. Do not reason. Do not think step by step."
+                )
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+
+    print("badbadnotgood after all retries", raw)
+    return ""
 
 
   # Parse and print the message for each choice in the chat completion

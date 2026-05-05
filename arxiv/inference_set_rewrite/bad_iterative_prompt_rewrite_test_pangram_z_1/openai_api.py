@@ -128,7 +128,7 @@ def openai_oss_query(context, prompt, max_retries=3):
     raw = None
     for attempt in range(max_retries):
         completion = client.chat.completions.create(
-            max_completion_tokens=2500,
+            max_completion_tokens=1300,
             temperature=0.5,
             reasoning_effort='low',
             model="openai.gpt-oss-120b-1:0",
@@ -142,7 +142,7 @@ def openai_oss_query(context, prompt, max_retries=3):
         res = re.sub(r'<reasoning>.*$', '', res, flags=re.DOTALL)
         res = res.strip()
 
-        if res:
+        if res and len(res) > 35:
             # import pdb; pdb.set_trace()
             return res
 

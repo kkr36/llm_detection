@@ -9,6 +9,11 @@ import time
 import random
 import pdb
 
+with open("/home/kkr36/creds.json", "r") as f:
+    keys = json.load(f)
+
+os.environ["AWS_BEARER_TOKEN_BEDROCK"] = keys["aws_key"]
+
 bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
 
 def llama_query(context, prompt, max_retries=5, base_delay=1.0):
