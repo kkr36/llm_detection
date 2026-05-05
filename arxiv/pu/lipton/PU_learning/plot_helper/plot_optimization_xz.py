@@ -55,7 +55,7 @@ name_to_name = {
     "bce"        : "Bal. Cross-Entropy",
     "bbe"        : "Bias",
     # "plugin"     : "Bias Plug-In Alpha",
-    "plugin-int" : "Bias Avg P(Human)",
+    "plugin-int" : "Bias Avg P(AI)",
     "tpr"        : "Human Recall",
     "tnr"        : "AI Recall"
 }
@@ -108,6 +108,26 @@ def add_accuracy_cols(df, ci_level=0.95):
     df["accuracy"]              = (tpr + 1 - fpr) / 2
     df[f"accuracy_l_{ci}"]     = (tpr_l + 1 - fpr_u) / 2
     df[f"accuracy_u_{ci}"]     = (tpr_u + 1 - fpr_l) / 2
+    return df
+
+def reverse_bias(df, ci_level=0.95):
+    """Balanced accuracy = (TPR + TNR) / 2. In this file's CSV convention,
+    pos_prob = TPR (Avg Pred Human) and neg_prob = FPR (Avg Pred LLM)."""
+    df = df.copy()
+    ci = str(ci_level)
+    df["bbe"]              = 1-df["bbe"]
+    df[f"bbe_l_{ci}"]     = 1-df[f"bbe_l_{ci}"]
+    df[f"bbe_u_{ci}"]     = 1-df[f"bbe_u_{ci}"]
+    return df
+
+def reverse_plugin(df, ci_level=0.95):
+    """Balanced accuracy = (TPR + TNR) / 2. In this file's CSV convention,
+    pos_prob = TPR (Avg Pred Human) and neg_prob = FPR (Avg Pred LLM)."""
+    df = df.copy()
+    ci = str(ci_level)
+    df["plugin-int"]              = 1-df["plugin-int"]
+    df[f"plugin-int_l_{ci}"]     = 1-df[f"plugin-int_l_{ci}"]
+    df[f"plugin-int_u_{ci}"]     = 1-df[f"plugin-int_u_{ci}"]
     return df
 
 def resolve_cols(metric, ci_level=0.95):
@@ -931,6 +951,8 @@ if __name__ == "__main__":
     data = pd.read_csv(input_file)
     data = swap_pangram_tpr_tnr(data)
     data = add_accuracy_cols(data)
+    data = reverse_bias(data)
+    data = reverse_plugin(data)
     for use_title in [False, True][1:]:
         # make_xz_heatmap(data, plot_metrics, title=use_title)
         # make_xz_heatmap_collapsed(data, plot_metrics, title=use_title)

@@ -50,7 +50,7 @@ for ax in axes:
         matplotlib.ticker.FuncFormatter(lambda v, _: "" if v == 0 else f"{v:g}")
     )
 
-axes[0].text(0.5, 0.95, "Supervised", transform=axes[0].transAxes,
+axes[0].text(0.5, 0.95, "Supervised 2010", transform=axes[0].transAxes,
              ha="center", va="top", fontsize=17, fontweight="bold")
 axes[1].text(0.5, 0.95, "PU with\nTest-Time Adaptation", transform=axes[1].transAxes,
              ha="center", va="top", fontsize=17, fontweight="bold", linespacing=1.3)

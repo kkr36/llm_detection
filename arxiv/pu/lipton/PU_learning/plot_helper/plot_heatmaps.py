@@ -36,7 +36,7 @@ label_rename_default = {
 _gemini_llms = ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
 label_rename_gemini = {name: name.replace("Gemini ", "") for name in _gemini_llms}
 
-input_file = "../logging_accuracy_llm_gemini.csv"
+input_file = "../logging_accuracy_llm.csv"
 import os
 import math
 output_folder = input_file.split("/")[-1].split(".csv")[0] + "_qwen_120b_paper"
@@ -66,7 +66,7 @@ name_to_name = {
     # "entropy"    : "Avg. Shannon Entropy",
     "bce"        : "Bal. Cross-Entropy",
     "bbe"        : "Bias",
-    "plugin-int" : "Bias Avg P(Human)",
+    "plugin-int" : "Bias Avg P(AI)",
     "tpr"        : "Human Recall",
     "tnr"        : "AI Recall"
 }
@@ -90,6 +90,25 @@ def add_accuracy_cols(df, ci_level=0.95):
     df[f"accuracy_u_{ci}"]     = (tpr_u + 1 - fpr_l) / 2
     return df
 
+def reverse_bias(df, ci_level=0.95):
+    """Balanced accuracy = (TPR + TNR) / 2. In this file's CSV convention,
+    pos_prob = TPR (Avg Pred Human) and neg_prob = FPR (Avg Pred LLM)."""
+    df = df.copy()
+    ci = str(ci_level)
+    df["bbe"]              = 1-df["bbe"]
+    df[f"bbe_l_{ci}"]     = 1-df[f"bbe_l_{ci}"]
+    df[f"bbe_u_{ci}"]     = 1-df[f"bbe_u_{ci}"]
+    return df
+
+def reverse_plugin(df, ci_level=0.95):
+    """Balanced accuracy = (TPR + TNR) / 2. In this file's CSV convention,
+    pos_prob = TPR (Avg Pred Human) and neg_prob = FPR (Avg Pred LLM)."""
+    df = df.copy()
+    ci = str(ci_level)
+    df["plugin-int"]              = 1-df["plugin-int"]
+    df[f"plugin-int_l_{ci}"]     = 1-df[f"plugin-int_l_{ci}"]
+    df[f"plugin-int_u_{ci}"]     = 1-df[f"plugin-int_u_{ci}"]
+    return df
 
 def make_heatmap(df, metrics, gemini, title=False):
     llms_list = ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"] if gemini else ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
@@ -782,7 +801,7 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
             point_df, lower_df, upper_df = build_heatmap_df(df, metric, llms_list, ci_level=0.95)
 
             plot_df = point_df.copy()
-            if metric == "bbe":
+            if metric in ["bbe", "plugin-int"]:
                 plot_df = plot_df - 0.5
                 lower_df = lower_df - 0.5
                 upper_df = upper_df - 0.5
@@ -810,7 +829,7 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
                 center = (vmin + vmax) / 2
             else:
                 cmap = orange_white_purple
-                if metric == "bbe":
+                if metric in ["bbe", "plugin-int"]:
                     center = 0.0
                     max_dev = np.nanmax(np.abs(plot_df_r.values - center))
                     vmin, vmax = center - max_dev, center + max_dev
@@ -869,9 +888,9 @@ if __name__ == "__main__":
 
     data = pd.read_csv(input_file)
     data = add_accuracy_cols(data)
-    # for use_title in [False, True][:1]:
-    make_heatmap_ci(data, ['tnr'], "gemini" in input_file, title=False)
-    make_heatmap(data, ['tnr'], "gemini" in input_file, title=False)
+    data = reverse_bias(reverse_plugin(data))
+    # make_heatmap_ci(data, ['tnr'], "gemini" in input_file, title=False)
+    # make_heatmap(data, ['tnr'], "gemini" in input_file, title=False)
 
     # make_mle_heatmap(data, "gemini" in input_file, title=use_title)
     make_heatmap_grid(data, plot_metrics, "gemini" in input_file, title=True)

@@ -1,0 +1,8 @@
+This directory contains code adapted from:
+
+  acmi-lab/PU_learning
+  https://github.com/acmi-lab/PU_learning
+  Licensed under the Apache License, Version 2.0
+
+Modifications: Added arXiv and IMDb data helpers in data_helper/; adapted
+training scripts and evaluation pipelines for the LLM text detection task.

@@ -60,7 +60,7 @@ for ax in axes.flat:
         matplotlib.ticker.FuncFormatter(lambda v, _: "" if v == 0 else f"{v:g}")
     )
 
-for ax, title in zip(axes[0], ["Supervised", "PU with\nTest-Time Adaptation"]):
+for ax, title in zip(axes[0], ["Supervised 2010", "PU with\nTest-Time Adaptation"]):
     ax.text(0.5, 0.95, title, transform=ax.transAxes,
             ha="center", va="top", fontsize=17, fontweight="bold", linespacing=1.3)
 

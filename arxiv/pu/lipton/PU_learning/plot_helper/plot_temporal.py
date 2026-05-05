@@ -41,7 +41,7 @@ name_to_name = {
     "bce"        : "Bal. Cross-Entropy",
     "bbe"        : "Bias",
     # "plugin"     : "Bias Plug-In Alpha",
-    "plugin-int" : "Bias Avg P(Human)",
+    "plugin-int" : "Bias Avg P(AI) wrt 2010",
     "tpr"        : "AI Recall",
     "tnr"        : "Human Recall",
     "test_year": "Test Year",
@@ -63,6 +63,26 @@ def add_accuracy_cols(df, ci_level=0.95):
     df[f"accuracy_u_{ci}"]     = (tpr_u + 1 - fpr_l) / 2
     return df
 
+def reverse_pos(df, ci_level=0.95):
+    """Balanced accuracy = (TPR + TNR) / 2. In this file's CSV convention,
+    pos_prob = TPR (Avg Pred Human) and neg_prob = FPR (Avg Pred LLM)."""
+    df = df.copy()
+    ci = str(ci_level)
+    df["pos_prob"]              = 1-df["pos_prob"]
+    df[f"pos_prob_l_{ci}"]     = 1-df[f"pos_prob_l_{ci}"]
+    df[f"pos_prob_u_{ci}"]     = 1-df[f"pos_prob_u_{ci}"]
+    return df
+
+def reverse_neg(df, ci_level=0.95):
+    """Balanced accuracy = (TPR + TNR) / 2. In this file's CSV convention,
+    pos_prob = TPR (Avg Pred Human) and neg_prob = FPR (Avg Pred LLM)."""
+    df = df.copy()
+    ci = str(ci_level)
+    df["neg_prob"]              = 1-df["neg_prob"]
+    df[f"neg_prob_l_{ci}"]     = 1-df[f"neg_prob_l_{ci}"]
+    df[f"neg_prob_u_{ci}"]     = 1-df[f"neg_prob_u_{ci}"]
+    return df
+
 def make_line_plot(metric, x_lab, title, data, show_title=False):
 
     colors = {
@@ -77,15 +97,17 @@ def make_line_plot(metric, x_lab, title, data, show_title=False):
     for label, subset in data:
         subset = subset.sort_values(x_lab)
         # col = colors[label.split( )[0]] if "Plug-In" not in label else "blue"
+        if "Plug-in" in label: import pdb; pdb.set_trace()
         col = "black" if "Optimal" in label else "darkorange" if "Plug-In" in label else colors[label.split()[0]]
         linestyle = "--" if "2010" in label else ":" if "Alpha" in label else "-"
         real_metric = metric if "Plug-In" not in label else "plugin-int"
         try:
-            y_plot = subset[real_metric] if metric != "bbe" else subset[real_metric]-subset[real_metric].tolist()[0]
+            y_plot = subset[real_metric] if metric not in ["bbe", "plugin-int"] else subset[real_metric]-subset[real_metric].tolist()[0]
         except:
             import pdb; pdb.set_trace()
-        y_upper = subset[f"{real_metric}_l_0.95"] if metric != "bbe" else subset[f"{real_metric}_l_0.95"]-subset[real_metric].tolist()[0]
-        y_lower = subset[f"{real_metric}_u_0.95"] if metric != "bbe" else subset[f"{real_metric}_u_0.95"]-subset[real_metric].tolist()[0]
+        y_upper = subset[f"{real_metric}_l_0.95"] if metric not in ["bbe", "plugin-int"] else subset[f"{real_metric}_l_0.95"]-subset[real_metric].tolist()[0]
+        y_lower = subset[f"{real_metric}_u_0.95"] if metric not in ["bbe", "plugin-int"] else subset[f"{real_metric}_u_0.95"]-subset[real_metric].tolist()[0]
+
         plt.plot(
                 subset[x_lab],
                 y_plot,
@@ -214,7 +236,7 @@ def plot_temporal_combined(data, show_title=False):
     ax_right.set_xticks([2010, 2015, 2020])
     ax_right.set_xlabel(name_to_name["test_year"])
     # ax_right.set_ylabel(name_to_name["bbe"] + ", wrt 2010")
-    ax_right.set_ylabel(name_to_name["bbe"])
+    ax_right.set_ylabel(name_to_name["bbe"] + " wrt 2010")
 
     legend_handles = [
         Line2D([0], [0], color='red', linestyle='--', linewidth=2.5, label='Supervised 2010'),
@@ -273,9 +295,9 @@ def plot_temporal_alpha_grid(data, metrics, show_title=True):
                 linestyle = "--" if "2010" in label else ":" if "Alpha" in label else "-"
                 real_metric = metric if "Plug-In" not in label else "plugin-int"
                 try:
-                    y_plot = subset[real_metric] if metric != "bbe" else subset[real_metric] - subset[real_metric].tolist()[0]
-                    y_upper = subset[f"{real_metric}_l_0.95"] if metric != "bbe" else subset[f"{real_metric}_l_0.95"] - subset[real_metric].tolist()[0]
-                    y_lower = subset[f"{real_metric}_u_0.95"] if metric != "bbe" else subset[f"{real_metric}_u_0.95"] - subset[real_metric].tolist()[0]
+                    y_plot = subset[real_metric] if metric not in ["bbe", "plugin-int"] else subset[real_metric] - subset[real_metric].tolist()[0]
+                    y_upper = subset[f"{real_metric}_l_0.95"] if metric not in ["bbe", "plugin-int"] else subset[f"{real_metric}_l_0.95"] - subset[real_metric].tolist()[0]
+                    y_lower = subset[f"{real_metric}_u_0.95"] if metric not in ["bbe", "plugin-int"] else subset[f"{real_metric}_u_0.95"] - subset[real_metric].tolist()[0]
                     if real_metric == "pos_prob":
                         y_upper = 1 - y_upper
                         y_lower = 1 - y_lower
@@ -318,6 +340,7 @@ if __name__ == "__main__":
 
     data = pd.read_csv(input_file)
     data = add_accuracy_cols(data)
+    data = reverse_neg(reverse_pos(data))
     data["neg_prob"] = 1 - data["neg_prob"]
     for ul in ["u", "l"]:
         for ci in ["0.9", "0.95", "0.99"]:
