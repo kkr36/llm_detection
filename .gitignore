@@ -14,6 +14,7 @@ ssrn/secrets.json
 .python-version
 virtualenv
 *.md
+!README.md
 *.npz
 *.log
 *.yml

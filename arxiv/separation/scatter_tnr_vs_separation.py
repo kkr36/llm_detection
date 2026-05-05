@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 from sklearn.linear_model import LogisticRegression
+from scipy.stats import pearsonr
 
 matplotlib.rc('font', **{'weight': 'bold', 'size': 14})
 
@@ -138,6 +139,10 @@ def make_scatter_averaged(pairs, x_vals, y_vals, x_label, out_path):
     x_line = np.linspace(min(x_vals), max(x_vals), 200)
     ax.plot(x_line, m * x_line + b, color='red', linestyle=':', linewidth=2.5, zorder=4)
 
+    r, p = pearsonr(x_vals, y_vals)
+    p_str = f"p < 0.001" if p < 0.001 else f"p = {p:.3f}"
+    ax.set_title(f"r = {r:.3f},  {p_str}", fontweight='bold', fontsize=16)
+
     legend_handles = [
         matplotlib.lines.Line2D([0], [0], marker='o', color='w',
                                  markerfacecolor=_PAIR_COLORS[idx % len(_PAIR_COLORS)],
@@ -150,7 +155,6 @@ def make_scatter_averaged(pairs, x_vals, y_vals, x_label, out_path):
 
     ax.set_xlabel(x_label, fontweight='bold')
     ax.set_ylabel("Avg AI Recall", fontweight='bold')
-    # ax.set_title(f"Avg TNR vs. {x_label} (averaged pairs)", fontweight='bold')
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
@@ -177,6 +181,10 @@ def make_scatter(pairs, x_vals, y_vals, x_label, out_path):
     x_line = np.linspace(min(x_vals), max(x_vals), 200)
     ax.plot(x_line, m * x_line + b, color='red', linestyle=':', linewidth=2.5, zorder=4)
 
+    r, p = pearsonr(x_vals, y_vals)
+    p_str = f"p < 0.001" if p < 0.001 else f"p = {p:.3f}"
+    ax.set_title(f"r = {r:.3f},  {p_str}", fontweight='bold', fontsize=16)
+
     # Legend for colors (test LLM)
     legend_handles = [
         matplotlib.lines.Line2D([0], [0], marker='o', color='w',
@@ -189,7 +197,6 @@ def make_scatter(pairs, x_vals, y_vals, x_label, out_path):
 
     ax.set_xlabel(x_label, fontweight='bold')
     ax.set_ylabel("AI Recall", fontweight='bold')
-    # ax.set_title(f"TNR vs. {x_label}", fontweight='bold')
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
