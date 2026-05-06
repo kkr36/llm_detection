@@ -16,7 +16,15 @@ Current approaches for AI text detection often rely on training-time access to l
 
 ```
 llm_detection/
-├── arxiv/                  # All experiments on arxiv data (see below)
-├── sample_and_mirror.py    # Sample human abstracts and rewrite with 4 LLMs
-└── sample_sentences.py     # Sample human/LLM sentences for inspection
+├── arxiv/
+│   ├── inference_set_rewrite/   # Generate mirrors and generate adversarial prompts
+│   ├── pangram/                 # Analyze Pangram's performance on all LLMs including GPT-5.4
+│   ├── separation/              # Check separability of distributions of LLM/human writing
+│   └── pu/
+│       └── lipton/
+│           └── PU_learning/     # Train PU/supervised DistilBERT models and evaluate on simulated test distributions
+│               ├── plot_helper/ # Scripts to generate all visualizations
+│               └── scripts/     # Batchrunners to train all models whose predictions are used in visualizations
+├── sample_and_mirror.py         # Sample human abstracts and rewrite with 4 LLMs
+└── sample_sentences.py          # Sample human/LLM sentences for inspection
 ```
