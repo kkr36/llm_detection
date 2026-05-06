@@ -16,6 +16,7 @@ Current approaches for AI text detection often rely on training-time access to l
 
 ```
 llm_detection/
+├── llm_detection_data/          # All data for the project -- synthetic mirrors for natural/adversarial shift experiments
 ├── arxiv/
 │   ├── inference_set_rewrite/   # Generate mirrors and generate adversarial prompts
 │   ├── pangram/                 # Analyze Pangram's performance on all LLMs including GPT-5.4
