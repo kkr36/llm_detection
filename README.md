@@ -1,4 +1,4 @@
-The code for the project ``AI text Detection Is a Moving Target: Test-Time Adaptation Under Continual Distribution Shift'', under submission to NeurIPS 2026.
+The code for the project `AI text Detection Is a Moving Target: Test-Time Adaptation Under Continual Distribution Shift`, under submission to NeurIPS 2026.
 
 **Abstract:**
 
