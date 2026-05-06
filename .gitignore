@@ -1,4 +1,5 @@
-# top-level directories to ignore
+# top-level files/directories to ignore
+ssrn_embeddings_v4.py
 grahams_bounty/
 latex/
 openreview/
