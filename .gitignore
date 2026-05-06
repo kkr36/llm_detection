@@ -50,3 +50,4 @@ virtualenv
 *.log
 *.yml
 *.sh
+copy_data.py

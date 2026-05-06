@@ -534,12 +534,23 @@ def MLE_james(data_type, train_year, alpha, test_year, test_alpha, combine, sent
     def df_to_val_set(df, t_alpha):
         human_data = df[["human_sentence", "human_index"]]
         human_subset = human_data[human_data['human_index'] != -1]
+        # ai_data = df[["ai_sentence", "ai_index"]]
+        # ai_subset = ai_data[ai_data['ai_index'] != -1]
+
+        # ai_subset["inference_sentence"] = ai_subset["ai_sentence"]
+        human_subset["inference_sentence"] = human_subset["human_sentence"]
+        # return pd.concat([ai_subset[["inference_sentence"]], human_subset[["inference_sentence"]]]) if t_alpha != 0 else pd.DataFrame(human_subset["inference_sentence"]) if t_alpha != 1 else pd.DataFrame(ai_subset["inference_sentence"])
+
+        if t_alpha == 0:
+            return pd.DataFrame(human_subset["inference_sentence"])
+
         ai_data = df[["ai_sentence", "ai_index"]]
         ai_subset = ai_data[ai_data['ai_index'] != -1]
-
         ai_subset["inference_sentence"] = ai_subset["ai_sentence"]
-        human_subset["inference_sentence"] = human_subset["human_sentence"]
-        return pd.concat([ai_subset[["inference_sentence"]], human_subset[["inference_sentence"]]]) if t_alpha != 0 else pd.DataFrame(human_subset["inference_sentence"]) if t_alpha != 1 else pd.DataFrame(ai_subset["inference_sentence"])
+
+        if t_alpha == 1:
+            return pd.DataFrame(ai_subset["inference_sentence"])
+        return pd.concat([ai_subset[["inference_sentence"]], human_subset[["inference_sentence"]]])
 
     estimates = []
 
