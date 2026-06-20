@@ -93,14 +93,14 @@ add = "_add_" in entrance_path
 epochs = 3 # can toggle
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu' # can toggle
 train_year = 2020
-llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "all"][-2:-1] if gemini else ["Qwen", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:]
+llms_list = ["Gemini 2.5 Pro", "Gemini 2.0 Flash-Lite", "Gemini 3 Preview", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "all"][:] if gemini else ["Qwen", "Gemini 3 Preview", "GPT OSS 120b", "Llama 3.3 70b Instruct", "all"][:]
 seeds = 5
 
 ### LOGIC ###
 
 metrics_dict = defaultdict(list)
 
-output_csv = f"{entrance_path}_3.csv"
+output_csv = f"{entrance_path}_remade.csv"
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -109,12 +109,12 @@ else:
 
 run_id = len(metrics_df)
 
-for train_llm in llms_list[:]:
+for train_llm in llms_list[-1:]:
     # if train_llm == "Gemini 2.5 Pro" or train_llm == "Gemini 2.0 Flash-Lite": continue
 
     train_llm_name = train_llm.replace(' ', '_')
 
-    alphas = [0, .5][-1:]
+    alphas = [0, .5][1:]
 
     for train_alpha in alphas:
 
@@ -150,9 +150,10 @@ for train_llm in llms_list[:]:
         # import pdb; pdb.set_trace()
 
         for test_alpha in test_alphas:
-            llms_list_eval = ["all"]
-            # llms_list_eval = llms_list
+            # llms_list_eval = ["all"]
+            llms_list_eval = llms_list
             for test_llm in llms_list_eval:
+                if (train_llm != "all" and test_llm != "all") or (train_llm == "all" and train_alpha == 0): continue
                 print(f"train: {model_name} {train_llm} {train_alpha} | test: {test_llm} {test_alpha}")
 
                 preds_p_list, preds_u_list, u_targets_list = [], [], []

@@ -88,8 +88,10 @@ for i, (orig_idx, text) in enumerate(tqdm(zip(gpt_rows['idx'].tolist(), texts), 
 
 new_df = pd.DataFrame(new_rows)
 combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-combined_df.to_csv("results_everything_100_2010_4242026.csv", index=False)
+# combined_df.to_csv("results_everything_100_2010_4242026.csv", index=False)
+combined_df.to_csv("results_everything_100_2010_5142026.csv", index=False)
 
-print(f"\nSaved {len(new_df)} new rows to results_everything_100_2010_4242026.csv")
+
+print(f"\nSaved {len(new_df)} new rows to results_everything_100_2010_5142026.csv")
 if failed_requests:
     print(f"Failed requests ({len(failed_requests)}): {failed_requests}")

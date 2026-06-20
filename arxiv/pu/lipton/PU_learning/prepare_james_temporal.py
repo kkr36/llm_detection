@@ -10,7 +10,7 @@ from prepare_metrics import *
 
 train_years = [2010, 2012, 2014, 2016, 2018, 2020]
 
-entrance_path = "logging_accuracy_temporal_full_sentence"
+entrance_path = "logging_accuracy_temporal"
 
 data_type = "ArXiv_BERT"
 

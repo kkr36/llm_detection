@@ -7,7 +7,7 @@ import ast
 
 # Read the results
 # df = pd.read_csv('results_everything_100_2010.csv')
-df = pd.read_csv('results_everything_100_2010_2.csv')
+df = pd.read_csv('results_everything_100_2010_5142026.csv')
 
 # Parse window_ai_assistance_score (stored as list or stringified list) → row average
 def parse_score_list(val):
@@ -24,7 +24,12 @@ def parse_score_list(val):
 
 df['avg_window_ai_assistance_score'] = df['window_ai_assistance_scores'].apply(parse_score_list)
 
-df['source'] = df['source'].replace('ChatGPT 5.4', 'GPT 5.4')
+df['source'] = df['source'].replace('ChatGPT 5.4', 'GPT 5.4 March 2026')
+df['source'] = df['source'].replace('ChatGPT 5.4 new', 'GPT 5.4 May 2026')
+df['source'] = df['source'].replace('GPT OSS 120b', 'gpt-oss-120b')
+df['source'] = df['source'].replace('GPT OSS 20b', 'gpt-oss-20b')
+df['source'] = df['source'].replace('Llama 3.3 70b Instruct', 'Llama 3.3 70B Instruct')
+df['source'] = df['source'].replace('Gemini 3 Preview', 'Gemini 3 Pro Preview')
 
 # Set style
 sns.set_style("whitegrid")
@@ -75,10 +80,10 @@ def _plot_grouped_bars(ax, cols, sources, means, cis, palette):
         heights = means.loc[source, cols].values
         errors  = cis.loc[source, cols].values
         ax.bar(offsets, heights, width=bar_width, color=palette[i],
-               label=source, alpha=0.85, zorder=3)
+               label=source.replace("human_abstract", "Human"), alpha=0.85, zorder=3)
         ax.errorbar(offsets, heights, yerr=errors, fmt='none', ecolor='black',
                     elinewidth=1.2, capsize=4, capthick=1.2, zorder=4)
-    tick_labels = [c.replace("_", " ").replace("avg ", "Avg ").title() for c in cols]
+    tick_labels = [c.replace("_", " ").replace("avg ", "Avg ").title().replace("Ai", "AI") for c in cols]
     ax.set_xticks(x)
     ax.set_xticklabels(tick_labels, fontsize=16)
     ax.tick_params(axis='y', labelsize=15)

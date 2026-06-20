@@ -67,6 +67,11 @@ parser.add_argument('--flip', default=False, action='store_true', help='pos is l
 parser.add_argument('--combine', default=False, action='store_true', help='use hardcoded years 2014/6/8/20')
 parser.add_argument('--add', default=False, action='store_true', help='strictly add positives wrt alpha')
 parser.add_argument('--llm', type=str, default=None, help='xy column suffix, e.g. Y or X')
+parser.add_argument('--n-labeled', type=int, default=0, help='Number of labeled negatives carved from unlabeled pool (PNU only)')
+parser.add_argument('--lambda-p',  type=float, default=0.25, help='Loss weight for labeled positives (PNU only)')
+parser.add_argument('--lambda-n',  type=float, default=0.25, help='Loss weight for labeled negatives (PNU only)')
+parser.add_argument('--lambda-up', type=float, default=0.25, help='Loss weight for pseudo-positive unlabeled (PNU only)')
+parser.add_argument('--lambda-un', type=float, default=0.25, help='Loss weight for pseudo-negative unlabeled (PNU only)')
 
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
@@ -131,6 +136,11 @@ combine = args.combine
 add = args.add
 seed = args.seed
 llm = args.llm
+n_labeled = args.n_labeled
+lambda_p  = args.lambda_p
+lambda_n  = args.lambda_n
+lambda_up = args.lambda_up
+lambda_un = args.lambda_un
 
 # val_alphas = [0.01,.05,.1,.2,.3,.5]
 # val_alphas = [0, .1, .25, .5]
@@ -139,16 +149,20 @@ llm = args.llm
 # val_alphas = [0, .2, .4, .6, .8][-2:-1]
 val_alphas = [alpha] if alpha == 0 else [0, alpha]
 # val_years = list(range(2010,2026))
-val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
-# val_years = [year]
+# val_years = [2010, 2012, 2014, 2016, 2018, 2020] if year == 2010 else [year]
+val_years = [year]
 
-if train_method == "TEDn": 
+if train_method == "TEDn":
+    use_alpha=True
+
+if train_method == "PNU":
     use_alpha=True
 
 #################
 
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+# if not os.path.exists(log_dir):
+#     os.makedirs(log_dir)
+os.makedirs(log_dir, exist_ok=True)
 
 timestr = time.strftime("%Y%m%d-%H%M%S")
 
@@ -160,14 +174,24 @@ outfile= open(file_name, 'w')
 
 varied_vals = {}
 
-if train_method=='PN': 
+if train_method=='PN':
     # import pdb; pdb.set_trace()
     u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm)
     # import pdb; pdb.set_trace()
 
+elif train_method == 'PNU':
+    n_trainloader = None
+    p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata, n_trainloader = \
+        get_PNU_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm, n_labeled=n_labeled)
+    train_pos_size= len(X)
+    train_unlabeled_size= len(Y)
+    valid_pos_size= len(p_validdata)
+    valid_unlabeled_size= len(u_validdata)
+
 else:
+    n_trainloader = None
     p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
-        get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence,ft, clean, gemini, flip, combine, add, seed, llm)
+        get_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm)
     # import pdb; pdb.set_trace()
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)
@@ -648,7 +672,217 @@ elif train_method=='CVIR' or train_method=="TEDn":
 
             outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
 
-elif train_method=='uPU': 
+elif train_method == 'PNU':
+
+    alpha_used = alpha_estimate
+
+    for epoch in range(epochs):
+
+        if use_alpha:
+            alpha_used = alpha_estimate
+        else:
+            alpha_used = alpha
+
+        pseudolabels, neg_reject = rank_inputs_pnu(epoch, net, u_trainloader, device,
+             alpha_used, u_size=train_unlabeled_size)
+
+        train_acc = train_PNU_discard(epoch, net, p_trainloader, n_trainloader, u_trainloader,
+            optimizer, criterion, device, pseudolabels=pseudolabels, show_bar=show_bar,
+            lambda_p=lambda_p, lambda_n=lambda_n, lambda_up=lambda_up, lambda_un=lambda_un)
+
+        valid_acc = validate(epoch, net, u_validloader,
+            criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
+
+        if estimate_alpha:
+            pos_probs = p_probs(net, device, p_validloader)
+            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+
+            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+            alpha_estimate = our_mpe_estimate
+
+            if "ArXiv_BERT" in data_type:
+                cal_acc = validate(epoch, net, u_calloader,
+                    criterion=criterion, device=device, threshold=0.5, show_bar=show_bar)
+                cal_pos_probs = p_probs(net, device, p_calloader)
+                cal_unlabeled_probs, cal_unlabeled_targets = u_probs(net, device, u_calloader)
+                cal_mpe_estimate, _, _ = BBE_estimator(cal_pos_probs, cal_unlabeled_probs, cal_unlabeled_targets)
+                outfile.write("{}, {}, {}, {}, {}, {}\n".format(epoch, train_acc, valid_acc, cal_acc, cal_mpe_estimate,
+                    alpha_estimate))
+            else:
+                outfile.write("{}, {}, {}, {}\n".format(epoch, train_acc, valid_acc,
+                    alpha_estimate))
+            outfile.flush()
+
+        else:
+            outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
+            outfile.flush()
+
+    if estimate_alpha and "ArXiv_BERT" in data_type:
+        for valyear in val_years:
+            for valalpha in varied_vals[valyear]:
+                (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valyear][valalpha]
+                pos_probs = p_probs(net, device, p_validloader)
+                pos_prob = np.mean(pos_probs)
+                unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+                preds = np.argmax(unlabeled_probs, axis=1)
+                neg_probs = 1-unlabeled_probs[:,1]
+                neg_prob = np.mean(neg_probs)
+
+                y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+                y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+                auc = roc_auc_score(y_true, y_scores)
+                fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+                pos_lens = [sum(x[:,1]) for x in p_validdata.data]
+                neg_lens = [sum(x[:,1]) for x in u_validdata.data]
+
+                plt.scatter(pos_lens, pos_probs, label="Positives")
+                plt.scatter(neg_lens, neg_probs, label="Negatives")
+                plt.xlabel("Length")
+                plt.ylabel("P(LLM)")
+                plt.legend()
+                plt.tight_layout()
+
+                plt.savefig(f"{log_dir}len_prob_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format="pdf")
+                plt.clf()
+
+                plt.figure()
+                plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+                plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.legend()
+                plt.tight_layout()
+
+                plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format='pdf')
+                plt.clf()
+
+                bins = np.linspace(
+                    min(pos_probs.min(), neg_probs.min()),
+                    max(pos_probs.max(), neg_probs.max()),
+                    50
+                )
+
+                plt.figure()
+                plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+                plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+                plt.legend()
+                plt.tight_layout()
+
+                plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valyear}_{valalpha}.pdf", format='pdf')
+                plt.clf()
+
+                actual_mpe = 1 - np.mean(unlabeled_targets)
+                neg_acc = np.mean(preds == unlabeled_targets)
+                pos_acc = np.mean(np.round(pos_probs) == 1)
+                our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+                scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+                EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+
+                outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(valyear, actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
+    elif estimate_alpha and "llm_type_" in data_type:
+        llm = data_type.split("llm_type_")[-1]
+        for llm_ood in varied_vals:
+            for valalpha in val_alphas:
+                (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[llm_ood][valalpha]
+                pos_probs = p_probs(net, device, p_validloader)
+                pos_prob = np.mean(pos_probs)
+                unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+                neg_probs = 1-unlabeled_probs[:,1]
+                neg_prob = np.mean(neg_probs)
+                naive_mpe_estimate = np.mean(unlabeled_probs[:,0])
+                preds = np.argmax(unlabeled_probs, axis=1)
+
+                y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+                y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+                auc = roc_auc_score(y_true, y_scores)
+                fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+                bins = np.linspace(
+                    min(pos_probs.min(), neg_probs.min()),
+                    max(pos_probs.max(), neg_probs.max()),
+                    50
+                )
+
+                plt.figure()
+                plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+                plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+                plt.legend()
+                plt.tight_layout()
+
+                plt.savefig(f"{log_dir}hists_{train_method}_{llm_ood}_{valalpha}.pdf", format='pdf')
+                plt.clf()
+
+                plt.figure()
+                plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+                plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.legend()
+                plt.tight_layout()
+
+                plt.savefig(f"{log_dir}auc_{train_method}_{llm_ood}_{valalpha}.pdf", format='pdf')
+                plt.clf()
+
+                neg_acc = np.mean(preds == unlabeled_targets)
+                pos_acc = np.mean(np.round(pos_probs) == 1)
+                actual_mpe = 1 - np.mean(unlabeled_targets)
+                our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+                scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+                EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+                outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(llm_ood, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, naive_mpe_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
+    elif estimate_alpha and data_type == "xy":
+        for valalpha in varied_vals:
+            (p_validloader, u_validloader, p_validdata, u_validdata) = varied_vals[valalpha]
+            pos_probs = p_probs(net, device, p_validloader)
+            pos_prob = np.mean(pos_probs)
+            unlabeled_probs, unlabeled_targets = u_probs(net, device, u_validloader)
+            preds = np.argmax(unlabeled_probs, axis=1)
+            neg_probs = 1-unlabeled_probs[:,1]
+            neg_prob = np.mean(neg_probs)
+
+            y_true = [0 for _ in range(len(unlabeled_probs))] + [1 for _ in range(len(pos_probs))]
+            y_scores = (1-unlabeled_probs[:,1]).tolist() + pos_probs.tolist()
+            auc = roc_auc_score(y_true, y_scores)
+            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+
+            bins = np.linspace(
+                min(pos_probs.min(), neg_probs.min()),
+                max(pos_probs.max(), neg_probs.max()),
+                50
+            )
+
+            plt.figure()
+            plt.hist(pos_probs, bins=bins, alpha=0.3, density=True, label="Positive")
+            plt.hist(neg_probs, bins=bins, alpha=0.3, density=True, label="Negative")
+            plt.legend()
+            plt.tight_layout()
+
+            plt.savefig(f"{log_dir}hists_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            plt.figure()
+            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+            plt.plot([0, 1], [0, 1], linestyle="--", label="Random")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.legend()
+            plt.tight_layout()
+
+            plt.savefig(f"{log_dir}auc_{train_method}_{'sentence' if sentence else 'abstract'}_{valalpha}.pdf", format='pdf')
+            plt.clf()
+
+            actual_mpe = 1 - np.mean(unlabeled_targets)
+            neg_acc = np.mean(preds == unlabeled_targets)
+            pos_acc = np.mean(np.round(pos_probs) == 1)
+            our_mpe_estimate, _, _ = BBE_estimator(pos_probs, unlabeled_probs, unlabeled_targets)
+            scott_mpe_estimator = scott_estimator(pos_probs, unlabeled_probs)
+            EN_estimate = estimator_CM_EN(pos_probs, unlabeled_probs[:,0])
+            outfile.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(actual_mpe, valalpha, our_mpe_estimate, scott_mpe_estimator, EN_estimate, neg_acc, neg_prob, pos_acc, pos_prob, auc))
+
+elif train_method=='uPU':
 
     for epoch in range(epochs):
         

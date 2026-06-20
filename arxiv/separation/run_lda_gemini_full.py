@@ -32,7 +32,7 @@ OUT_DIR  = "/home/kkr36/llm_detection/arxiv/separation"
 LABEL_NAMES = {
     0: "Human",
     1: "Gemini 2.0 Flash-Lite",
-    2: "Gemini 3 Preview",
+    2: "Gemini 3 Pro",
     3: "Gemini 2.0 Flash",
     4: "Gemini 2.5 Flash",
     5: "Gemini 2.5 Pro",

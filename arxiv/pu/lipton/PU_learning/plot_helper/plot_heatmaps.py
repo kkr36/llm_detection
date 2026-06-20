@@ -34,12 +34,12 @@ label_rename_default = {
 }
 
 _gemini_llms = ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
-label_rename_gemini = {name: name.replace("Gemini ", "") for name in _gemini_llms}
+label_rename_gemini = {name: name.replace("Gemini ", "").replace("Preview", "Pro") for name in _gemini_llms}
 
-input_file = "../logging_accuracy_llm.csv"
+input_file = "../logging_accuracy_llm_remade.csv"
 import os
 import math
-output_folder = input_file.split("/")[-1].split(".csv")[0] + "_qwen_120b_paper"
+output_folder = input_file.split("/")[-1].split(".csv")[0] + "_paper"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
@@ -71,7 +71,7 @@ name_to_name = {
     "tnr"        : "AI Recall"
 }
 
-binary_metrics = ["auc", "accuracy", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg", "entropy", "bce"]
+binary_metrics = ["auc", "accuracy", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg", "entropy", "bce", "tnr", "tpr"]
 diverging_metrics = ["bbe", "plugin", "plugin-int"]
 
 def add_accuracy_cols(df, ci_level=0.95):
@@ -109,6 +109,83 @@ def reverse_plugin(df, ci_level=0.95):
     df[f"plugin-int_l_{ci}"]     = 1-df[f"plugin-int_l_{ci}"]
     df[f"plugin-int_u_{ci}"]     = 1-df[f"plugin-int_u_{ci}"]
     return df
+
+_PNU_FILES = [
+    "../logging_accuracy_llm_pnu_1.csv",
+    "../logging_accuracy_llm_pnu_2.csv",
+    "../logging_accuracy_llm_pnu_3.csv",
+]
+_TRAIN_TO_SPACE_PNU = {
+    "GPT_OSS_120b": "GPT OSS 120b",
+    "Gemini_3_Preview": "Gemini 3 Preview",
+    "Llama_3.3_70b_Instruct": "Llama 3.3 70b Instruct",
+    "Qwen": "Qwen",
+    "all": "all",
+}
+_pnu_df_cache = None
+
+
+def _get_pnu_df():
+    global _pnu_df_cache
+    if _pnu_df_cache is not None:
+        return _pnu_df_cache
+    try:
+        df = pd.concat([pd.read_csv(f) for f in _PNU_FILES], ignore_index=True)
+        df = add_accuracy_cols(df)
+        df = reverse_bias(reverse_plugin(df))
+        df["llm1_norm"] = df["train_llm"].str.split("|").str[0].map(_TRAIN_TO_SPACE_PNU)
+        df["llm2_norm"] = df["train_llm"].str.split("|").str[1].map(_TRAIN_TO_SPACE_PNU)
+        _pnu_df_cache = df
+    except Exception:
+        pass
+    return _pnu_df_cache
+
+
+def _get_pnu_row(metric, col_order, ci_level=0.95):
+    """For each LLM column, average metric over all PNU models where that LLM is llm2."""
+    col_order_no_all = [c for c in col_order if c != "all"]
+    has_all = "all" in col_order
+    lower_col = f"{metric}_l_{ci_level}"
+    upper_col = f"{metric}_u_{ci_level}"
+
+    out_point = pd.Series(np.nan, index=col_order_no_all, name="PNU + TTA")
+    out_lower = out_point.copy()
+    out_upper = out_point.copy()
+
+    pnu_df = _get_pnu_df()
+    if pnu_df is not None:
+        sub = pnu_df[pnu_df["test_llm"] == pnu_df["llm2_norm"]]
+        for llm in col_order_no_all:
+            col_rows = sub[(sub["llm2_norm"] == llm) & (sub["llm1_norm"] != llm)]
+            if len(col_rows) > 0:
+                if metric in col_rows.columns:
+                    out_point[llm] = col_rows[metric].mean(skipna=True)
+                if lower_col in col_rows.columns:
+                    out_lower[llm] = col_rows[lower_col].mean(skipna=True)
+                if upper_col in col_rows.columns:
+                    out_upper[llm] = col_rows[upper_col].mean(skipna=True)
+
+    if has_all:
+        out_point["all"] = np.nan
+        out_lower["all"] = np.nan
+        out_upper["all"] = np.nan
+        pnu_df = _get_pnu_df()
+        if pnu_df is not None:
+            sub_all = pnu_df[
+                (pnu_df["llm2_norm"] == "all")
+                & (pnu_df["test_llm"] == "all")
+                & (pnu_df["llm1_norm"] != "all")
+            ]
+            if len(sub_all) > 0:
+                if metric in sub_all.columns:
+                    out_point["all"] = sub_all[metric].mean(skipna=True)
+                if lower_col in sub_all.columns:
+                    out_lower["all"] = sub_all[lower_col].mean(skipna=True)
+                if upper_col in sub_all.columns:
+                    out_upper["all"] = sub_all[upper_col].mean(skipna=True)
+
+    return out_point, out_lower, out_upper
+
 
 def make_heatmap(df, metrics, gemini, title=False):
     llms_list = ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"] if gemini else ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
@@ -216,9 +293,10 @@ def make_heatmap(df, metrics, gemini, title=False):
         # -------------------------
         # Combine — order: PN block, Avg (off-diag), PU
         # -------------------------
-        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point])
-        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower])
-        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper])
+        pnu_point_s, pnu_lower_s, pnu_upper_s = _get_pnu_row(metric, col_order, ci_level)
+        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point, pnu_point_s.to_frame().T])
+        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower, pnu_lower_s.to_frame().T])
+        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper, pnu_upper_s.to_frame().T])
 
         return point_df, lower_df, upper_df
 
@@ -302,7 +380,7 @@ def make_heatmap(df, metrics, gemini, title=False):
         # Small white gap between supervised section (PN + avg) and PU row
         _n_total = len(plot_df)
         _n_cols = len(plot_df.columns)
-        _sep_y = _n_total - 1  # data-coord boundary between avg and PU rows
+        _sep_y = _n_total - 2  # data-coord boundary between avg and PU rows
         _gap_h = 0.20          # gap height in data units; adjust to taste
         ax.add_patch(plt.Rectangle(
             (0, _sep_y - _gap_h / 2), _n_cols, _gap_h,
@@ -313,7 +391,7 @@ def make_heatmap(df, metrics, gemini, title=False):
         ax.axhline(y=_sep_y + _gap_h / 2, color="black", linewidth=1, zorder=4)
 
         # Thick line between last LLM row and avg row
-        ax.axhline(y=_n_total - 2, color="black", linewidth=4, zorder=4)
+        ax.axhline(y=_n_total - 3, color="black", linewidth=4, zorder=4)
 
         # Thick vertical separator before the far-right "all" PU column
         if "all" in llms_list:
@@ -322,7 +400,7 @@ def make_heatmap(df, metrics, gemini, title=False):
         # Bracket on y-axis labeling supervised learning rows (PN block + avg row)
         # Layout: [n_pn rows] [avg row] [sep row] [PU row]
         n_total = len(plot_df)
-        n_supervised = n_total - 2  # exclude separator and PU rows
+        n_supervised = n_total - 3  # exclude avg, PU, and PNU rows
         bracket_top = 1.0
         bracket_bot = 1.0 - n_supervised / n_total
         bx = -0.3 if not gemini else -0.38  # axes fraction, left of y-axis
@@ -435,9 +513,10 @@ def make_heatmap_ci(df, metrics, gemini, title=False, point_fontsize=30, ci_font
             pu_lower["all"] = pu_all_lower
             pu_upper["all"] = pu_all_upper
 
-        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point])
-        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower])
-        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper])
+        pnu_point_s, pnu_lower_s, pnu_upper_s = _get_pnu_row(metric, col_order, ci_level)
+        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point, pnu_point_s.to_frame().T])
+        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower, pnu_lower_s.to_frame().T])
+        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper, pnu_upper_s.to_frame().T])
         return point_df, lower_df, upper_df
 
     for metric in metrics:
@@ -515,7 +594,7 @@ def make_heatmap_ci(df, metrics, gemini, title=False, point_fontsize=30, ci_font
 
         _n_total = len(plot_df)
         _n_cols = len(plot_df.columns)
-        _sep_y = _n_total - 1
+        _sep_y = _n_total - 2
         _gap_h = 0.20
         ax.add_patch(plt.Rectangle(
             (0, _sep_y - _gap_h / 2), _n_cols, _gap_h,
@@ -524,12 +603,12 @@ def make_heatmap_ci(df, metrics, gemini, title=False, point_fontsize=30, ci_font
         ))
         ax.axhline(y=_sep_y - _gap_h / 2, color="black", linewidth=1, zorder=4)
         ax.axhline(y=_sep_y + _gap_h / 2, color="black", linewidth=1, zorder=4)
-        ax.axhline(y=_n_total - 2, color="black", linewidth=4, zorder=4)
+        ax.axhline(y=_n_total - 3, color="black", linewidth=4, zorder=4)
         if "all" in llms_list:
             ax.axvline(x=len(plot_df.columns) - 1, color="black", linewidth=4, zorder=4)
 
         n_total = len(plot_df)
-        n_supervised = n_total - 2
+        n_supervised = n_total - 3
         bracket_top = 1.0
         bracket_bot = 1.0 - n_supervised / n_total
         bx = -0.3 if not gemini else -0.38
@@ -782,9 +861,10 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
             pu_lower["all"] = pu_all_lower
             pu_upper["all"] = pu_all_upper
 
-        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point])
-        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower])
-        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper])
+        pnu_point_s, pnu_lower_s, pnu_upper_s = _get_pnu_row(metric, col_order, ci_level)
+        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point, pnu_point_s.to_frame().T])
+        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower, pnu_lower_s.to_frame().T])
+        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper, pnu_upper_s.to_frame().T])
         return point_df, lower_df, upper_df
 
     n = len(metrics)
@@ -852,7 +932,7 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
 
             _n_total = len(plot_df_r)
             _n_cols_h = len(plot_df_r.columns)
-            _sep_y = _n_total - 1
+            _sep_y = _n_total - 2
             _gap_h = 0.20
             ax.add_patch(plt.Rectangle(
                 (0, _sep_y - _gap_h / 2), _n_cols_h, _gap_h,
@@ -861,7 +941,7 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
             ))
             ax.axhline(y=_sep_y - _gap_h / 2, color="black", linewidth=0.8, zorder=4)
             ax.axhline(y=_sep_y + _gap_h / 2, color="black", linewidth=0.8, zorder=4)
-            ax.axhline(y=_n_total - 2, color="black", linewidth=2, zorder=4)
+            ax.axhline(y=_n_total - 3, color="black", linewidth=2, zorder=4)
             if "all" in llms_list:
                 ax.axvline(x=len(plot_df_r.columns) - 1, color="black", linewidth=2, zorder=4)
 
@@ -890,7 +970,7 @@ if __name__ == "__main__":
     data = add_accuracy_cols(data)
     data = reverse_bias(reverse_plugin(data))
     # make_heatmap_ci(data, ['tnr'], "gemini" in input_file, title=False)
-    # make_heatmap(data, ['tnr'], "gemini" in input_file, title=False)
+    make_heatmap(data, ['tnr'], "gemini" in input_file, title=False)
 
     # make_mle_heatmap(data, "gemini" in input_file, title=use_title)
-    make_heatmap_grid(data, plot_metrics, "gemini" in input_file, title=True)
+    # make_heatmap_grid(data, plot_metrics, "gemini" in input_file, title=True)

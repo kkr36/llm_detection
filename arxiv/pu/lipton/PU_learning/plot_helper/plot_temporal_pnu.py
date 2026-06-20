@@ -12,9 +12,9 @@ import matplotlib
 matplotlib.rc('font', **font)
 from matplotlib.ticker import MaxNLocator
 
-input_file = "../logging_accuracy_temporal.csv"
+input_file = "../logging_accuracy_temporal_alpha_full_sentence_temporal.csv"
 import os
-output_folder = input_file.split("/")[-1].split(".csv")[0] + "_v2"
+output_folder = input_file.split("/")[-1].split(".csv")[0] + "_PNU"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
@@ -87,6 +87,7 @@ def make_line_plot(metric, x_lab, title, data, show_title=False):
 
     colors = {
         "PU": "steelblue",
+        "PNU": "forestgreen",
         "Supervised": "red",
         "Liang": "burlywood",
         "Plug-In": "darkorange",
@@ -173,9 +174,10 @@ def plot_temporal_alpha(data, metrics, show_title=False):
 
     rows_retrain = data[data["train_year"]==data["test_year"]]
     tedn_retrain = rows_retrain[rows_retrain["learning_method"]=="TEDn"]
+    pnu_retrain = rows_retrain[rows_retrain["learning_method"]=="PNU"]
 
     for metric in metrics:
-        make_line_plot(metric, "test_year", "temporal_alpha", [("Supervised 2010", pn_2010), ("PU Retrain", tedn_retrain)], show_title=show_title)
+        make_line_plot(metric, "test_year", "temporal_alpha", [("Supervised 2010", pn_2010), ("PU Retrain", tedn_retrain), ("PNU + TTA", pnu_retrain)], show_title=show_title)
 
 def plot_temporal_james(data, metrics, show_title=False):
     rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"]==0) & (data['test_alpha']==0.5)]
@@ -184,9 +186,10 @@ def plot_temporal_james(data, metrics, show_title=False):
 
     rows_retrain_pu = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0.5)]
     pu_retrain_0 = rows_retrain_pu[rows_retrain_pu["learning_method"]=="TEDn"]
+    pnu_retrain_0 = rows_retrain_pu[rows_retrain_pu["learning_method"]=="PNU"]
 
     for metric in metrics:
-        make_line_plot(metric, "test_year", "james_temporal", [("Supervised 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("Liang et al 2010", james_2010)], show_title=show_title)
+        make_line_plot(metric, "test_year", "james_temporal", [("Supervised 2010", pn_2010), ("PU Retrain", pu_retrain_0), ("PNU + TTA", pnu_retrain_0), ("Liang et al 2010", james_2010)], show_title=show_title)
 
 
 def plot_temporal_combined(data, show_title=False):
@@ -198,19 +201,21 @@ def plot_temporal_combined(data, show_title=False):
 
     rows_retrain_alpha = data[data["train_year"]==data["test_year"]]
     tedn_retrain = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="TEDn"]
+    pnu_retrain = rows_retrain_alpha[rows_retrain_alpha["learning_method"]=="PNU"]
 
     rows_retrain_pu = data[(data["train_year"]==data["test_year"]) & (data["train_alpha"]==0.5)]
     pu_retrain_0 = rows_retrain_pu[rows_retrain_pu["learning_method"]=="TEDn"]
+    pnu_retrain_0 = rows_retrain_pu[rows_retrain_pu["learning_method"]=="PNU"]
 
-    colors = {"PU": "steelblue", "Supervised": "red", "Liang": "burlywood"}
+    colors = {"PU": "steelblue", "PNU": "forestgreen", "Supervised": "red", "Liang": "burlywood"}
 
     fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(10, 4))
 
     # Left panel: neg_prob (mirrors plot_temporal_alpha)
     left_stat = "tnr"
-    for label, subset in [("Supervised 2010", pn_2010), ("PU with Test-Time Adaptation", tedn_retrain)]:
+    for label, subset in [("Supervised 2010", pn_2010), ("PU with Test-Time Adaptation", tedn_retrain), ("PNU + TTA", pnu_retrain)]:
         subset = subset.sort_values("test_year")
-        col = colors["Supervised"] if "Supervised" in label else colors["PU"]
+        col = colors["Supervised"] if "Supervised" in label else colors["PNU"] if "PNU" in label else colors["PU"]
         linestyle = "--" if "2010" in label else "-"
         y_plot = subset[left_stat]
         y_upper = subset[f"{left_stat}_l_0.95"]
@@ -222,11 +227,11 @@ def plot_temporal_combined(data, show_title=False):
     ax_left.set_ylabel(name_to_name[left_stat])
 
     # Right panel: bbe (mirrors plot_temporal_james)
-    for label, subset in [("Supervised 2010", pn_2010), ("PU with Test-Time Adaptation", pu_retrain_0), ("Liang et al 2010", james_2010)]:
+    for label, subset in [("Supervised 2010", pn_2010), ("PU with Test-Time Adaptation", pu_retrain_0), ("PNU + TTA", pnu_retrain_0), ("Liang et al 2010", james_2010)]:
         subset = subset.sort_values("test_year")
-        col = colors["Supervised"] if "Supervised" in label else colors["Liang"] if "Liang" in label else colors["PU"]
+        col = colors["Supervised"] if "Supervised" in label else colors["Liang"] if "Liang" in label else colors["PNU"] if "PNU" in label else colors["PU"]
         linestyle = "--" if "2010" in label else "-"
-        try: 
+        try:
             baseline = subset["bbe"].tolist()[0]
         except:
             import pdb; pdb.set_trace()
@@ -245,6 +250,7 @@ def plot_temporal_combined(data, show_title=False):
         Line2D([0], [0], color='red', linestyle='--', linewidth=2.5, label='Supervised 2010'),
         Line2D([0], [0], color='burlywood', linestyle='--', linewidth=2.5, label='Liang et al. 2010'),
         Line2D([0], [0], color='steelblue', linestyle='-', linewidth=2.5, label='PU + TTA'),
+        Line2D([0], [0], color='forestgreen', linestyle='-', linewidth=2.5, label='PNU + TTA'),
     ]
     fig.legend(handles=legend_handles, loc='upper center', ncol=2, bbox_to_anchor=(0.5, 1.2), frameon=False)
 
@@ -265,12 +271,14 @@ def plot_temporal_alpha_grid(data, metrics, show_title=True):
     pn_2010 = rows_2010[rows_2010["learning_method"] == "PN"]
     rows_retrain = data[data["train_year"] == data["test_year"]]
     tedn_retrain = rows_retrain[rows_retrain["learning_method"] == "TEDn"]
+    pnu_retrain = rows_retrain[rows_retrain["learning_method"] == "PNU"]
 
-    series = [("Supervised 2010", pn_2010), ("PU + TTA", tedn_retrain)]
+    series = [("Supervised 2010", pn_2010), ("PU + TTA", tedn_retrain), ("PNU + TTA", pnu_retrain)]
     x_lab = "test_year"
 
     colors = {
         "PU": "steelblue",
+        "PNU": "forestgreen",
         "Supervised": "red",
         "Liang": "burlywood",
         "Plug-In": "darkorange",

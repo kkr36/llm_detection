@@ -1,8 +1,10 @@
 import os
 import argparse
+import gc
 import time
 import random
 import numpy as np
+import pyarrow.parquet as pq
 from tqdm import tqdm
 
 import torch
@@ -36,6 +38,273 @@ from data_helper import *
 
 data_dir = '/share/garg/arxiv_kaggle'
 
+# ============================================================
+# RAID test-set loading
+# ============================================================
+
+_RAID_PATH = '/share/garg/arxiv_kaggle/raid_train.parquet'
+_RAID_EVAL_FRAC = 0.25
+_RAID_N_POS = 1000  # rows reserved for confirmed-positive P-set
+
+_RAID_EVAL_CACHE: dict = {}
+
+
+def _load_raid_eval_df(seed):
+    """Return the held-out 25% eval portion of RAID (complement of training split).
+
+    The original approach loaded all 5.6M rows (~9 GB in RAM) then sampled.
+    Instead: read the two zero-cost categorical columns to compute which rows
+    are in the eval split, then stream the generation column one row-group
+    at a time (~72 MB/group peak vs ~18 GB peak for the naive approach).
+    The resulting eval_df is identical to what the original code produced.
+    """
+    if seed not in _RAID_EVAL_CACHE:
+        # Step 1: model+attack are 0.0 MB compressed — essentially free to load
+        meta = pd.read_parquet(_RAID_PATH, columns=['model', 'attack'])
+        meta_shuffled = meta.sample(frac=1, random_state=seed)  # same permutation as original
+        n_train = int(len(meta_shuffled) * (1 - _RAID_EVAL_FRAC))
+
+        # Boolean mask in original (pre-shuffle) row order
+        eval_mask = np.zeros(len(meta), dtype=bool)
+        eval_mask[meta_shuffled.index[n_train:]] = True
+
+        eval_meta = meta.loc[eval_mask, ['model', 'attack']].reset_index(drop=True)
+        del meta, meta_shuffled
+        gc.collect()
+
+        # Step 2: stream generation one row-group at a time (~72 MB each, 120 groups)
+        pf = pq.ParquetFile(_RAID_PATH)
+        gen_list = []
+        row_offset = 0
+        for rg_idx in range(pf.metadata.num_row_groups):
+            rg_size = pf.metadata.row_group(rg_idx).num_rows
+            rg_mask = eval_mask[row_offset:row_offset + rg_size]
+            if rg_mask.any():
+                chunk = pf.read_row_group(rg_idx, columns=['generation']).to_pandas()
+                gen_list.extend(chunk['generation'][rg_mask].tolist())
+                del chunk
+            row_offset += rg_size
+
+        del eval_mask
+        eval_meta['generation'] = gen_list
+        del gen_list
+        gc.collect()
+        _RAID_EVAL_CACHE[seed] = eval_meta
+    return _RAID_EVAL_CACHE[seed]
+
+
+def _raid_make_p_loader(texts):
+    transform = initialize_bert_transform('distilbert-base-uncased')
+    ds = IMDbBERTData(texts, [1] * len(texts), transform=transform)
+    p = PosData(transform=None, target_transform=None,
+                data=ds.p_data, index=np.arange(len(ds.p_data)), data_type='raid')
+    return torch.utils.data.DataLoader(p, batch_size=16, shuffle=False)
+
+
+def _raid_make_u_loader(pos_texts, neg_texts):
+    """Build an UnlabelData loader from separate positive and negative text lists."""
+    texts = pos_texts + neg_texts
+    labels = [1] * len(pos_texts) + [0] * len(neg_texts)
+    transform = initialize_bert_transform('distilbert-base-uncased')
+    ds = IMDbBERTData(texts, labels, transform=transform)
+    u = UnlabelData(transform=None, target_transform=None,
+                    pos_data=ds.p_data, neg_data=ds.n_data,
+                    index=np.arange(len(texts)), data_type='raid')
+    return torch.utils.data.DataLoader(u, batch_size=16, shuffle=False)
+
+
+def get_p_data_raid(seed):
+    """Confirmed-positive P-set: first _RAID_N_POS human/attack='none' rows from RAID eval split."""
+    eval_df = _load_raid_eval_df(seed)
+    human = (eval_df[(eval_df['attack'] == 'none') & (eval_df['model'] == 'human')]
+             .sample(frac=1, random_state=seed).reset_index(drop=True))
+    p_texts = human.iloc[:_RAID_N_POS]['generation'].tolist()
+    return _raid_make_p_loader(p_texts)
+
+
+def get_u_data_raid(test_attack, alpha, seed):
+    """
+    Unlabeled test set from RAID eval split.
+
+    test_attack : 'human' | specific RAID attack name | 'all'
+    alpha       : fraction positive (human) in U.
+                  Ignored when test_attack='human' (forced to 1.0).
+    seed        : controls shuffling within the eval split.
+
+    Returns (loader, u_texts, u_labels)
+      u_labels: 1=human/positive, 0=AI/negative
+    """
+    eval_df = _load_raid_eval_df(seed)
+    human = (eval_df[(eval_df['attack'] == 'none') & (eval_df['model'] == 'human')]
+             .sample(frac=1, random_state=seed).reset_index(drop=True))
+    # rows after the P-set allocation are available for U
+    u_human_pool = human.iloc[_RAID_N_POS:]['generation'].tolist()
+
+    if test_attack == 'human':
+        u_pos = u_human_pool
+        u_neg = []
+    else:
+        if test_attack == 'all':
+            llm_texts = []
+            for atk in RAID_ATTACKS:
+                rows = (eval_df[(eval_df['attack'] == atk) & (eval_df['model'] != 'human')]
+                        .sample(frac=1, random_state=seed).reset_index(drop=True))
+                llm_texts.extend(rows['generation'].tolist())
+        else:
+            rows = (eval_df[(eval_df['attack'] == test_attack) & (eval_df['model'] != 'human')]
+                    .sample(frac=1, random_state=seed).reset_index(drop=True))
+            llm_texts = rows['generation'].tolist()
+
+        T_pos = len(u_human_pool) / alpha if alpha > 0 else float('inf')
+        T_neg = len(llm_texts) / (1 - alpha) if alpha < 1 else float('inf')
+        T = int(min(T_pos, T_neg))
+        n_pos = int(alpha * T)
+        n_neg = T - n_pos
+        rng = np.random.default_rng(seed)
+        u_pos = list(rng.choice(u_human_pool, size=min(n_pos, len(u_human_pool)), replace=False))
+        u_neg = list(rng.choice(llm_texts, size=min(n_neg, len(llm_texts)), replace=False))
+
+    u_texts = u_pos + u_neg
+    u_labels = [1] * len(u_pos) + [0] * len(u_neg)
+    loader = _raid_make_u_loader(u_pos, u_neg)
+    return loader, u_texts, u_labels
+
+
+def get_preds_raid(net, device, test_attack, alpha, seed):
+    """
+    Return (pos_probs, unlabeled_probs, unlabeled_targets) for a RAID test condition.
+
+    test_attack : 'human' | specific attack name | 'all'
+    alpha       : fraction positive in U (ignored for 'human' test, which forces 1.0)
+    """
+    if test_attack == 'human':
+        alpha = 1.0
+    print("getting p data")
+    p_loader = get_p_data_raid(seed)
+    print("getting u data")
+    u_loader, _, _ = get_u_data_raid(test_attack, alpha, seed)
+    print("getting p probs")
+    pos_p = p_probs(net, device, p_loader)
+    print("getting u probs")
+    unlabeled_p, unlabeled_t = u_probs(net, device, u_loader)
+    return pos_p, unlabeled_p, unlabeled_t
+
+
+# ============================================================
+# RAID shift-based test-set loading
+# ============================================================
+
+_RAID_EVAL_SHIFT_CACHE: dict = {}
+
+
+def _load_raid_eval_shift_df(seed):
+    """Load the held-out eval split with all columns needed for shift-based filtering.
+
+    Loads 'model', 'attack', 'repetition_penalty', 'decoding', 'domain' for
+    row-level filtering, then streams 'generation' column-by-column like
+    _load_raid_eval_df to keep peak RAM low.
+    """
+    if seed not in _RAID_EVAL_SHIFT_CACHE:
+        meta = pd.read_parquet(
+            _RAID_PATH,
+            columns=['model', 'attack', 'repetition_penalty', 'decoding', 'domain'],
+        )
+        meta_shuffled = meta.sample(frac=1, random_state=seed)
+        n_train = int(len(meta_shuffled) * (1 - _RAID_EVAL_FRAC))
+
+        eval_mask = np.zeros(len(meta), dtype=bool)
+        eval_mask[meta_shuffled.index[n_train:]] = True
+
+        eval_meta = meta.loc[eval_mask].reset_index(drop=True)
+        del meta, meta_shuffled
+        gc.collect()
+
+        pf = pq.ParquetFile(_RAID_PATH)
+        gen_list = []
+        row_offset = 0
+        for rg_idx in range(pf.metadata.num_row_groups):
+            rg_size = pf.metadata.row_group(rg_idx).num_rows
+            rg_mask = eval_mask[row_offset:row_offset + rg_size]
+            if rg_mask.any():
+                chunk = pf.read_row_group(rg_idx, columns=['generation']).to_pandas()
+                gen_list.extend(chunk['generation'][rg_mask].tolist())
+                del chunk
+            row_offset += rg_size
+
+        del eval_mask
+        eval_meta['generation'] = gen_list
+        del gen_list
+        gc.collect()
+        _RAID_EVAL_SHIFT_CACHE[seed] = eval_meta
+    return _RAID_EVAL_SHIFT_CACHE[seed]
+
+
+def get_u_data_raid_shift(shift_col, target_val, alpha, seed):
+    """
+    Build the unlabeled test set for a shift-based RAID evaluation.
+
+    All rows are pre-filtered to attack=='none'.
+    Unlabeled positives: human rows (attack='none') after the P-set allocation.
+    Unlabeled negatives: non-human rows (attack='none', shift_col==target_val).
+
+    shift_col  : str   column to shift on ('repetition_penalty', 'decoding', 'domain', 'model')
+    target_val : str   value for the target/test-time LLM distribution
+    alpha      : float fraction positive (human) in U
+    seed       : int
+
+    Returns (loader, u_texts, u_labels)  -- u_labels: 1=human, 0=AI
+    """
+    eval_df = _load_raid_eval_shift_df(seed)
+
+    human = (eval_df[(eval_df['attack'] == 'none') & (eval_df['model'] == 'human')]
+             .sample(frac=1, random_state=seed).reset_index(drop=True))
+    u_human_pool = human.iloc[_RAID_N_POS:]['generation'].tolist()
+
+    llm_rows = (eval_df[
+        (eval_df['attack'] == 'none') &
+        (eval_df['model'] != 'human') &
+        (eval_df[shift_col] == target_val)
+    ].sample(frac=1, random_state=seed).reset_index(drop=True))
+    llm_texts = llm_rows['generation'].tolist()
+
+    T_pos = len(u_human_pool) / alpha if alpha > 0 else float('inf')
+    T_neg = len(llm_texts) / (1 - alpha) if alpha < 1 else float('inf')
+    T = int(min(T_pos, T_neg))
+    n_pos = int(alpha * T)
+    n_neg = T - n_pos
+    rng = np.random.default_rng(seed)
+    u_pos = list(rng.choice(u_human_pool, size=min(n_pos, len(u_human_pool)), replace=False))
+    u_neg = list(rng.choice(llm_texts, size=min(n_neg, len(llm_texts)), replace=False))
+
+    u_texts  = u_pos + u_neg
+    u_labels = [1] * len(u_pos) + [0] * len(u_neg)
+    loader = _raid_make_u_loader(u_pos, u_neg)
+    return loader, u_texts, u_labels
+
+
+def get_preds_raid_shift(net, device, shift_col, target_val, alpha, seed):
+    """
+    Return (pos_probs, unlabeled_probs, unlabeled_targets) for a shift-based RAID test condition.
+
+    P data: human rows (attack='none') from the eval split -- same as get_preds_raid.
+    U data: balanced mix of human (attack='none') and non-human (attack='none', shift_col==target_val).
+
+    shift_col  : str   column to shift on
+    target_val : str   value for the target LLM distribution
+    alpha      : float fraction positive in U
+    seed       : int
+    """
+    print("getting p data")
+    p_loader = get_p_data_raid(seed)
+    print("getting u data")
+    u_loader, _, _ = get_u_data_raid_shift(shift_col, target_val, alpha, seed)
+    print("getting p probs")
+    pos_p = p_probs(net, device, p_loader)
+    print("getting u probs")
+    unlabeled_p, unlabeled_t = u_probs(net, device, u_loader)
+    return pos_p, unlabeled_p, unlabeled_t
+
+
 def get_james_save_str(data_type, year, alpha, combine, sentence, clean, add, gemini, flip, split, seed, llm):
     combine_str = '_combine' if combine else ''
     sentence_str = '_sentence' if sentence else ''
@@ -56,14 +325,12 @@ def read_arxiv_unlabeled(test_alpha, test_year, sentence, clean, split, seed):
         llm_writing.append(original_rewrite)
     arxiv_data['ai_abstract'] = llm_writing
 
-    num_inject = int(.2 * len(arxiv_data))
-
-    right_labels = arxiv_data.iloc[num_inject:].reset_index(drop=True)
-    right_labels = right_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
-    if split == "out":
-        right_labels = right_labels.iloc[5700:6000].reset_index(drop=True)
-    else:
-        right_labels = right_labels.iloc[2500:6000-1000].reset_index(drop=True) # this should not be seen by any models
+    right_labels = arxiv_data.sample(frac=1, random_state=seed).reset_index(drop=True).iloc[8000:].reset_index(drop=True)
+    # right_labels = right_labels.sample(frac=1, random_state=seed).reset_index(drop=True)
+    # if split == "out":
+    #     right_labels = right_labels.iloc[5700:6000].reset_index(drop=True)
+    # else:
+    #     right_labels = right_labels.iloc[2500:6000-1000].reset_index(drop=True) # this should not be seen by any models
 
     llm_subset = right_labels.iloc[:int(len(right_labels)*test_alpha)]
     human_subset = right_labels.iloc[int(len(right_labels)*test_alpha):]
@@ -273,9 +540,9 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
         else:
             llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
 
-            # shuffle
-            llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
-            llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+        # shuffle
+        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
 
         llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
         human_texts = llm_subset['human_abstract'].tolist()

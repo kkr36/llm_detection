@@ -43,7 +43,34 @@ def clean_text(text):
     text = [''.join(ch for ch in s if ch in allowed) for s in text]
     return text
 
-class PosData(torch.utils.data.Dataset): 
+class NegData(torch.utils.data.Dataset):
+    """Labeled-negative dataset: symmetric to PosData but hardcodes targets=1."""
+    def __init__(self, transform=None, target_transform=None, data=None,
+                 index=None, data_type=None):
+        self.transform = transform
+        self.target_transform = target_transform
+        self.data = data
+        self.targets = np.ones(data.shape[0], dtype=np.int_)
+        self.data_type = data_type
+        self.index = index
+
+    def __len__(self):
+        return len(self.targets)
+
+    def __getitem__(self, idx):
+        index, img, target = self.index[idx], self.data[idx], self.targets[idx]
+        if self.data_type == 'cifar':
+            img = Image.fromarray(img)
+        elif self.data_type == 'mnist':
+            img = Image.fromarray(img, mode='L')
+        if self.transform is not None:
+            img = self.transform(img)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+        return index, img, target
+
+
+class PosData(torch.utils.data.Dataset):
     def __init__(self, transform=None, target_transform=None, data=None, \
             index=None, data_type=None):
         self.transform = transform
@@ -142,7 +169,33 @@ def get_PUDataSplits1(data_obj, data_type=None): # put all the mirrors in posdat
                 pos_data=data_obj.p_data[:0], neg_data=data_obj.n_data, \
                 index=np.array(range(len(data_obj.n_data))),data_type=data_type)
 
-def get_PUDataSplits2(data_obj, data_type=None): 
+def get_PNUDataSplits1(data_obj, data_type=None):
+    """
+    Like get_PUDataSplits1 but also returns a NegData loader for labeled negatives.
+    Requires data_obj to be an IMDbBERTData_PNU instance (has .ln_data attribute).
+    Returns (PosData, NegData, UnlabelData).
+    """
+    return (
+        PosData(transform=data_obj.transform,
+                target_transform=data_obj.target_transform,
+                data=data_obj.p_data,
+                index=np.array(range(len(data_obj.p_data))),
+                data_type=data_type),
+        NegData(transform=data_obj.transform,
+                target_transform=data_obj.target_transform,
+                data=data_obj.ln_data,
+                index=np.array(range(len(data_obj.ln_data))),
+                data_type=data_type),
+        UnlabelData(transform=data_obj.transform,
+                    target_transform=data_obj.target_transform,
+                    pos_data=data_obj.p_data[:0],
+                    neg_data=data_obj.n_data,
+                    index=np.array(range(len(data_obj.n_data))),
+                    data_type=data_type),
+    )
+
+
+def get_PUDataSplits2(data_obj, data_type=None):
 
     pos, un =  PosData(transform=data_obj.transform, \
                     target_transform=data_obj.target_transform, \
@@ -187,7 +240,7 @@ def get_PNDataSplits(data_obj, pos_size, neg_size, data_type=None):
                 index=np.array(range(pos_size + neg_size)),data_type=data_type)
 
 
-def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None):
+def get_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None):
 
     p_trainloader=None
     u_trainloader=None
@@ -213,6 +266,7 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         for year in years:
 
             data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
+            # data_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet'
 
             train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, True, seed) # should have 15k each
             test_texts_new, test_labels_new = load_fn(data_path, alpha, "val", sentence, True, seed) # should have 5k each
@@ -403,10 +457,237 @@ def get_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, y
         net = get_model(net_type)
         net = net.to(device)
 
+    elif data_type == "raid":
+        attack = llm
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_texts, train_labels = read_raid_PU(attack, alpha, 'train', seed)
+        val_texts,   val_labels   = read_raid_PU(attack, alpha, 'cal',   seed)
+
+        train_dataset = RAIDBERTData(train_texts, train_labels, transform=transform)
+        val_dataset   = RAIDBERTData(val_texts,   val_labels,   transform=transform)
+
+        p_traindata, u_traindata = get_PUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(val_dataset,   data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type.startswith("raid_"):
+        # Distribution-shift variants: data_type = "raid_{shift_col}", llm = "source_val:target_val"
+        shift_col = data_type[len("raid_"):]
+        source_val, target_val = llm.split(":", 1)
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_texts, train_labels = read_raid_shift_PU(shift_col, source_val, target_val, alpha, 'train', seed)
+        val_texts,   val_labels   = read_raid_shift_PU(shift_col, source_val, target_val, alpha, 'cal',   seed)
+
+        train_dataset = RAIDBERTData(train_texts, train_labels, transform=transform)
+        val_dataset   = RAIDBERTData(val_texts,   val_labels,   transform=transform)
+
+        p_traindata, u_traindata = get_PUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(val_dataset,   data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
     return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata
 
 
-def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None): # TODO fix
+def get_PNU_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None, n_labeled=0):
+
+    p_trainloader = None
+    n_trainloader = None
+    u_trainloader = None
+    p_validloader = None
+    u_validloader = None
+    p_calloader   = None
+    u_calloader   = None
+    net = None
+    X   = None
+    Y   = None
+
+    if data_type == "ArXiv_BERT":
+        years = [2010, 2012, 2014, 2016, 2018, 2020][-3:] if combine else [year]
+        print(years)
+        train_texts, train_labels = [], []
+        test_texts,  test_labels  = [], []
+        cal_texts,   cal_labels   = [], []
+
+        for year in years:
+            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
+
+            train_texts_new, train_labels_new = read_arxiv_split2_PNU(data_path, alpha, "train", sentence, True, seed, n_labeled=n_labeled)
+            test_texts_new,  test_labels_new  = read_arxiv_split2_PNU(data_path, alpha, "val", sentence, True, seed)
+            cal_texts_new,   cal_labels_new   = read_arxiv_split2(data_path, 0, "val", sentence, inject=False, seed=seed)
+            if clean:
+                train_texts_new = clean_text(train_texts_new)
+                test_texts_new  = clean_text(test_texts_new)
+                cal_texts_new   = clean_text(cal_texts_new)
+            train_texts += train_texts_new;  train_labels += train_labels_new
+            test_texts  += test_texts_new;   test_labels  += test_labels_new
+            cal_texts   += cal_texts_new;    cal_labels   += cal_labels_new
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_dataset = IMDbBERTData_PNU(train_texts, train_labels, transform=transform)
+        test_dataset  = IMDbBERTData(test_texts,  test_labels,  transform=transform)
+        cal_dataset   = IMDbBERTData(cal_texts,   cal_labels,   transform=transform)
+
+        p_traindata, n_traindata, u_traindata = get_PNUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
+        p_caldata,   u_caldata   = get_PUDataSplits1(cal_dataset,  data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        n_trainloader = torch.utils.data.DataLoader(n_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+        p_calloader   = torch.utils.data.DataLoader(p_caldata,   batch_size=128, shuffle=shuffle)
+        u_calloader   = torch.utils.data.DataLoader(u_caldata,   batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif "llm_type_" in data_type:
+        llm_key = data_type.split("llm_type_")[-1].replace("_", " ")
+        data_path = (
+            f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet"
+            if not gemini
+            else f"{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_gemini_full.parquet"
+        )
+
+        train_texts, train_labels = read_arxiv_split_llm_PNU(data_path, llm_key, "train", sentence, alpha, gemini, flip, seed, n_labeled=n_labeled)
+        test_texts,  test_labels  = read_arxiv_split_llm_PNU(data_path, llm_key, "val", sentence, alpha, gemini, flip, seed)
+        if clean:
+            train_texts = clean_text(train_texts)
+            test_texts  = clean_text(test_texts)
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_dataset = IMDbBERTData_PNU(train_texts, train_labels, transform=transform)
+        test_dataset  = IMDbBERTData(test_texts,  test_labels,  transform=transform)
+
+        p_traindata, n_traindata, u_traindata = get_PNUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        n_trainloader = torch.utils.data.DataLoader(n_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type == "xy":
+        llm_col = f"rewrite_{llm}"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+
+        train_texts, train_labels = read_arxiv_split_xy_PNU(data_path, llm, "train", sentence, alpha, gemini, flip, seed, llm_col, n_labeled=n_labeled)
+        test_texts,  test_labels  = read_arxiv_split_xy_PNU(data_path, llm, "pu_val", sentence, alpha, gemini, flip, seed, llm_col)
+        if clean:
+            train_texts = clean_text(train_texts)
+            test_texts  = clean_text(test_texts)
+
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_dataset = IMDbBERTData_PNU(train_texts, train_labels, transform=transform)
+        test_dataset  = IMDbBERTData(test_texts,  test_labels,  transform=transform)
+
+        p_traindata, n_traindata, u_traindata = get_PNUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, u_validdata = get_PUDataSplits1(test_dataset, data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        n_trainloader = torch.utils.data.DataLoader(n_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type == "raid":
+        attack = llm
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_texts, train_labels = read_raid_PNU(attack, alpha, 'train', seed)
+        val_texts,   val_labels   = read_raid_PNU(attack, alpha, 'cal',   seed)
+
+        train_dataset = RAIDBERTData_PNU(train_texts, train_labels, transform=transform)
+        val_dataset   = RAIDBERTData_PNU(val_texts,   val_labels,   transform=transform)
+
+        p_traindata, n_traindata, u_traindata = get_PNUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, _n_validdata, u_validdata = get_PNUDataSplits1(val_dataset,  data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        n_trainloader = torch.utils.data.DataLoader(n_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type.startswith("raid_"):
+        # Distribution-shift variants: data_type = "raid_{shift_col}", llm = "source_val:target_val"
+        shift_col = data_type[len("raid_"):]
+        source_val, target_val = llm.split(":", 1)
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_texts, train_labels = read_raid_shift_PNU(shift_col, source_val, target_val, alpha, 'train', seed)
+        val_texts,   val_labels   = read_raid_shift_PNU(shift_col, source_val, target_val, alpha, 'cal',   seed)
+
+        train_dataset = RAIDBERTData_PNU(train_texts, train_labels, transform=transform)
+        val_dataset   = RAIDBERTData_PNU(val_texts,   val_labels,   transform=transform)
+
+        p_traindata, n_traindata, u_traindata = get_PNUDataSplits1(train_dataset, data_type=data_type)
+        p_validdata, _n_validdata, u_validdata = get_PNUDataSplits1(val_dataset,  data_type=data_type)
+
+        X = p_traindata.targets
+        Y = u_traindata.targets
+
+        p_trainloader = torch.utils.data.DataLoader(p_traindata, batch_size=8,   shuffle=shuffle)
+        n_trainloader = torch.utils.data.DataLoader(n_traindata, batch_size=8,   shuffle=shuffle)
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        p_validloader = torch.utils.data.DataLoader(p_validdata, batch_size=128, shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    return p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata, n_trainloader
+
+
+def get_dataset_val2(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm=None): # TODO fix
     p_validloader=None
     u_validloader=None
     # import pdb; pdb.set_trace()
@@ -420,7 +701,8 @@ def get_dataset_val2(data_dir, data_type,net_type, device, alpha, beta, batch_si
         test_texts, test_labels = [], []
 
         for year in years:
-            val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
+            # val_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
+            val_path = f'{data_dir}/multillm/data_raw/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet'
 
             test_texts_new, test_labels_new = read_arxiv_split2(val_path, 0, "val", sentence, inject=False, seed=seed)
             # test_texts_new, test_labels_new = read_arxiv_single_double(val_path, "val", sentence, inject=True, seed=seed)
@@ -579,7 +861,7 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         # load_fn = read_arxiv_single_double
 
         for year in years:
-            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_0.2_fronthalf_120b_qwen_v2.parquet'
+            data_path = f'{data_dir}/multillm/double_rewrite/arxiv_{year}_ai_cs._10000_fronthalf_120b_qwen.parquet'
 
             train_texts_new, train_labels_new = load_fn(data_path, alpha, "train", sentence, True, seed)
             # train_texts_new, train_labels_new = load_fn(data_path, "train", sentence, True, seed)
@@ -717,7 +999,54 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
         u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, \
             shuffle=shuffle)
 
-        ## Initialize model 
+        ## Initialize model
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type == "raid":
+        attack = llm
+        transform = initialize_bert_transform('distilbert-base-uncased')
+
+        train_texts, train_labels = read_raid_PN(attack, 'train', seed)
+        test_texts,  test_labels  = read_raid_PN(attack, 'cal',   seed)
+
+        train_dataset = RAIDBERTData(train_texts, train_labels, transform=transform)
+        test_dataset  = RAIDBERTData(test_texts,  test_labels,  transform=transform)
+
+        np_train, nn_train = len(train_dataset.p_data), len(train_dataset.n_data)
+        np_test,  nn_test  = len(test_dataset.p_data),  len(test_dataset.n_data)
+
+        u_traindata = get_PNDataSplits(train_dataset, pos_size=np_train, neg_size=nn_train)
+        u_validdata = get_PNDataSplits(test_dataset,  pos_size=np_test,  neg_size=nn_test)
+
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
+        net = get_model(net_type)
+        net = net.to(device)
+
+    elif data_type.startswith("raid_"):
+        # Distribution-shift variants: data_type = "raid_{shift_col}"
+        # For PN, llm = "source_val" (only labeled distribution needed)
+        shift_col  = data_type[len("raid_"):]
+        source_val = llm
+        transform  = initialize_bert_transform('distilbert-base-uncased')
+
+        train_texts, train_labels = read_raid_shift_PN(shift_col, source_val, 'train', seed)
+        test_texts,  test_labels  = read_raid_shift_PN(shift_col, source_val, 'cal',   seed)
+
+        train_dataset = RAIDBERTData(train_texts, train_labels, transform=transform)
+        test_dataset  = RAIDBERTData(test_texts,  test_labels,  transform=transform)
+
+        np_train, nn_train = len(train_dataset.p_data), len(train_dataset.n_data)
+        np_test,  nn_test  = len(test_dataset.p_data),  len(test_dataset.n_data)
+
+        u_traindata = get_PNDataSplits(train_dataset, pos_size=np_train, neg_size=nn_train)
+        u_validdata = get_PNDataSplits(test_dataset,  pos_size=np_test,  neg_size=nn_test)
+
+        u_trainloader = torch.utils.data.DataLoader(u_traindata, batch_size=8,   shuffle=shuffle)
+        u_validloader = torch.utils.data.DataLoader(u_validdata, batch_size=128, shuffle=shuffle)
+
         net = get_model(net_type)
         net = net.to(device)
 

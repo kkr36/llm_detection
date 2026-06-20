@@ -1,16 +1,18 @@
 import os
+import re
 import pandas as pd
 from pathlib import Path
 import numpy as np
-from model_inference import get_preds_xy
+from model_inference import get_preds_llm, get_u_data_llm
 from collections import defaultdict
 from model_helper import *
 
 from prepare_metrics import *
 from estimator import BBE_estimator
 import torch
+from platt_scaling import *
 
-
+PNU_BASE = "/share/garg/arxiv_kaggle/PNU_llm/PNU_flip"
 PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
 
 def save_preds(path, pos_probs, unlabeled_probs, unlabeled_targets):
@@ -42,8 +44,8 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
     print('calculating metrics')
 
     update_dict(metrics_dict, "auc", *bootstrap_metric(auc_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
-    update_dict(metrics_dict, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_un_list, preds_up_list, n_bootstrap=n_bootstrap, cis=test_cis))
-    update_dict(metrics_dict, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_un_list, preds_up_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "avg_pos_neg_prob", *bootstrap_metric(avg_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "tpr", *bootstrap_metric(tpr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
     update_dict(metrics_dict, "fnr", *bootstrap_metric(fnr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
@@ -59,41 +61,23 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
 
     return metrics_dict
 
-
 # SWITCHES
-entrance_path = "logging_accuracy_xy"
+data_type = "ArXiv_BERT"
 sentence = True
 clean = True
+gemini = "gemini" in PNU_BASE.lower()
 epochs = 3
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-seeds = [0, 1, 2, 3, 4]
+train_year = 2020
+test_year = 2020
 test_alpha = 0.5
+train_alpha = 0.5
 test_cis = [.9, .95, .99]
-# Each entry is one (train_method, llm) combination to evaluate.
-# For PN: alpha=0, flip=False (AI=positive)
-# For TEDn: alpha=0.25, flip=True (human=positive)
-configs = [
-    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "X"},
-    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "Y"},
-    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "Y"},
-    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "all"},
-    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "X"},
-    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "Z"},
-    # {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "Z"},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "X", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][:1]},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xz",  "eval_cols": ["rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][:1]},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][2:3]},
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xzzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PU", "rewrite_Z_2_PU"][-1:]},
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "X", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PN", "rewrite_Z_2_PN"][:2]},
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "xz",  "eval_cols": ["rewrite_Z_1_PN", "rewrite_Z_2_PN"][:1]},
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "xzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PN", "rewrite_Z_2_PN"][-1:]},
-    # {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "xzzz", "eval_cols": ["rewrite_X", "rewrite_Z", "rewrite_Z_1_PN", "rewrite_Z_2_PN"][-1:]},
-    {"train_method": "PNU",  "train_alpha": 0.25,  "flip": False, "llm": "Z",   "eval_cols": ["rewrite_Z"]},
-]
+eval_flip = True  # always human=positive for eval
 
-### LOGIC ###
-
-output_csv = f"{entrance_path}.csv".replace("xy", "xz")
+total_splits = 3
+split_num = 1
+output_csv = f"logging_accuracy_llm_pnu_{split_num}.csv"
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -102,45 +86,65 @@ else:
 
 run_id = len(metrics_df)
 
-for cfg in configs:
-    train_method = cfg["train_method"]
-    train_alpha = cfg["train_alpha"]
-    flip = cfg["flip"]
-    llm = cfg["llm"]
+# Discover all (llm1, llm2) pairs from directory structure
+# Dirs are named: llm_type_{llm1}|{llm2}_{seed}
+pair_pattern = re.compile(r'^llm_type_(.+)\|(.+)_(\d+)$')
+pairs_seeds = defaultdict(list)  # (llm1_name, llm2_name) -> [seed, ...]
 
-    nets = {}
-    model_path = None
-    for seed in seeds:
-        if train_method == "PNU":
-            alpha_dir = Path(f"{entrance_path}/normal_sentence/PNU/{seed}/{llm}/xy_{epochs}")
-        else:
-            alpha_dir = Path(f"{entrance_path}/normal_sentence/alpha_{train_alpha}/{seed}/{llm}/xy_{epochs}")
-        pts = [p for p in alpha_dir.iterdir()
-               if p.is_file() and p.name.lower().endswith(".pt") and train_method in p.name]
-        assert len(pts) == 1, f"Expected 1 .pt for {train_method} seed {seed}, found {len(pts)} in {alpha_dir}"
+for dirname in sorted(os.listdir(PNU_BASE)):
+    m = pair_pattern.match(dirname)
+    if m:
+        llm1_name, llm2_name, seed = m.group(1), m.group(2), int(m.group(3))
+        pairs_seeds[(llm1_name, llm2_name)].append(seed)
+
+# import pdb; pdb.set_trace()
+cfgs = sorted(pairs_seeds.items())
+start_idx = len(cfgs)//3 * (split_num-1)
+end_idx = len(cfgs)//3 * split_num
+print(start_idx, end_idx)
+for (llm1_name, llm2_name), seeds in cfgs[start_idx:end_idx]:
+    seeds = sorted(seeds)
+
+    nets = []
+    model_paths = []
+
+    for n in seeds:
+        outer_dir = Path(f"{PNU_BASE}/llm_type_{llm1_name}|{llm2_name}_{n}")
+        inner_dir = outer_dir / f"llm_type_{llm1_name}|{llm2_name}_{epochs}"
+        pts = [p for p in inner_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt")]
+        assert len(pts) == 1, f"Expected 1 .pt file in {inner_dir}, found {len(pts)}"
+
         model_path = pts[0]
-
         net = get_model("DistilBert")
         state_dict = torch.load(model_path, map_location=device)
         state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
         net.load_state_dict(state_dict)
         net.eval()
         net.to(device)
-        nets[seed] = net
+        nets.append(net)
+        model_paths.append(model_path)
 
-    eval_cols = ["rewrite_X", "rewrite_Y", "rewrite_Z"] if "eval_cols" not in cfg.keys() else cfg["eval_cols"]
-    print(cfg, eval_cols)
+    train_llm = f"{llm1_name}|{llm2_name}"
+    
+    for eval_llm in [llm1_name, llm2_name]:
+        # evaluate only on llm2 (the labeled-negative LLM used during training)
+        test_llm = eval_llm.replace("_", " ")
+        test_llm_name = eval_llm
 
-    for eval_llm_col in eval_cols:
-        print(f"Evaluating {train_method} llm={llm} (flip={flip}, train_alpha={train_alpha}) "
-              f"on eval_col={eval_llm_col} across {len(nets)} seeds")
+        print(f"train: PNU {train_llm} alpha={train_alpha} | test: {test_llm} alpha={test_alpha}")
 
         preds_p_list, preds_u_list, u_targets_list = [], [], []
-        for seed, net in nets.items():
-            pos_probs, unlabeled_probs, unlabeled_targets = get_preds_xy(
-                net, device, test_alpha, flip, seed, sentence, clean, eval_llm_col)
+
+        for i, n in enumerate(seeds):
+            pos_probs, unlabeled_probs, unlabeled_targets = get_preds_llm(
+                data_type, nets[i], device, test_alpha, test_year, test_llm,
+                sentence, clean, gemini, eval_flip, n
+            )
+            # pos_probs = 1 - pos_probs
+            # unlabeled_probs = 1 - unlabeled_probs
+            # PNU trained with human=positive (no --flip), outputs P(human) directly — no flip needed
             save_preds(
-                f"{PREDS_BASE}/optimization/{train_method}/{llm}/{eval_llm_col}/seed_{seed}.npz",
+                f"{PREDS_BASE}/heatmap/PNU/train_{llm1_name}|{llm2_name}/alpha_{train_alpha}/test_{test_llm_name}/seed_{n}.npz",
                 pos_probs, unlabeled_probs, unlabeled_targets,
             )
             preds_p_list.append(pos_probs)
@@ -148,17 +152,20 @@ for cfg in configs:
             u_targets_list.append(unlabeled_targets)
 
         info = {
-            "learning_method": train_method,
-            "data_type": "xy",
-            "train_llm": llm,
-            "eval_llm": eval_llm_col,
+            "learning_method": "PNU",
+            "data_type": data_type,
             "train_alpha": train_alpha,
+            "train_year": train_year,
+            "train_llm": train_llm,
             "test_alpha": test_alpha,
-            "flip": flip,
+            "test_year": test_year,
+            "test_llm": test_llm,
+            "epochs": epochs,
             "clean": clean,
             "sentence": sentence,
-            "epochs": epochs,
-            "model_dir": str(alpha_dir),
+            "gemini": gemini,
+            "eval_flip": eval_flip,
+            "model_path": str(model_paths[-1]),
             "run_id": run_id,
         }
 
@@ -168,7 +175,10 @@ for cfg in configs:
         row.update(info)
         row.update(metrics)
 
-        metrics_df = pd.concat([metrics_df, pd.DataFrame([row])], ignore_index=True)
-        metrics_df.to_csv(output_csv, index=False)
+        metrics_df = pd.concat(
+            [metrics_df, pd.DataFrame([row])],
+            ignore_index=True
+        )
 
+        metrics_df.to_csv(output_csv, index=False)
         run_id += 1

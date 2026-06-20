@@ -31,9 +31,9 @@ OUT_DIR  = "/home/kkr36/llm_detection/arxiv/separation"
 
 LABEL_NAMES = {
     0: "Human",
-    1: "GPT OSS 120b",
-    2: "Llama 3.3 70b",
-    3: "Gemini 3 Preview",
+    1: "GPT",
+    2: "Llama",
+    3: "Gemini 3",
     4: "Qwen",
 }
 
@@ -71,15 +71,17 @@ def plot_multilabel(embeddings, labels, lda, path):
     """2-D scatter of first two LDA components."""
     proj = lda.transform(embeddings)
 
+    legend_order = [2, 1, 3, 4, 0]  # Llama, GPT, Gemini 3, Qwen, Human
     fig, ax = plt.subplots(figsize=(9, 7))
-    for lbl, name in LABEL_NAMES.items():
+    for lbl in legend_order:
+        name = LABEL_NAMES[lbl]
         mask = labels == lbl
         ax.scatter(proj[mask, 0], proj[mask, 1],
                    alpha=0.25, s=8, label=name, color=COLORS[lbl])
     ax.set_xlabel("LDA Component 1")
     ax.set_ylabel("LDA Component 2")
     plt.xlim(-12,5)
-    ax.legend(markerscale=4, fontsize=13, frameon=False,
+    ax.legend(markerscale=4, fontsize=16, frameon=False,
               loc="lower center", bbox_to_anchor=(0.5, 1.01),
               ncol=len(LABEL_NAMES) // 2 + 1)
     plt.tight_layout()

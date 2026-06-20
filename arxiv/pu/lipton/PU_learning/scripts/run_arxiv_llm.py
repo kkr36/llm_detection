@@ -45,10 +45,10 @@ if __name__ == "__main__":
             for llm in llm_list:
                 # if alpha == .5: continue
                 for seed in seeds:
-                    if train_method == "TEDn" and llm == "Qwen" and seed <= 2: continue
+                    # if train_method == "TEDn" and llm == "Qwen" and seed <= 2: continue
                     lr = 0.00001
                     # cmd = f"python train_PU_one_year.py --lr=0.00001 --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=2 --optimizer=AdamW --alpha=0 --beta=.6 --year={year} --log-dir=logging_accuracy_llm/{llm}_sentence"
-                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm/normal_sentence/alpha_{alpha}/{llm}_{seed} --seed={seed} --clean {'--flip' if train_method=='TEDn' else ''}"
+                    cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='llm_type_{llm}' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_llm/normal_sentence/alpha_{alpha}_2/{llm}_{seed} --seed={seed} --clean {'--flip' if train_method=='TEDn' else ''}"
 
                     print(cmd)
 

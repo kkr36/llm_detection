@@ -52,7 +52,7 @@ for ax in axes:
 
 axes[0].text(0.5, 0.95, "Supervised 2010", transform=axes[0].transAxes,
              ha="center", va="top", fontsize=17, fontweight="bold")
-axes[1].text(0.5, 0.95, "PU with\nTest-Time Adaptation", transform=axes[1].transAxes,
+axes[1].text(0.5, 0.95, "PU + TTA", transform=axes[1].transAxes,
              ha="center", va="top", fontsize=17, fontweight="bold", linespacing=1.3)
 
 # Shared legend above the figure

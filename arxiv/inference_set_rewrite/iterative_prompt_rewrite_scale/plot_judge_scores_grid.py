@@ -34,7 +34,7 @@ SCORE_PAIRS = [
 
 SCORE_COLS = [
     ("hallucination_score", "Hallucination Score"),
-    ("omission_score",      "Omission / Dropping Score"),
+    ("omission_score",      "Omission Score"),
 ]
 
 

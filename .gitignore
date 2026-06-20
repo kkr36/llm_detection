@@ -29,6 +29,9 @@ arxiv/inference_set_rewrite/threshold_sensitivity_plots/
 arxiv/pu/lipton/pn_testing/
 arxiv/pu/lipton/PU_code/
 
+# private strategy implementations (kept local, not on GitHub)
+*strategy_private.py
+
 # file patterns
 *.pdf
 *.csv
@@ -51,3 +54,4 @@ virtualenv
 *.yml
 *.sh
 copy_data.py
+*.tex

@@ -62,47 +62,21 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
 
 
 # SWITCHES
-entrance_path = "logging_accuracy_xy"
+entrance_path = "logging_accuracy_xy_mini"
 sentence = True
 clean = True
 epochs = 3
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-seeds = [0, 1, 2, 3, 4][:3][:2]
+seeds = [0]
 test_alpha = 0.5
 test_cis = [.9, .95, .99]
 
-n_max_sents = 15000
+n_max_sents = 2500
 n_human_sents = 5000
-steps = list(range(0, n_max_sents + 1, 2500))
+steps = list(range(0, n_max_sents + 1, 500))
 
-already_trained = {(0,0)} # can't train a model on nothing
-for s in steps:
-    already_trained.add((15000, s))
-    already_trained.add((s, 15000))
+experiments = [(x, y) for x in steps for y in steps if not (x == 0 and y == 0)]
 
-# 1. Perimeter: one of n_x, n_z is 0 or 15000 — excluding already trained.
-#    Process n_x=0 row first, then n_z=0 column (skipping (0,0) duplicate).
-perimeter = [(0, nz) for nz in steps if (0, nz) not in already_trained]
-perimeter += [(nx, 0) for nx in steps if nx != 0 and (nx, 0) not in already_trained]
-
-# 2. Middle row/col: n_x=7500 or n_z=7500 — excluding perimeter and already trained.
-middle = [(nx, nz) for nx in steps for nz in steps
-            if (nx == 7500 or nz == 7500)
-            and (nx, nz) not in already_trained
-            and nx != 0 and nz != 0]  # (0,7500) and (7500,0) already in perimeter
-
-# 3. Interior: remaining untrained pairs (neither edge nor middle cross).
-interior_vals = [2500, 5000, 10000, 12500]
-interior = [(nx, nz) for nx in interior_vals for nz in interior_vals
-            if (nx, nz) not in already_trained]
-
-all = []
-all += perimeter
-# all += middle
-# all += interior
-
-# Mirror the experiment structure from run_arxiv_xz_counts.py.
-# Each config carries fixed_prompt so the plot script knows which axis varies.
 configs = [
     {
         "train_method": "TEDn",
@@ -114,37 +88,14 @@ configs = [
         "llm": f"xz_nx{n_x_sents}_nz{n_z_sents}_nh{n_human_sents}",
     }
     for fixed_prompt, n_x_sents, n_z_sents in (
-        # [("Z", n_vary, n_max_sents) for n_vary in steps if n_vary != n_max_sents] + 
-        # [("X", n_max_sents, n_vary) for n_vary in steps]
-        [("Z", a, b) for (a,b) in all] + 
-        [("X", a, b) for (a,b) in all]
+        [("Z", a, b) for (a, b) in experiments] +
+        [("X", a, b) for (a, b) in experiments]
     )
-] 
-
-# import pdb; pdb.set_trace()
-# + 
-# [
-#     {
-#         "train_method": "PN",
-#         "train_alpha": 0,
-#         "flip": False,
-#         "fixed_prompt": fixed_prompt,
-#         "n_x_sents": n_x_sents,
-#         "n_z_sents": n_z_sents,
-#         "llm": f"xz_nx{n_x_sents}_nz{n_z_sents}_nh{n_human_sents}",
-#     }
-#     for fixed_prompt, n_x_sents, n_z_sents in (
-#         [("Z", n_vary, n_max_sents) for n_vary in steps if n_vary != n_max_sents]
-#     )
-# ]
+]
 
 ### LOGIC ###
 
-suffix = "_perimeter" if all == perimeter else "_middle" if all == middle else "_interior" if all == interior else ""
-
-print("suffix is", suffix)
-
-output_csv = f"logging_accuracy_xz_counts{suffix}.csv"
+output_csv = "logging_accuracy_xz_counts_mini.csv"
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -163,12 +114,17 @@ for cfg in configs:
     fixed_prompt = cfg["fixed_prompt"]
 
     nets = {}
-    model_path = None
+    alpha_dir = None
     for seed in seeds:
         alpha_dir = Path(f"{entrance_path}/xz_counts/{llm}/{seed}/xy_{epochs}")
+        if not alpha_dir.exists():
+            print(f"Skipping {llm} seed {seed}: directory not found")
+            continue
         pts = [p for p in alpha_dir.iterdir()
                if p.is_file() and p.name.lower().endswith(".pt") and train_method in p.name]
-        assert len(pts) == 1, f"Expected 1 .pt for {train_method} seed {seed}, found {len(pts)} in {alpha_dir}"
+        if len(pts) != 1:
+            print(f"Skipping {train_method} seed {seed}: expected 1 .pt, found {len(pts)} in {alpha_dir}")
+            continue
         model_path = pts[0]
 
         net = get_model("DistilBert")
@@ -178,6 +134,10 @@ for cfg in configs:
         net.eval()
         net.to(device)
         nets[seed] = net
+
+    if not nets:
+        print(f"No models found for {cfg}, skipping.")
+        continue
 
     eval_cols = ["rewrite_X", "rewrite_Z"]
     print(cfg, eval_cols)
@@ -191,7 +151,7 @@ for cfg in configs:
             pos_probs, unlabeled_probs, unlabeled_targets = get_preds_xy(
                 net, device, test_alpha, flip, seed, sentence, clean, eval_llm_col)
             save_preds(
-                f"{PREDS_BASE}/xz_counts/{train_method}/{llm}/{eval_llm_col}/seed_{seed}.npz",
+                f"{PREDS_BASE}/xz_counts_mini/{train_method}/{llm}/{eval_llm_col}/seed_{seed}.npz",
                 pos_probs, unlabeled_probs, unlabeled_targets,
             )
             preds_p_list.append(pos_probs)

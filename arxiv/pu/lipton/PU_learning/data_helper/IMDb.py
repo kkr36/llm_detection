@@ -356,6 +356,76 @@ def read_arxiv_single_double(split_dir, split, sentence, inject, seed):
     assert(len(texts) == len(labels))
     return texts, labels
 
+def read_arxiv_split_no_double_mirror(split_dir, alpha, split, sentence, inject, seed):
+   assert(seed is not None)
+   inject = False # we're not working with double rewrites anymore
+   pn = (alpha == 0) # assume that pn is never trained with bad labels
+  
+   arxiv_data = pd.read_parquet(split_dir)
+
+
+   llm_writing = []
+   llm_cols = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwen"]
+   for i in tqdm(list(i for i in range(len(arxiv_data)))):
+       assert(len(arxiv_data.iloc[i][llm_cols[i % 4]]) > 0)
+       original_rewrite = arxiv_data.iloc[i][llm_cols[i % 4]]
+       llm_writing.append(original_rewrite)
+   arxiv_data['ai_abstract'] = llm_writing
+   arxiv_data = arxiv_data.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+
+   assert(split in ["train", "val"])
+   if split == "train":
+       if pn:
+           subset = arxiv_data.iloc[:8000]
+       else:
+           subset = arxiv_data.iloc[:6000]
+   elif split == "val":
+       subset = arxiv_data.iloc[6000:8000]
+
+
+   positive_texts = subset.iloc[:len(subset)//4]["ai_abstract"].dropna().tolist()
+   u_texts = subset.iloc[len(subset)//4:] # 75% of train text unlabeled
+   u_positive_texts = u_texts.iloc[:int(alpha*len(u_texts))]["ai_abstract"].dropna().tolist()
+   u_negative_texts = u_texts.iloc[int(alpha*len(u_texts)):]["human_abstract"].dropna().tolist()
+
+
+   if sentence:
+
+
+       positive_texts, _ = split_into_sentences(positive_texts, [0 for _ in range(len(positive_texts))])
+       u_positive_texts, _ = split_into_sentences(u_positive_texts, [0 for _ in range(len(u_positive_texts))])
+       u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
+       # create_blind_test(clean_text(u_negative_texts),clean_text(positive_texts),20,"sentence")
+       # create_blind_test(clean_text(right_labels['human_abstract'].tolist()),clean_text(right_labels['ai_abstract'].tolist()),10,"abstract")
+       # Compute feasible T bounds
+       T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
+       T_neg = len(u_negative_texts) / (1 - alpha) if alpha < 1 else np.inf
+
+
+       T = int(min(T_pos, T_neg))
+
+
+       n_pos = int(alpha * T)
+       n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
+
+
+       u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
+       u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
+       # import pdb; pdb.set_trace()
+
+
+
+
+   texts = positive_texts + u_positive_texts + u_negative_texts
+   labels = [1 for _ in range(len(positive_texts))] + [0 for _ in range(len(u_positive_texts) + len(u_negative_texts))]
+  
+   print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
+
+
+   assert(len(texts) == len(labels))
+   return texts, labels
+
 def read_arxiv_split2(split_dir, alpha, split, sentence, inject, seed):
     assert(seed is not None)
     # import os
@@ -571,7 +641,9 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
     assert(seed is not None)
     # import pdb; pdb.set_trace()
     llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+    if "|" in llm: llm = llm.split("|")[-1]
     assert(llm in llm_cols or llm=="all"), f"{llm} not valid"
+    pn = (alpha == 0)
 
     # flip = False
     
@@ -591,14 +663,20 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
             tmp_subset["llm_writing"] = tmp_subset[llm2]
 
             if split=="train":
-                tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
+                if pn:
+                    tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.75)].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
+                else:
+                    tmp_subset = tmp_subset.iloc[:int(len(tmp_subset)*.5)].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
             elif split=="val":
-                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
+                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.5):int(len(tmp_subset)*.75)].sample(frac = 1/len(llm_cols), random_state=seed).reset_index(drop=True)
 
             if llm_subset is None:
                 llm_subset = tmp_subset
             else:
                 llm_subset = pd.concat([llm_subset, tmp_subset]).reset_index(drop=True)
+
+        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+        # import pdb; pdb.set_trace()
     else:
         llm_subset = arxiv_data[arxiv_data[llm].notna() & (arxiv_data[llm] != "")].reset_index(drop=True) # isolate llm writing
 
@@ -606,25 +684,32 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
         llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
 
         if split=="train":
-            llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
+            if pn:
+                llm_subset = llm_subset.iloc[:int(len(llm_subset)*.75)]
+            else:
+                llm_subset = llm_subset.iloc[:int(len(llm_subset)*.5)]
         elif split=="val":
-            llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+            llm_subset = llm_subset.iloc[int(len(llm_subset)*.5):int(len(llm_subset)*.75)]
 
     llm_texts = llm_subset[llm if llm != "all" else "llm_writing"].tolist()
     human_texts = llm_subset['human_abstract'].tolist()
     assert(len(llm_texts) == len(human_texts))
 
+
     if flip:
         # import pdb; pdb.set_trace()
+        n_u_abs = int(len(human_texts)*.75)
         positive_texts = human_texts[int(len(human_texts)*.75):]
-        u_positive_texts = human_texts[:int(len(human_texts)*.75)]
-        u_negative_texts = llm_texts
+        u_positive_texts = human_texts[:int(n_u_abs*alpha)]
+        u_negative_texts = llm_texts[int(n_u_abs*alpha):n_u_abs]
     else:
+        n_u_abs = int(len(llm_texts)*.75)
         positive_texts = llm_texts[int(len(llm_texts)*.75):]
-        u_positive_texts = llm_texts[:int(len(llm_texts)*.75)]
-        u_negative_texts = human_texts
+        u_positive_texts = llm_texts[:int(n_u_abs*alpha)]
+        u_negative_texts = human_texts[int(n_u_abs*alpha):n_u_abs]
 
     # sentence check
+    # import pdb; pdb.set_trace()
     if sentence:
         
         positive_texts, positive_labels = split_into_sentences(positive_texts, [1 for _ in range(len(positive_texts))])
@@ -634,6 +719,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
     # min_size = min(len(u_positive_texts), len(u_negative_texts))
     # n_pos = int(min_size * alpha)
     # n_neg = int(min_size * (1-alpha))
+    # import pdb; pdb.set_trace()
 
     # Compute feasible T bounds
     T_pos = len(u_positive_texts) / alpha if alpha > 0 else np.inf
@@ -651,6 +737,7 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
 
     final_texts = positive_texts + u_positive_texts + u_negative_texts
     final_labels = [1 for _ in range(len(positive_texts))] + [0 for _ in range(len(u_positive_texts) + len(u_negative_texts))]
+    # import pdb; pdb.set_trace()
 
     assert(len(final_texts) == len(final_labels))
     return final_texts, final_labels

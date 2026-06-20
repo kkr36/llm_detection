@@ -33,15 +33,15 @@ if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
 plot_metrics = [
-    "auc",
-    "accuracy",
-    "pos_prob",
-    "neg_prob",
-    "bce",
-    "tpr",
-    "bbe",
-    "plugin-int",
-    # "tnr"
+    # "auc",
+    # "accuracy",
+    # "pos_prob",
+    # "neg_prob",
+    # "bce",
+    # "tpr",
+    # "bbe",
+    # "plugin-int",
+    "tnr"
 ]
 
 name_to_name = {
@@ -486,6 +486,7 @@ def make_xz_lineplot(df, metrics, title=False):
 
 PANGRAM_SCORE_TYPE = "dominant_category"
 PANGRAM_COLOR      = "steelblue"
+PNU_COLOR          = "seagreen"
 
 
 def _get_pangram_vals(df, eval_llm_col, point_col, lower_col, upper_col,
@@ -505,6 +506,17 @@ def _get_pangram_vals(df, eval_llm_col, point_col, lower_col, upper_col,
         pt, lo, hi = 1 - pt, 1 - hi, 1 - lo  # lo/hi swap since 1-x reverses order
     if "plugin-int" in point_col:
         pt, lo, hi = 1 - pt, 1 - hi, 1 - lo  # lo/hi swap since 1-x reverses order
+    return pt, lo, hi
+
+
+def _get_pnu_vals(df_pnu, eval_llm_col, point_col, lower_col, upper_col):
+    """Return (point, lower, upper) for PNU at a given eval_llm."""
+    row = df_pnu[df_pnu["eval_llm"] == eval_llm_col]
+    if row.empty or point_col not in row.columns:
+        return np.nan, np.nan, np.nan
+    pt = row[point_col].mean()
+    lo = row[lower_col].mean() if lower_col in row.columns else np.nan
+    hi = row[upper_col].mean() if upper_col in row.columns else np.nan
     return pt, lo, hi
 
 
@@ -807,6 +819,126 @@ def make_xz_barplot_fig_ab(df, metrics, title=False):
 
 
 # ---------------------------------------------------------------------------
+# Plot 3c-PNU: Fig AB with an additional PNU bar group
+# ---------------------------------------------------------------------------
+
+def make_xz_barplot_fig_ab_pnu(df, df_pnu, metrics, title=False):
+    """
+    Like make_xz_barplot_fig_ab but with an added PNU bar group.
+    Fig A (left): PU+TTA, Supervised, Pangram, PNU at t=0 and t=1.
+    Fig B (right): PU+TTA, Supervised, PNU at Iterations 1-3
+                   (PNU has data only at Iteration 1 / rewrite_Z).
+    """
+    import matplotlib.patches as mpatches
+
+    ts_labels   = ["Naive\nprompt", "Adversarial\nhumanizing\nprompt"]
+    iter_labels = ["Iteration\n1", "Iteration\n2", "Iteration\n3"]
+
+    for metric in metrics:
+        point_col, lower_col, upper_col, _ = resolve_cols(metric)
+
+        # --- Fig A data ---
+        pu_a_pts, pu_a_los, pu_a_his = _get_trajectory_vals(
+            df, PU_TRAJECTORY[:2], point_col, lower_col, upper_col)
+        pn_a_pts, pn_a_los, pn_a_his = _get_trajectory_vals(
+            df, PN_TRAJECTORY[:2], point_col, lower_col, upper_col)
+
+        pg_t0 = _get_pangram_vals(df, "rewrite_X", point_col, lower_col, upper_col)
+        pg_t1 = _get_pangram_vals(df, "rewrite_Z", point_col, lower_col, upper_col)
+        pg_pts = np.array([pg_t0[0], pg_t1[0]])
+        pg_los = np.array([pg_t0[1], pg_t1[1]])
+        pg_his = np.array([pg_t0[2], pg_t1[2]])
+
+        pnu_t0 = _get_pnu_vals(df_pnu, "rewrite_X", point_col, lower_col, upper_col)
+        pnu_t1 = _get_pnu_vals(df_pnu, "rewrite_Z", point_col, lower_col, upper_col)
+        pnu_a_pts = np.array([pnu_t0[0], pnu_t1[0]])
+        pnu_a_los = np.array([pnu_t0[1], pnu_t1[1]])
+        pnu_a_his = np.array([pnu_t0[2], pnu_t1[2]])
+
+        # --- Fig B data ---
+        pu_b_pts, pu_b_los, pu_b_his = _get_trajectory_vals(
+            df, PU_TRAJECTORY[1:], point_col, lower_col, upper_col)
+        pn_b_pts, pn_b_los, pn_b_his = _get_trajectory_vals(
+            df, PN_TRAJECTORY[1:], point_col, lower_col, upper_col)
+
+        pnu_iter1 = _get_pnu_vals(df_pnu, "rewrite_Z", point_col, lower_col, upper_col)
+        pnu_b_pts = np.array([pnu_iter1[0], np.nan, np.nan])
+        pnu_b_los = np.array([pnu_iter1[1], np.nan, np.nan])
+        pnu_b_his = np.array([pnu_iter1[2], np.nan, np.nan])
+
+        if metric in ("bbe", "plugin-int"):
+            pu_a_pts  -= 0.5; pu_a_los  -= 0.5; pu_a_his  -= 0.5
+            pn_a_pts  -= 0.5; pn_a_los  -= 0.5; pn_a_his  -= 0.5
+            pg_pts    -= 0.5; pg_los    -= 0.5; pg_his    -= 0.5
+            pnu_a_pts -= 0.5; pnu_a_los -= 0.5; pnu_a_his -= 0.5
+            pu_b_pts  -= 0.5; pu_b_los  -= 0.5; pu_b_his  -= 0.5
+            pn_b_pts  -= 0.5; pn_b_los  -= 0.5; pn_b_his  -= 0.5
+            pnu_b_pts -= 0.5; pnu_b_los -= 0.5; pnu_b_his -= 0.5
+
+        pu_b_avg  = np.nanmean(pu_b_pts)
+        pn_b_avg  = np.nanmean(pn_b_pts)
+        pnu_b_avg = np.nanmean(pnu_b_pts)
+
+        fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=(20, 7))
+
+        # --- Draw Fig A (4 bars, evenly spaced) ---
+        bw_a = 0.2
+        x_a  = np.arange(len(ts_labels))
+        offs_a = [-1.5 * bw_a, -0.5 * bw_a, 0.5 * bw_a, 1.5 * bw_a]
+
+        ax_a.bar(x_a + offs_a[0], pu_a_pts,  bw_a, color="purple",
+                 yerr=_safe_yerr(pu_a_pts,  pu_a_los,  pu_a_his),  capsize=5, error_kw={"linewidth": 2})
+        ax_a.bar(x_a + offs_a[1], pnu_a_pts, bw_a, color=PNU_COLOR,
+                 yerr=_safe_yerr(pnu_a_pts, pnu_a_los, pnu_a_his), capsize=5, error_kw={"linewidth": 2})
+        ax_a.bar(x_a + offs_a[2], pn_a_pts,  bw_a, color="orange",
+                 yerr=_safe_yerr(pn_a_pts,  pn_a_los,  pn_a_his),  capsize=5, error_kw={"linewidth": 2})
+        ax_a.bar(x_a + offs_a[3], pg_pts,    bw_a, color=PANGRAM_COLOR,
+                 yerr=_safe_yerr(pg_pts,    pg_los,    pg_his),    capsize=5, error_kw={"linewidth": 2})
+
+        ax_a.set_xticks(x_a)
+        ax_a.set_xticklabels(ts_labels, fontsize=22)
+        ax_a.set_xlabel("Single-shot adversarial prompt", fontsize=25)
+        ax_a.set_ylabel(name_to_name.get(metric, metric))
+
+        # --- Draw Fig B (2 bars: PU, PN) ---
+        bw_b = 0.25
+        x_b  = np.arange(len(iter_labels))
+        offs_b = [-bw_b / 2, bw_b / 2]
+
+        ax_b.bar(x_b + offs_b[0], pu_b_pts,  bw_b, color="purple",
+                 yerr=_safe_yerr(pu_b_pts,  pu_b_los,  pu_b_his),  capsize=5, error_kw={"linewidth": 2})
+        ax_b.bar(x_b + offs_b[1], pn_b_pts,  bw_b, color="orange",
+                 yerr=_safe_yerr(pn_b_pts,  pn_b_los,  pn_b_his),  capsize=5, error_kw={"linewidth": 2})
+
+        ax_b.axhline(y=pu_b_avg,  color="purple",  linewidth=2.5, linestyle="--", alpha=0.8)
+        ax_b.axhline(y=pn_b_avg,  color="orange",  linewidth=2.5, linestyle="--", alpha=0.8)
+        ax_b.set_xticks(x_b)
+        ax_b.set_xticklabels(iter_labels, fontsize=22)
+        ax_b.set_xlabel("Iterated detector-evader game", fontsize=25, labelpad=30)
+
+        # --- Shared legend above both panels ---
+        legend_handles = [
+            mpatches.Patch(color="purple",      label="PU + TTA"),
+            mpatches.Patch(color=PNU_COLOR,     label="PNU + TTA"),
+            mpatches.Patch(color="orange",      label="Supervised"),
+            mpatches.Patch(color=PANGRAM_COLOR, label="Pangram"),
+        ]
+        fig.legend(handles=legend_handles, loc="upper center", ncol=4, fontsize=24,
+                   bbox_to_anchor=(0.5, 1.06), frameon=False)
+
+        save_folder = f"{output_folder}/titled" if title else output_folder
+        os.makedirs(save_folder, exist_ok=True)
+        plt.tight_layout()
+        plt.savefig(
+            f"{save_folder}/xz_barplot_fig_ab_pnu_{metric}.pdf",
+            format="pdf",
+            bbox_inches="tight"
+        )
+        plt.clf()
+        plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
 # Legend figure — standalone image to place beneath fig a / fig b
 # ---------------------------------------------------------------------------
 
@@ -947,12 +1079,133 @@ def make_xz_barplot_fig_ab_grid(df, metrics, title=True):
         # _make_xz_barplot_fig_ab_grid_part(df, metrics[mid:],  "2", title=title)
 
 
+# ---------------------------------------------------------------------------
+# Plot 3d-PNU grid: multi-metric grid version of make_xz_barplot_fig_ab_pnu
+# ---------------------------------------------------------------------------
+
+def _make_xz_barplot_fig_ab_grid_pnu_part(df, df_pnu, metrics, filename_suffix, title=True):
+    """Render one grid PDF (PNU variant) for the given subset of metrics."""
+    import matplotlib.patches as mpatches
+
+    ts_labels   = ["Naive\nprompt", "Adversarial\nhumanizing\nprompt"]
+    iter_labels = ["Iteration\n1", "Iteration\n2", "Iteration\n3"]
+    n = len(metrics)
+
+    with matplotlib.rc_context({"font.size": 14, "font.weight": "bold"}):
+        fig, axes = plt.subplots(n, 2, figsize=(20, 7 * n), squeeze=False)
+
+        for row_i, metric in enumerate(metrics):
+            point_col, lower_col, upper_col, _ = resolve_cols(metric)
+
+            pu_a_pts, pu_a_los, pu_a_his = _get_trajectory_vals(df, PU_TRAJECTORY[:2], point_col, lower_col, upper_col)
+            pn_a_pts, pn_a_los, pn_a_his = _get_trajectory_vals(df, PN_TRAJECTORY[:2], point_col, lower_col, upper_col)
+            pg_t0 = _get_pangram_vals(df, "rewrite_X", point_col, lower_col, upper_col)
+            pg_t1 = _get_pangram_vals(df, "rewrite_Z", point_col, lower_col, upper_col)
+            pg_pts = np.array([pg_t0[0], pg_t1[0]])
+            pg_los = np.array([pg_t0[1], pg_t1[1]])
+            pg_his = np.array([pg_t0[2], pg_t1[2]])
+
+            pnu_t0 = _get_pnu_vals(df_pnu, "rewrite_X", point_col, lower_col, upper_col)
+            pnu_t1 = _get_pnu_vals(df_pnu, "rewrite_Z", point_col, lower_col, upper_col)
+            pnu_a_pts = np.array([pnu_t0[0], pnu_t1[0]])
+            pnu_a_los = np.array([pnu_t0[1], pnu_t1[1]])
+            pnu_a_his = np.array([pnu_t0[2], pnu_t1[2]])
+
+            pu_b_pts, pu_b_los, pu_b_his = _get_trajectory_vals(df, PU_TRAJECTORY[1:], point_col, lower_col, upper_col)
+            pn_b_pts, pn_b_los, pn_b_his = _get_trajectory_vals(df, PN_TRAJECTORY[1:], point_col, lower_col, upper_col)
+
+            pnu_iter1 = _get_pnu_vals(df_pnu, "rewrite_Z", point_col, lower_col, upper_col)
+            pnu_b_pts = np.array([pnu_iter1[0], np.nan, np.nan])
+            pnu_b_los = np.array([pnu_iter1[1], np.nan, np.nan])
+            pnu_b_his = np.array([pnu_iter1[2], np.nan, np.nan])
+
+            if metric in ("bbe", "plugin-int"):
+                pu_a_pts  -= 0.5; pu_a_los  -= 0.5; pu_a_his  -= 0.5
+                pn_a_pts  -= 0.5; pn_a_los  -= 0.5; pn_a_his  -= 0.5
+                pg_pts    -= 0.5; pg_los    -= 0.5; pg_his    -= 0.5
+                pnu_a_pts -= 0.5; pnu_a_los -= 0.5; pnu_a_his -= 0.5
+                pu_b_pts  -= 0.5; pu_b_los  -= 0.5; pu_b_his  -= 0.5
+                pn_b_pts  -= 0.5; pn_b_los  -= 0.5; pn_b_his  -= 0.5
+                pnu_b_pts -= 0.5; pnu_b_los -= 0.5; pnu_b_his -= 0.5
+
+            pu_b_avg  = np.nanmean(pu_b_pts)
+            pn_b_avg  = np.nanmean(pn_b_pts)
+            pnu_b_avg = np.nanmean(pnu_b_pts)
+
+            ax_a = axes[row_i, 0]
+            ax_b = axes[row_i, 1]
+
+            bw_a  = 0.2
+            x_a   = np.arange(len(ts_labels))
+            offs_a = [-1.5 * bw_a, -0.5 * bw_a, 0.5 * bw_a, 1.5 * bw_a]
+            ax_a.bar(x_a + offs_a[0], pu_a_pts,  bw_a, color="purple",
+                     yerr=_safe_yerr(pu_a_pts,  pu_a_los,  pu_a_his),  capsize=4, error_kw={"linewidth": 1.5})
+            ax_a.bar(x_a + offs_a[1], pnu_a_pts, bw_a, color=PNU_COLOR,
+                     yerr=_safe_yerr(pnu_a_pts, pnu_a_los, pnu_a_his), capsize=4, error_kw={"linewidth": 1.5})
+            ax_a.bar(x_a + offs_a[2], pn_a_pts,  bw_a, color="orange",
+                     yerr=_safe_yerr(pn_a_pts,  pn_a_los,  pn_a_his),  capsize=4, error_kw={"linewidth": 1.5})
+            ax_a.bar(x_a + offs_a[3], pg_pts,    bw_a, color=PANGRAM_COLOR,
+                     yerr=_safe_yerr(pg_pts,    pg_los,    pg_his),    capsize=4, error_kw={"linewidth": 1.5})
+            ax_a.set_xticks(x_a)
+            ax_a.set_xticklabels(ts_labels, fontsize=20)
+            ax_a.set_xlabel("Single-shot adversarial prompt", fontsize=20)
+            ax_a.set_ylabel(name_to_name.get(metric, metric), fontsize=20)
+            ax_a.set_title(name_to_name.get(metric, metric), fontsize=20, fontweight="bold")
+
+            bw_b  = 0.25
+            x_b   = np.arange(len(iter_labels))
+            offs_b = [-bw_b / 2, bw_b / 2]
+            ax_b.bar(x_b + offs_b[0], pu_b_pts,  bw_b, color="purple",
+                     yerr=_safe_yerr(pu_b_pts,  pu_b_los,  pu_b_his),  capsize=4, error_kw={"linewidth": 1.5})
+            ax_b.bar(x_b + offs_b[1], pn_b_pts,  bw_b, color="orange",
+                     yerr=_safe_yerr(pn_b_pts,  pn_b_los,  pn_b_his),  capsize=4, error_kw={"linewidth": 1.5})
+            ax_b.axhline(y=pu_b_avg,  color="purple",  linewidth=2, linestyle="--", alpha=0.8)
+            ax_b.axhline(y=pn_b_avg,  color="orange",  linewidth=2, linestyle="--", alpha=0.8)
+            ax_b.set_xticks(x_b)
+            ax_b.set_xticklabels(iter_labels, fontsize=20)
+            ax_b.set_xlabel("Iterated detector-evader game", fontsize=20, labelpad=25)
+            ax_b.set_title(name_to_name.get(metric, metric), fontsize=20, fontweight="bold")
+
+        legend_handles = [
+            mpatches.Patch(color="purple",      label="PU + TTA"),
+            mpatches.Patch(color=PNU_COLOR,     label="PNU + TTA"),
+            mpatches.Patch(color="orange",      label="Supervised"),
+            mpatches.Patch(color=PANGRAM_COLOR, label="Pangram"),
+        ]
+        fig.legend(handles=legend_handles, loc="upper center", ncol=4, fontsize=20,
+                   bbox_to_anchor=(0.5, 1.01), frameon=False)
+
+        save_folder = f"{output_folder}/titled" if title else output_folder
+        os.makedirs(save_folder, exist_ok=True)
+        plt.tight_layout()
+        plt.savefig(
+            f"{save_folder}/xz_barplot_fig_ab_grid_pnu_{filename_suffix}.pdf",
+            format="pdf", bbox_inches="tight"
+        )
+        plt.clf()
+        plt.close(fig)
+
+
+def make_xz_barplot_fig_ab_grid_pnu(df, df_pnu, metrics, title=True):
+    """Two PDFs (PNU variant): first half of metrics → _1.pdf, second half → _2.pdf."""
+    segments = 2
+    per_segment = len(metrics) // segments
+    leftover = 0 if len(metrics) % segments == 0 else 1
+    metrics_segmented = [metrics[per_segment * i:per_segment * (i + 1)] for i in range(segments + leftover)]
+    for i, segment in enumerate(metrics_segmented):
+        _make_xz_barplot_fig_ab_grid_pnu_part(df, df_pnu, segment, str(i), title=title)
+
+
 if __name__ == "__main__":
     data = pd.read_csv(input_file)
     data = swap_pangram_tpr_tnr(data)
     data = add_accuracy_cols(data)
     data = reverse_bias(data)
     data = reverse_plugin(data)
+    data_pnu = pd.read_csv("../logging_accuracy_xz_PNU.csv")
+    data_pnu = add_accuracy_cols(data_pnu)
+    data_pnu = reverse_bias(data_pnu)
+    data_pnu = reverse_plugin(data_pnu)
     for use_title in [False, True][1:]:
         # make_xz_heatmap(data, plot_metrics, title=use_title)
         # make_xz_heatmap_collapsed(data, plot_metrics, title=use_title)
@@ -961,6 +1214,8 @@ if __name__ == "__main__":
         # make_xz_barplot_fig_a(data, plot_metrics, title=use_title)
         # make_xz_barplot_fig_b(data, plot_metrics, title=use_title)
         # make_xz_barplot_fig_ab(data, plot_metrics, title=use_title)
-        make_xz_barplot_fig_ab_grid(data, plot_metrics, title=use_title)
+        # make_xz_barplot_fig_ab_grid(data, plot_metrics, title=use_title)
+        make_xz_barplot_fig_ab_pnu(data, data_pnu, plot_metrics, title=use_title)
+        # make_xz_barplot_fig_ab_grid_pnu(data, data_pnu, plot_metrics, title=use_title)
 
     # make_legend_figure()

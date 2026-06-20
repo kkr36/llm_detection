@@ -28,9 +28,9 @@ OUT_DIR  = "/home/kkr36/llm_detection/arxiv/separation"
 
 LABEL_NAMES = {
     0: "Human",
-    1: "GPT OSS 120b",
-    2: "Llama 3.3 70b",
-    3: "Gemini 3 Preview",
+    1: "GPT",
+    2: "Llama",
+    3: "Gemini 3",
     4: "Qwen",
 }
 

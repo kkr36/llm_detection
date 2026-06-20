@@ -12,21 +12,21 @@ font = {
 }
 matplotlib.rc('font', **font)
 
-input_file = "../logging_accuracy_xz_counts.csv"
-output_folder = input_file.split("/")[-1].split(".csv")[0] + "_paper"
+input_file = "logging_accuracy_xz_counts_mini.csv"
+output_folder = input_file.split("/")[-1].split(".csv")[0] + "_paper_full"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
 plot_metrics = [
-    "auc",
-    "accuracy",
-    "pos_prob",
-    "neg_prob",
-    "bce",
-    "tpr",
-    "bbe",
-    "plugin-int",
-    # "tnr",
+    # "auc",
+    # "accuracy",
+    # "pos_prob",
+    # "neg_prob",
+    # "bce",
+    # "tpr",
+    # "bbe",
+    # "plugin-int",
+    "tnr",
 ]
 
 name_to_name = {
@@ -166,7 +166,7 @@ def make_num_x_lineplots(df, metrics, title=False):
                 ax.plot(x, pts, marker="o", linewidth=3, markersize=10, color=color,
                         label=f"{method} / eval={eval_col_labels.get(eval_llm, eval_llm)}")
                 ax.fill_between(x, los, his, alpha=0.2, color=color)
-                ax.set_xlabel("Num X Sentences")
+                ax.set_xlabel("# Sentences Naive")
                 ax.set_ylabel(name_to_name.get(metric, metric))
                 if title:
                     ax.set_title(
@@ -220,7 +220,7 @@ def make_num_z_lineplots(df, metrics, title=False):
                 ax.plot(x, pts, marker="o", linewidth=3, markersize=10, color=color,
                         label=f"{method} / eval={eval_col_labels.get(eval_llm, eval_llm)}")
                 ax.fill_between(x, los, his, alpha=0.2, color=color)
-                ax.set_xlabel("Num Z Sentences")
+                ax.set_xlabel("# Sentences Adversarial")
                 ax.set_ylabel(name_to_name.get(metric, metric))
                 if title:
                     ax.set_title(
@@ -277,7 +277,7 @@ def make_num_x_lineplots_overlaid(df, metrics, title=False):
                 plt.close(fig)
                 continue
 
-            ax.set_xlabel("Num X Sentences")
+            ax.set_xlabel("# Sentences Naive")
             ax.set_ylabel(name_to_name.get(metric, metric))
             if title:
                 ax.set_title(f"{name_to_name.get(metric, metric)}\n{method}")
@@ -403,7 +403,7 @@ def make_2d_heatmaps(df, metrics, title=False):
 
                 annot = plot_df.applymap(_fmt)
 
-                binary_metrics = {"auc", "accuracy", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg", "entropy", "bce"}
+                binary_metrics = {"auc", "accuracy", "pos_prob", "neg_prob", "entropy_pos", "entropy_neg", "entropy", "bce", "tpr", "tnr"}
                 if metric in binary_metrics:
                     cmap = "YlOrBr"
                     data_min = np.nanmin(plot_df.values)
@@ -427,8 +427,8 @@ def make_2d_heatmaps(df, metrics, title=False):
                     cmap=cmap, center=center, vmin=vmin, vmax=vmax,
                     ax=ax, linewidths=0.5, linecolor="lightgray",
                 )
-                ax.set_xlabel("num_Z")
-                ax.set_ylabel("num_X")
+                ax.set_xlabel("# Sentences Adversarial")
+                ax.set_ylabel("# Sentences Naive")
                 if title:
                     ax.set_title(
                         f"{name_to_name.get(metric, metric)}\n"
@@ -489,7 +489,7 @@ def make_faceted_overview(df, metrics, title=False):
                 if col_i == 0:
                     ax.set_ylabel(name_to_name.get(metric, metric), fontsize=22)
                 if row_i == n_metrics - 1:
-                    ax.set_xlabel("Num X Sentences", fontsize=22)
+                    ax.set_xlabel("# Sentences Naive", fontsize=22)
                 ax.tick_params(labelsize=18)
 
         if title:
@@ -585,6 +585,10 @@ def make_num_z_lineplots_overlaid_grid(df, metrics, fixed_num_x=15000, title=Tru
 
 if __name__ == "__main__":
     data = pd.read_csv(input_file)
+    extra_data_files = [f"../logging_accuracy_xz_counts_{suffix}.csv" for suffix in ['perimeter', 'middle', 'interior']]
+    for fname in extra_data_files[:]:
+        df = pd.read_csv(fname)
+        data = pd.concat([data, df]).reset_index(drop=True)
     data = add_accuracy_cols(data)
     data = reverse_bias(reverse_plugin(data))
     data["pos_prob"] = 1-data["pos_prob"]
@@ -597,7 +601,7 @@ if __name__ == "__main__":
         # make_num_x_lineplots(data, plot_metrics, title=use_title)
         # make_num_z_lineplots(data, plot_metrics, title=use_title)
         # make_num_x_lineplots_overlaid(data, plot_metrics, title=use_title)
-        make_num_z_lineplots_overlaid_grid(data, plot_metrics, title=use_title)
+        # make_num_z_lineplots_overlaid_grid(data, plot_metrics, title=use_title)
         # make_num_z_lineplots_overlaid(data, plot_metrics, title=use_title)
-        # make_2d_heatmaps(data, plot_metrics, title=use_title)
+        make_2d_heatmaps(data, plot_metrics, title=use_title)
         # make_faceted_overview(data, plot_metrics, title=use_title)

@@ -70,19 +70,20 @@ gemini = False
 add = "_add_" in entrance_path
 epochs = 3
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-seeds = [0,1,2,3,4,5,6,7,8,9]
+seeds = [0,1,2,3,4,5,6,7,8,9][:5]
 
 ### LOGIC ###
 
 metrics_dict = defaultdict(list)
 
-train_years = [2010, 2012, 2014, 2016, 2018, 2020][:]
-train_methods = ["PN", "TEDn"]
+train_years = [2010, 2012, 2014, 2016, 2018, 2020][:1]
+train_methods = ["PN", "TEDn", "PNU"][-1:]
 
-# Fixed alpha per method: TEDn uses 0.5, PN uses 0.0
-method_alpha = {"TEDn": 0.5, "PN": 0}
+# Fixed alpha per method: TEDn uses 0.5, PN uses 0.0, PNU uses 0.0
+method_alpha = {"TEDn": 0.5, "PN": 0, "PNU": 0.5}
 
-output_csv = f"{entrance_path}_temporal.csv"
+# output_csv = f"{entrance_path}.csv"
+output_csv = "logging_accuracy_temporal_alpha_full_sentence_temporal.csv"
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
@@ -94,19 +95,25 @@ run_id = len(metrics_df)
 for train_year in train_years:
     for train_method in train_methods:
 
+        # if train_year == 2010 and train_method == "PN": continue
+
         # if (train_year == 2010) or (train_year == 2012 and train_method == "PN"): continue
-        if (train_year not in [2018, 2020]) or (train_year == 2018 and train_method == "PN"): continue
+        # if (train_year not in [2018, 2020]) or (train_year == 2018 and train_method == "PN"): continue
         alpha = method_alpha[train_method]
 
         # For PN: run once without platt ("PN") and once with platt ("PN_platt_2010")
         # For TEDn: run once without platt ("TEDn")
         platt_variants = [False, True] if train_method == "PN" else [False]
-        if (train_year == 2020 and train_method == "PN"): platt_variants = [True]
+        platt_variants = [False] # don't do platt at first
+        # if (train_year == 2020 and train_method == "PN"): platt_variants = [True]
 
         nets = {}
 
         for seed in seeds:
-            alpha_dir = Path(f"{entrance_path}/sentence_{train_year}/{alpha}_{seed}/ArXiv_BERT_{epochs}")
+            if train_method == "PNU":
+                alpha_dir = Path(f"{entrance_path}/sentence_{train_year}/PNU_{seed}/ArXiv_BERT_{epochs}")
+            else:
+                alpha_dir = Path(f"{entrance_path}/sentence_{train_year}/{alpha}_{seed}/ArXiv_BERT_{epochs}")
             pts = [p for p in alpha_dir.iterdir() if p.is_file() and p.name.lower().endswith(".pt") and train_method in p.name]
             assert(len(pts) == 1), f"{train_year} {seed} bad"
 
@@ -122,7 +129,7 @@ for train_year in train_years:
 
         test_alpha = 0.5
         test_cis = [.9, .95, .99]
-        test_years = [train_year] if train_year != 2010 else [2010, 2012, 2014, 2016, 2018, 2020]
+        test_years = [train_year] if train_year != 2010 else [2010, 2012, 2014, 2016, 2018, 2020][3:]
 
         for apply_platt in platt_variants:
             scale_year = 2010

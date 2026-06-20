@@ -26,7 +26,7 @@ OUT_DIR  = "/home/kkr36/llm_detection/arxiv/separation"
 LABEL_NAMES = {
     0: "Human",
     1: "Gemini 2.0 Flash-Lite",
-    2: "Gemini 3 Preview",
+    2: "Gemini 3 Pro",
     3: "Gemini 2.0 Flash",
     4: "Gemini 2.5 Flash",
     5: "Gemini 2.5 Pro",
@@ -35,7 +35,7 @@ LABEL_NAMES = {
 # Map from CSV name → embedding label id
 CSV_TO_LABEL = {
     "Gemini 2.0 Flash-Lite":           1,
-    "Gemini 3 Preview": 2,
+    "Gemini 3 Pro": 2,
     "Gemini 2.0 Flash":       3,
     "Gemini 2.5 Flash":                   4,
     "Gemini 2.5 Pro": 5
@@ -44,7 +44,7 @@ CSV_TO_LABEL = {
 COLORS = {
     "Human": "#2196F3",  # blue
     "Gemini 2.0 Flash-Lite": "#F44336",  # red
-    "Gemini 3 Preview": "#4CAF50",  # green
+    "Gemini 3 Pro": "#4CAF50",  # green
     "Gemini 2.0 Flash": "#FF9800",  # orange
     "Gemini 2.5 Flash": "#9C27B0",  # purple
     "Gemini 2.5 Pro": "#00BCD4",  # cyan
@@ -229,6 +229,9 @@ def main():
 
     # Load CSV
     df = pd.read_csv(CSV_PATH)
+    df['train_llm'] = df['train_llm'].replace('Gemini 3 Preview', 'Gemini 3 Pro')
+    df['test_llm'] = df['test_llm'].replace('Gemini 3 Preview', 'Gemini 3 Pro')
+
     df = df[(df['train_llm'] != 'all') & (df['test_llm'] != 'all') &
             (df['learning_method'] == 'PN')]
 
