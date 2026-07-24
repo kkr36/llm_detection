@@ -61,6 +61,7 @@ parser.add_argument('--clean', default=False, action='store_true', help='whether
 
 # llm - llm detection args
 parser.add_argument('--gemini', default=False, action='store_true', help='use diverse llms or gemini line')
+parser.add_argument('--codex', default=False, action='store_true', help='use the codex parquet and treat "Codex" as a valid LLM column')
 parser.add_argument('--flip', default=False, action='store_true', help='pos is llm or human')
 
 # line plot args 
@@ -131,6 +132,7 @@ sentence = args.abstract
 ft = args.ft
 clean = args.clean
 gemini = args.gemini
+codex = args.codex
 flip = args.flip
 combine = args.combine
 add = args.add
@@ -176,7 +178,7 @@ varied_vals = {}
 
 if train_method=='PN':
     # import pdb; pdb.set_trace()
-    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm)
+    u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm, codex=codex)
     # import pdb; pdb.set_trace()
 
 elif train_method == 'PNU':
@@ -191,7 +193,7 @@ elif train_method == 'PNU':
 else:
     n_trainloader = None
     p_trainloader, u_trainloader, p_validloader, u_validloader, p_calloader, u_calloader, net, X, Y, p_validdata, u_validdata, u_traindata = \
-        get_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm)
+        get_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm, codex=codex)
     # import pdb; pdb.set_trace()
     train_pos_size= len(X)
     train_unlabeled_size= len(Y)
@@ -219,11 +221,15 @@ elif data_type=="paramveer":
         varied_vals['ai'][alpha] = get_dataset_val2(data_dir, data_type,net_type, device, alpha, None, batch_size, None, None, ft=False, clean=clean, gemini=gemini, flip=flip, combine=combine, add=add, seed=seed)
 elif "llm_type_" in data_type:
     llm_list = ["Gemini 3 Preview", "Qwen", "GPT OSS 120b", "Llama 3.3 70b Instruct"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+    if codex:
+        llm_list = llm_list + ["Codex"]
     for llm in tqdm(llm_list):
         varied_vals[llm] = {}
         for valalpha in val_alphas:
+            # the Codex column only lives in the codex parquet; all other columns exist in both,
+            # so read every val LLM from the codex parquet when this is a codex run
             p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha = \
-                get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed)
+                get_dataset_val2(data_dir, f"llm_type_{llm.replace(' ', '_')}", net_type, device, valalpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, codex=codex)
             varied_vals[llm][valalpha] = (p_validloader_alpha, u_validloader_alpha, p_validdata_alpha, u_validdata_alpha)
 elif "Arxiv_year" in data_type:
     for valalpha in val_alphas:
