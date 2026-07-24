@@ -442,67 +442,84 @@ def get_u_data(data_type, test_alpha, test_year, combine, sentence, clean, add, 
         shuffle=False)
     return u_data_loader, u_texts, u_labels
 
+def _llm_cols_and_parquet(test_year, gemini, codex):
+    """Shared column list / parquet path resolution for the multi-LLM arXiv data."""
+    llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
+    if codex:
+        llm_cols = llm_cols + ["Codex"]
+
+    if codex:
+        path = f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen_codex.parquet'
+    else:
+        path = f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet"
+
+    return llm_cols, path
+
+
+def _select_llm_subset(arxiv_data, llm_cols, test_llm, seed):
+    """The shared row-selection used by both the P and U readers (held-out last 25%)."""
+    if test_llm=="all":
+        llm_subset=None
+
+        for i, llm2 in enumerate(llm_cols):
+            tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
+            assert(len(tmp_subset)==2500)
+
+            tmp_subset = tmp_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+            # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
+            print(len(tmp_subset))
+            tmp_subset["llm_writing"] = tmp_subset[llm2]
+            tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
+
+            if llm_subset is None:
+                llm_subset = tmp_subset
+            else:
+                llm_subset = pd.concat([llm_subset, tmp_subset]).reset_index(drop=True)
+    else:
+        llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
+
+    # shuffle
+    llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
+    llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
+
+    llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
+    human_texts = llm_subset['human_abstract'].tolist()
+    assert(len(llm_texts) == len(human_texts))
+
+    return llm_texts, human_texts
+
+
+def read_arxiv_positive_llm_texts(test_year, test_llm, sentence, clean, gemini, flip, seed, codex=False):
+    """Texts of the confirmed-positive P-set, exactly as get_p_data_llm feeds them to the model."""
+    llm_cols, path = _llm_cols_and_parquet(test_year, gemini, codex)
+    assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
+
+    arxiv_data = pd.read_parquet(path)
+
+    llm_texts, human_texts = _select_llm_subset(arxiv_data, llm_cols, test_llm, seed)
+
+    if flip:
+        # import pdb; pdb.set_trace()
+        positive_texts = human_texts[int(len(human_texts)*.75):]
+    else:
+        positive_texts = llm_texts[int(len(llm_texts)*.75):]
+
+    # sentence check
+    if sentence:
+
+        positive_texts, _ = split_into_sentences(positive_texts, [1 for _ in range(len(positive_texts))])
+
+    if clean:
+        positive_texts = clean_text(positive_texts)
+
+    return positive_texts
+
+
 def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip, seed, codex=False):
 
-    def read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip, seed):
-        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
-        if codex:
-            llm_cols = llm_cols + ["Codex"]
-        assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
-
-        if codex:
-            arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen_codex.parquet')
-        else:
-            arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
-
-        if test_llm=="all":
-            llm_subset=None
-
-            for i, llm2 in enumerate(llm_cols):
-                tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
-                assert(len(tmp_subset)==2500)
-
-                tmp_subset = tmp_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
-
-                # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
-                print(len(tmp_subset))
-                tmp_subset["llm_writing"] = tmp_subset[llm2]
-                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
-
-                if llm_subset is None:
-                    llm_subset = tmp_subset
-                else:
-                    llm_subset = pd.concat([llm_subset, tmp_subset]).reset_index(drop=True)
-        else:
-            llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
-
-        # shuffle
-        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
-        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
-
-        llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
-        human_texts = llm_subset['human_abstract'].tolist()
-        assert(len(llm_texts) == len(human_texts))
-
-        if flip:
-            # import pdb; pdb.set_trace()
-            positive_texts = human_texts[int(len(human_texts)*.75):]
-        else:
-            positive_texts = llm_texts[int(len(llm_texts)*.75):]
-
-        # sentence check
-        if sentence:
-            
-            positive_texts, _ = split_into_sentences(positive_texts, [1 for _ in range(len(positive_texts))])
-        
-        if clean:
-            positive_texts = clean_text(positive_texts)
-
-        return positive_texts
-
-
     if data_type == "ArXiv_BERT":
-        p_texts = read_arxiv_positive_llm(test_year, test_llm, sentence, clean, flip, seed)
+        p_texts = read_arxiv_positive_llm_texts(test_year, test_llm, sentence, clean, gemini, flip, seed, codex=codex)
 
     # turn into dataloader
     transform = initialize_bert_transform('distilbert-base-uncased')
@@ -515,82 +532,55 @@ def get_p_data_llm(data_type, test_year, sentence, clean, test_llm, gemini, flip
         shuffle=False)
     return p_data_loader
 
+def read_arxiv_unlabeled_llm_texts(test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split, seed, codex=False):
+    """Texts/labels of the unlabeled U-set, exactly as get_u_data_llm feeds them to the model.
+
+    u_labels uses 1=positive, 0=negative. Note UnlabelData.true_targets (helper.py) inverts
+    this to 0=positive, so consumers writing into the get_metrics contract need 1 - u_labels.
+    """
+    llm_cols, path = _llm_cols_and_parquet(test_year, gemini, codex)
+    assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
+
+    arxiv_data = pd.read_parquet(path)
+
+    llm_texts, human_texts = _select_llm_subset(arxiv_data, llm_cols, test_llm, seed)
+
+    if flip:
+        u_positive_texts = human_texts[:int(len(human_texts)*.75)]
+        u_negative_texts = llm_texts[:int(len(llm_texts)*.75)]
+    else:
+        u_positive_texts = llm_texts[:int(len(llm_texts)*.75)]
+        u_negative_texts = human_texts[:int(len(human_texts)*.75)]
+
+    # sentence check
+    if sentence:
+        u_positive_texts, _ = split_into_sentences(u_positive_texts, [1 for _ in range(len(u_positive_texts))])
+        u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
+
+    # Compute feasible T bounds
+    T_pos = len(u_positive_texts) / test_alpha if test_alpha > 0 else np.inf
+    T_neg = len(u_negative_texts) / (1 - test_alpha) if test_alpha < 1 else np.inf
+
+    T = int(min(T_pos, T_neg))
+
+    n_pos = int(test_alpha * T)
+    n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
+
+    u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
+    u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
+    print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
+
+    if clean:
+        u_positive_texts = clean_text(u_positive_texts)
+        u_negative_texts = clean_text(u_negative_texts)
+
+    return u_positive_texts + u_negative_texts, [1 for _ in range(len(u_positive_texts))] + [0 for _ in range(len(u_negative_texts))]
+
+
 def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split, seed, codex=False):
 
-    def read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split, seed):
-        llm_cols = ["Llama 3.3 70b Instruct", "GPT OSS 120b", "Qwen", "Gemini 3 Preview"] if not gemini else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
-        if codex:
-            llm_cols = llm_cols + ["Codex"]
-        assert(test_llm in llm_cols or test_llm=="all"), f"{test_llm} not valid"
-
-        if codex:
-            arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen_codex.parquet')
-        else:
-            arxiv_data = pd.read_parquet(f'{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_120b_qwen.parquet' if not gemini else f"{data_dir}/multillm/data_raw/arxiv_{test_year}_ai_cs._10000_fronthalf_gemini_full.parquet")
-
-        if test_llm=="all":
-            llm_subset=None
-
-            for i, llm2 in enumerate(llm_cols):
-                tmp_subset = arxiv_data[arxiv_data[llm2].notna() & (arxiv_data[llm2] != "")].reset_index(drop=True)
-                assert(len(tmp_subset)==2500)
-
-                tmp_subset = tmp_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
-
-                # tmp_subset = tmp_subset.iloc[:int(2500*.75)] #3k total; if all 4 llms then 750
-                print(len(tmp_subset))
-                tmp_subset["llm_writing"] = tmp_subset[llm2]
-                tmp_subset = tmp_subset.iloc[int(len(tmp_subset)*.75):]
-
-                if llm_subset is None:
-                    llm_subset = tmp_subset
-                else:
-                    llm_subset = pd.concat([llm_subset, tmp_subset]).reset_index(drop=True)
-            # import pdb; pdb.set_trace()
-        else:
-            llm_subset = arxiv_data[arxiv_data[test_llm].notna() & (arxiv_data[test_llm] != "")].reset_index(drop=True) # isolate llm writing
-
-        # shuffle
-        llm_subset = llm_subset.sample(frac=1, random_state=seed).reset_index(drop=True)
-        llm_subset = llm_subset.iloc[int(len(llm_subset)*.75):]
-
-        llm_texts = llm_subset[test_llm if test_llm != "all" else "llm_writing"].tolist()
-        human_texts = llm_subset['human_abstract'].tolist()
-        assert(len(llm_texts) == len(human_texts))
-
-        if flip:
-            u_positive_texts = human_texts[:int(len(human_texts)*.75)]
-            u_negative_texts = llm_texts[:int(len(llm_texts)*.75)]
-        else:
-            u_positive_texts = llm_texts[:int(len(llm_texts)*.75)]
-            u_negative_texts = human_texts[:int(len(human_texts)*.75)]
-
-        # sentence check
-        if sentence:
-            u_positive_texts, _ = split_into_sentences(u_positive_texts, [1 for _ in range(len(u_positive_texts))])
-            u_negative_texts, _ = split_into_sentences(u_negative_texts, [0 for _ in range(len(u_negative_texts))])
-
-        # Compute feasible T bounds
-        T_pos = len(u_positive_texts) / test_alpha if test_alpha > 0 else np.inf
-        T_neg = len(u_negative_texts) / (1 - test_alpha) if test_alpha < 1 else np.inf
-
-        T = int(min(T_pos, T_neg))
-
-        n_pos = int(test_alpha * T)
-        n_neg = T - n_pos  # ensures n_pos + n_neg = T exactly
-
-        u_positive_texts = list(np.random.default_rng(42).choice(u_positive_texts, size=n_pos, replace=False))
-        u_negative_texts = list(np.random.default_rng(42).choice(u_negative_texts, size=n_neg, replace=False))
-        print(f"alpha = {len(u_positive_texts)} / {len(u_positive_texts) + len(u_negative_texts)} = {len(u_positive_texts) / (len(u_positive_texts) + len(u_negative_texts))}")
-        
-        if clean:
-            u_positive_texts = clean_text(u_positive_texts)
-            u_negative_texts = clean_text(u_negative_texts)
-
-        return u_positive_texts + u_negative_texts, [1 for _ in range(len(u_positive_texts))] + [0 for _ in range(len(u_negative_texts))]
-
     if data_type == "ArXiv_BERT":
-        u_texts, u_labels = read_arxiv_unlabeled_llm(test_alpha, test_year, test_llm, sentence, clean, flip, split, seed)
+        u_texts, u_labels = read_arxiv_unlabeled_llm_texts(test_alpha, test_year, test_llm, sentence, clean, gemini, flip, split, seed, codex=codex)
 
     pu, nu = sum(u_labels), len(u_labels) - sum(u_labels)
     assert(round(pu / (pu+nu), 2) == test_alpha)    

@@ -10,10 +10,11 @@ import torch.nn as nn
 import torch.nn.init as init
 
 
-try: 
+term_width = 80  # default when there is no TTY (e.g. under Slurm batch)
+try:
     _, term_width = os.popen('stty size', 'r').read().split()
     term_width = int(term_width)
-except: 
+except:
     pass
 
 
