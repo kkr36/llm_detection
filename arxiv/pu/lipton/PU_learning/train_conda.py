@@ -36,6 +36,8 @@ parser.add_argument("--year", type=int, default=2020)
 parser.add_argument("--abstract", default=True, action="store_false", help="sentence-level when absent")
 parser.add_argument("--clean", default=False, action="store_true")
 parser.add_argument("--gemini", default=False, action="store_true")
+parser.add_argument("--codex", default=False, action="store_true",
+                    help="use the codex parquet and treat 'Codex' as a valid LLM column")
 parser.add_argument("--flip", default=False, action="store_true", help="human is positive class")
 parser.add_argument("--class-weight", default=True, action=argparse.BooleanOptionalAction,
                     help="inverse-frequency weighted CE on the FULL unbalanced source "
@@ -75,7 +77,7 @@ use_balance = args.balance and not args.class_weight
 source_loader, target_loader, class_counts = get_conda_loaders(
     args.data_dir, data_type, args.alpha, args.year, sentence,
     args.clean, args.gemini, args.flip, args.seed, batch_size=args.batch_size,
-    balance=use_balance,
+    balance=use_balance, codex=args.codex,
 )
 
 class_weight = None

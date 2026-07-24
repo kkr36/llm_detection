@@ -20,7 +20,8 @@ orange_white_purple = LinearSegmentedColormap.from_list(
     "orange_white_purple", ["orange", "white", "purple"][::-1]
 )
 
-INPUT_FILES = ["../logging_accuracy_llm_conda.csv"]
+# Base 4x4 sweep + the Codex sweep (Codex as a 5th row/column).
+INPUT_FILES = ["../logging_accuracy_llm_conda.csv", "../logging_accuracy_llm_conda_codex.csv"]
 OUTPUT_FOLDER = "logging_accuracy_llm_conda"
 
 TRAIN_TO_SPACE = {
@@ -28,6 +29,7 @@ TRAIN_TO_SPACE = {
     "Gemini_3_Preview": "Gemini 3 Preview",
     "Llama_3.3_70b_Instruct": "Llama 3.3 70b Instruct",
     "Qwen": "Qwen",
+    "Codex": "Codex",
     "all": "all",
 }
 DISPLAY = {
@@ -35,9 +37,10 @@ DISPLAY = {
     "Gemini 3 Preview": "Gemini 3",
     "Llama 3.3 70b Instruct": "Llama",
     "Qwen": "Qwen",
+    "Codex": "Codex 5.5",
     "all": "all",
 }
-LLM_ORDER = ["GPT OSS 120b", "Gemini 3 Preview", "Llama 3.3 70b Instruct", "Qwen"]
+LLM_ORDER = ["GPT OSS 120b", "Gemini 3 Preview", "Llama 3.3 70b Instruct", "Qwen", "Codex"]
 
 PLOT_METRICS = ["auc", "accuracy", "tpr", "tnr", "bce", "bbe", "plugin-int"]
 BINARY_METRICS = {"auc", "accuracy", "pos_prob", "neg_prob", "bce", "tpr", "tnr"}
@@ -172,7 +175,8 @@ def make_heatmaps(df, metrics, title=True):
 
 
 if __name__ == "__main__":
-    df = pd.concat([pd.read_csv(f) for f in INPUT_FILES], ignore_index=True)
+    present = [f for f in INPUT_FILES if os.path.exists(f)]
+    df = pd.concat([pd.read_csv(f) for f in present], ignore_index=True)
     df = add_accuracy_cols(df)
     df = reverse_bias(reverse_plugin(df))
     df["llm1"] = df["train_llm"].str.split("|").str[0]

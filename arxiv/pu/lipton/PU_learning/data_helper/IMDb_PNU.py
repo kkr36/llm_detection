@@ -324,7 +324,7 @@ def read_arxiv_split2_PNU(split_dir, alpha, split, sentence, inject, seed, n_lab
     assert len(texts) == len(labels)
     return texts, labels
 
-def read_arxiv_split_llm_PNU(split_dir, llm, split, sentence, alpha, gemini, flip, seed, n_labeled=0):
+def read_arxiv_split_llm_PNU(split_dir, llm, split, sentence, alpha, gemini, flip, seed, n_labeled=0, codex=False):
     """
     PNU version of read_arxiv_split_llm.
     `llm` is '|'-separated: first token is the source LLM, second is the target (test) LLM.
@@ -345,6 +345,8 @@ def read_arxiv_split_llm_PNU(split_dir, llm, split, sentence, alpha, gemini, fli
         if not gemini
         else ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
     )
+    if codex:
+        llm_cols = llm_cols + ["Codex"]
     assert llm_source in llm_cols or llm_source == "all", f"{llm_source} not valid"
     assert llm_test   in llm_cols or llm_test   == "all", f"{llm_test} not valid"
 
