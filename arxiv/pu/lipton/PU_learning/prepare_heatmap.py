@@ -81,7 +81,7 @@ def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
 # enter: entrance file, alphas, prior csv (none == make a blank csv, path == append to the existing csv and save to new name? eg have an index 0 that keeps going up each time you pass it in)
 
 # SWITCHES
-entrance_path = "logging_accuracy_llm_gemini"
+entrance_path = "logging_accuracy_llm"
 data_type = "ArXiv_BERT"
 # flip = False
 combine = "combine" in entrance_path
