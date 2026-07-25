@@ -30,9 +30,81 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-# reuse the exact metric machinery, as prepare_heatmap_codex.py does
-from prepare_heatmap import save_preds, get_metrics, PREDS_BASE
+# NOTE: we deliberately do NOT `from prepare_heatmap import ...`. prepare_heatmap.py has no
+# __main__ guard, so importing it executes its entire eval loop (loading DistilBert models and
+# running forward passes) -- which both wastes work and, on older CPU nodes, SIGILLs under
+# torch 2.8. Instead we replicate its small metric helpers locally, exactly as
+# prepare_heatmap_conda.py does. The only shared deps are the torch-free bootstrap functions.
+from prepare_metrics import (
+    bootstrap_metric, bootstrap_metric_bbe,
+    auc_fn, pos_prob_fn, neg_prob_fn, avg_prob_fn,
+    tpr_fn, fnr_fn, tnr_fn, fpr_fn,
+    plugin_fn, plugin_int_fn,
+    binary_entropy_fn, binary_entropy_pos_fn, binary_entropy_neg_fn,
+    balanced_cross_entropy_fn,
+)
+from estimator import BBE_estimator  # pure-numpy estimator
 from fastdetect import ScoreCache, TEXTS_BASE, model_slug
+
+PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
+
+
+def save_preds(path, pos_probs, unlabeled_probs, unlabeled_targets):
+    if os.path.exists(path):
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.savez_compressed(path, pos_probs=pos_probs, unlabeled_probs=unlabeled_probs,
+                        unlabeled_targets=unlabeled_targets)
+
+
+def _update_dict(d, metric, point, lowers, uppers):
+    d[metric] = point
+    for ci in uppers:
+        assert ci in lowers
+        d[f'{metric}_l_{ci}'] = lowers[ci]
+        d[f'{metric}_u_{ci}'] = uppers[ci]
+
+
+def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap, canon_u=None):
+    """Metric bundle mirroring prepare_heatmap.get_metrics (copied to avoid importing that module).
+
+    canon_u: optional list of (Nu,2) canonical P(human) arrays used *only* for AUC. AUC is
+    rank-based and calibration-free, so it must be identical across the raw/platt/oracle maps.
+    But the source-fitted Platt logistic can learn a negative slope (flipping the decision
+    direction for an inverted source like Codex), and sigmoid saturation breaks ties differently
+    per map -- both of which would corrupt an AUC computed from the variant's own probabilities.
+    Passing the fixed canonical score here keeps `auc` a clean separability measure.
+    """
+    preds_up_list, preds_un_list = [], []
+    for i in range(len(preds_u)):
+        preds_up_list.append(preds_u[i][u_targets[i] == 0][:, 0])
+        preds_un_list.append(preds_u[i][u_targets[i] == 1][:, 0])
+
+    if canon_u is None:
+        canon_u = preds_u
+    canon_up_list, canon_un_list = [], []
+    for i in range(len(canon_u)):
+        canon_up_list.append(canon_u[i][u_targets[i] == 0][:, 0])
+        canon_un_list.append(canon_u[i][u_targets[i] == 1][:, 0])
+
+    md = {}
+    print('calculating metrics')
+    _update_dict(md, "auc", *bootstrap_metric(auc_fn, canon_up_list, canon_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "avg_pos_neg_prob", *bootstrap_metric(avg_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "tpr", *bootstrap_metric(tpr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "fnr", *bootstrap_metric(fnr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "tnr", *bootstrap_metric(tnr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "fpr", *bootstrap_metric(fpr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "plugin", *bootstrap_metric(plugin_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "plugin-int", *bootstrap_metric(plugin_int_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "bce", *bootstrap_metric(balanced_cross_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    _update_dict(md, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=n_bootstrap, cis=test_cis))
+    return md
 
 DATA_TYPE = "ArXiv_BERT"
 TRAIN_YEAR = 2020
@@ -187,10 +259,12 @@ def main():
         # score once per (test_llm, seed); every variant reuses these
         cells = [build_cell(cache, args.granularity, test_llm, seed) for seed in range(args.seeds)]
 
-        # sanity: curvature must be higher for LLM text than human text
+        # Curvature is expected higher for LLM text than human. When it is not, the score is
+        # anti-correlated for this generator (a real non-robustness finding, e.g. Codex), NOT a
+        # code bug -- the abstract-level gate confirms polarity is correct where the score works.
         for seed, (d_p, d_u, tgt) in enumerate(cells):
             m_h, m_m = d_u[tgt == 0].mean(), d_u[tgt == 1].mean()
-            flag = "" if m_m > m_h else "   <-- WARNING: polarity looks inverted"
+            flag = "" if m_m > m_h else "   <-- score ANTI-CORRELATED for this LLM (d_llm < d_human)"
             print(f"  {test_llm} seed {seed}: mean d(human)={m_h:.4f} mean d(llm)={m_m:.4f}{flag}")
 
         for variant in args.variants:
@@ -203,7 +277,7 @@ def main():
 
                 print(f"{variant}: train={source_llm} | test={test_llm} | ref={ref_model}")
 
-                preds_p_list, preds_u_list, u_targets_list = [], [], []
+                preds_p_list, preds_u_list, u_targets_list, canon_u_list = [], [], [], []
                 for seed, (d_p, d_u, tgt) in enumerate(cells):
                     kw = {}
                     if variant == "FastDetectGPT-platt":
@@ -216,6 +290,9 @@ def main():
                     p_h = probs_from_scores(d_p, variant, **kw)
                     u_h = probs_from_scores(d_u, variant, **kw)
                     u_2d = np.stack([u_h, 1.0 - u_h], axis=1)
+                    # canonical (calibration-free) score for AUC: raw -d, fixed high-d=machine.
+                    # col 0 stands in for P(human); only its ranking is used by auc_fn.
+                    canon_2d = np.stack([-d_u, d_u], axis=1)
 
                     save_preds(
                         f"{PREDS_BASE}/heatmap_fastdetect/{model_slug(ref_model)}/"
@@ -226,6 +303,7 @@ def main():
                     preds_p_list.append(p_h)
                     preds_u_list.append(u_2d)
                     u_targets_list.append(tgt)
+                    canon_u_list.append(canon_2d)
 
                 info = {
                     "learning_method": variant,
@@ -246,7 +324,8 @@ def main():
                     "model_path": ref_model,
                 }
                 metrics = get_metrics(preds_p_list, preds_u_list, u_targets_list,
-                                      test_cis=TEST_CIS, n_bootstrap=args.n_bootstrap)
+                                      test_cis=TEST_CIS, n_bootstrap=args.n_bootstrap,
+                                      canon_u=canon_u_list)
 
                 row = {}
                 row.update(info)

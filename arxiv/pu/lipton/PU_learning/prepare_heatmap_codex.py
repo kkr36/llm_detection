@@ -31,8 +31,54 @@ from prepare_metrics import *
 from estimator import BBE_estimator
 import torch
 
-# reuse the exact metric machinery from prepare_heatmap
-from prepare_heatmap import save_preds, get_metrics, PREDS_BASE
+# NOTE: prepare_heatmap.py runs its whole evaluation at module import (no
+# __main__ guard), so we must NOT import from it. The three helpers below are
+# copied verbatim from prepare_heatmap.py to keep identical metric behavior.
+PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
+
+
+def save_preds(path, pos_probs, unlabeled_probs, unlabeled_targets):
+    if os.path.exists(path):
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.savez_compressed(path, pos_probs=pos_probs, unlabeled_probs=unlabeled_probs,
+                        unlabeled_targets=unlabeled_targets)
+
+
+def update_dict(metrics_dict, metric, point, lowers, uppers):
+    metrics_dict[metric] = point
+    for ci in uppers:
+        assert (ci in lowers)
+        metrics_dict[f'{metric}_l_{ci}'] = lowers[ci]
+        metrics_dict[f'{metric}_u_{ci}'] = uppers[ci]
+
+
+def get_metrics(preds_p, preds_u, u_targets, test_cis, n_bootstrap):
+    preds_up_list, preds_un_list = [], []
+    for i in range(len(preds_u)):
+        preds_up = preds_u[i][u_targets[i] == 0][:, 0]
+        preds_un = preds_u[i][u_targets[i] == 1][:, 0]
+        preds_up_list.append(preds_up)
+        preds_un_list.append(preds_un)
+
+    metrics_dict = {}
+    print('calculating metrics')
+    update_dict(metrics_dict, "auc", *bootstrap_metric(auc_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "pos_prob", *bootstrap_metric(pos_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "neg_prob", *bootstrap_metric(neg_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "avg_pos_neg_prob", *bootstrap_metric(avg_prob_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "tpr", *bootstrap_metric(tpr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "fnr", *bootstrap_metric(fnr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "tnr", *bootstrap_metric(tnr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "fpr", *bootstrap_metric(fpr_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "plugin", *bootstrap_metric(plugin_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "plugin-int", *bootstrap_metric(plugin_int_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "entropy", *bootstrap_metric(binary_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "entropy_pos", *bootstrap_metric(binary_entropy_pos_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "entropy_neg", *bootstrap_metric(binary_entropy_neg_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "bce", *bootstrap_metric(balanced_cross_entropy_fn, preds_up_list, preds_un_list, n_bootstrap=n_bootstrap, cis=test_cis))
+    update_dict(metrics_dict, "bbe", *bootstrap_metric_bbe(BBE_estimator, preds_p, preds_u, u_targets, n_bootstrap=n_bootstrap, cis=test_cis))
+    return metrics_dict
 
 # ---------------- switches (mirror prepare_heatmap.py) ----------------
 entrance_path = "logging_accuracy_llm"
