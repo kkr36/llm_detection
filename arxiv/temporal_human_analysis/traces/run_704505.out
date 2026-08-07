@@ -1,0 +1,1927 @@
+==== node: bhattacharjee-compute-02.cs.cornell.edu  gpu: 0 ====
+==== STAGE 1: inference pipeline ====
+[pipeline] device=cuda
+[pipeline] models:
+    /home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/logging_accuracy_llm/normal_sentence/alpha_0/all_0/llm_type_all_3/PN_DistilBert_0_2_0_1e-05_0.0005_0.0_0.0_0.6_20260517-003756.pt
+    /home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/logging_accuracy_llm/normal_sentence/alpha_0/all_1/llm_type_all_3/PN_DistilBert_1_2_0_1e-05_0.0005_0.0_0.0_0.6_20260517-004512.pt
+    /home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/logging_accuracy_llm/normal_sentence/alpha_0/all_2/llm_type_all_3/PN_DistilBert_2_2_0_1e-05_0.0005_0.0_0.0_0.6_20260517-005438.pt
+    /home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/logging_accuracy_llm/normal_sentence/alpha_0/all_3/llm_type_all_3/PN_DistilBert_3_2_0_1e-05_0.0005_0.0_0.0_0.6_20260517-010151.pt
+    /home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/logging_accuracy_llm/normal_sentence/alpha_0/all_4/llm_type_all_3/PN_DistilBert_4_2_0_1e-05_0.0005_0.0_0.0_0.6_20260517-011236.pt
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+[sanity] model0 mean P(LLM): human2020=0.001  qwen2020=0.513  (OK idx0=P(LLM))
+[pipeline] sampled 2020=100  2025=500
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 10.10it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 34.51it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.15it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 45.84it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 43.88it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.44it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.26it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.90it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.18it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.72it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.60it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 46.55it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.59it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.19it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.33it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.13it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.89it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.64it/s]
+Made 2 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.31it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.87it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.84it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.72it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.24it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.99it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.14it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.02it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.40it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.81it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.44it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.19it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.99it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 43.68it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 134.48it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.81it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.93it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.04it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.86it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.89it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.62it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.27it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.25it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 128.47it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.51it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.46it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.51it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.56it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.52it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 42.06it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.56it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.11it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.25it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.50it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.63it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.16it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.93it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.14it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.66it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.56it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.96it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.82it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.91it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.54it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.99it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 121.20it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.58it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.70it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.09it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.04it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 44.59it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 42.27it/s]
+Made 13 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.95it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.87it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.90it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.42it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.80it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.72it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.83it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.10it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.02it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.45it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.97it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 126.51it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.03it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.45it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.15it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.88it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.80it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.94it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 41.17it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.11it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 160.69it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.09it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.85it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.32it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.44it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 44.60it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 108.20it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 89.19it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 98.05it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 44.79it/s]
+Made 9 sentences
+[2020] 100 abstracts -> 730 sentences
+[2020] scored model 0
+[2020] scored model 1
+[2020] scored model 2
+[2020] scored model 3
+[2020] scored model 4
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.38it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.70it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.65it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 168.78it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 90.37it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.66it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.61it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.82it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.11it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.05it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.71it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.59it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.22it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 167.08it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.21it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.43it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.32it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.66it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.41it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.63it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.78it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.58it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.86it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.98it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.03it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.20it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.23it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.60it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.08it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.20it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.05it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.99it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.07it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 93.82it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.03it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.47it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.31it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.39it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.71it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 93.51it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.96it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.74it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.95it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 98.59it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.26it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 91.33it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.39it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.05it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.59it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 111.50it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.47it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.50it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 106.77it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.51it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.44it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.38it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.27it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.44it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.05it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.83it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.31it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.99it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.99it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.95it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.06it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.42it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.14it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.17it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.60it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.91it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.73it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.46it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.10it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 100.36it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.41it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.92it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 94.83it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.46it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.16it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.38it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 94.80it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 104.91it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.08it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 140.03it/s]
+Made 2 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 46.69it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.74it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.48it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.69it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.31it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.99it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.88it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.15it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.60it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 44.20it/s]
+Made 14 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.59it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.41it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 89.45it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 44.19it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.92it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.45it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.41it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.64it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.11it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.93it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.28it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.07it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.39it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.07it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.73it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.36it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 105.10it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.78it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.92it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.36it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 101.73it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.79it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.02it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.81it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.12it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.99it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.72it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.95it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 45.58it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 46.82it/s]
+Made 15 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.48it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.66it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.49it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.32it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.46it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.72it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.03it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 91.43it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.37it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.95it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 93.47it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.87it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.93it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.58it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.94it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 41.77it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.88it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.18it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.67it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 97.51it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.70it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 115.11it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.48it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.03it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 107.96it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.21it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.94it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.35it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.69it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.59it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.32it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.30it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.72it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 138.77it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.87it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.21it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.29it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 118.63it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.98it/s]
+Made 13 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.49it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.98it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 116.09it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 90.17it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.51it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 89.22it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.57it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.38it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 46.26it/s]
+Made 14 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.49it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 109.07it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.23it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.29it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.67it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.87it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 145.61it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.89it/s]
+Made 13 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 92.10it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 105.68it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 95.62it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.03it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.71it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 111.21it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.51it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.28it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.49it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.36it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.45it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.92it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.92it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.53it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 81.04it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.01it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.04it/s]
+Made 13 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.61it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.00it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.03it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 213.23it/s]
+Made 2 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.52it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.22it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.06it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.09it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 104.50it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.15it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.80it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.81it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 90.44it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.29it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.34it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.71it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.73it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.70it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.02it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.56it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.13it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.29it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 148.29it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.77it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 91.13it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 91.03it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.51it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 113.72it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.22it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 94.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.47it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.92it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 102.45it/s]
+Made 2 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.25it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.09it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 95.00it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.70it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.58it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.95it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.68it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 122.55it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.08it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.76it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 170.49it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 98.53it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.12it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.04it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.17it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 121.30it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.87it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.69it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.47it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.94it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.08it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.98it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.95it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.65it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.70it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.54it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.03it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.36it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.06it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.52it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.71it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.09it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.74it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.83it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.78it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.11it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 95.82it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 103.27it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 94.87it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.55it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 96.98it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.53it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.26it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.47it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.12it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.02it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 94.42it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.63it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 96.03it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.35it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 61.66it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 45.12it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.05it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.45it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 100.88it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.16it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.05it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.31it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.97it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.86it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 161.49it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.65it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.55it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.75it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 129.00it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.10it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.62it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.89it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.25it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 92.47it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.92it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.96it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.72it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.29it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 90.86it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.12it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 42.38it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.93it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 48.22it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.22it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.24it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 93.39it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.27it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 168.36it/s]
+Made 2 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.48it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.21it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.46it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 111.33it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.59it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.69it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.50it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 106.00it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.28it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.76it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.01it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 122.17it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.10it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.01it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.75it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.63it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.07it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.71it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.78it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.09it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.43it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.38it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.19it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.41it/s]
+Made 15 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.01it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.67it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.00it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.29it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 135.29it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.15it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.21it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 95.52it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.07it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.91it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.94it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 94.77it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.08it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 98.08it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.90it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 89.23it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 81.99it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 110.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.16it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 110.29it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.95it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.74it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.09it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.16it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.50it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 81.07it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.51it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.59it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 98.26it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.81it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.48it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.59it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 46.50it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 52.33it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.77it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.57it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.98it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.33it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.31it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.08it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.85it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.42it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.01it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.72it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.07it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.58it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 102.78it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.38it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.45it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.75it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.24it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 49.31it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.55it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.53it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.44it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.58it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.97it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.61it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.06it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.19it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.77it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 205.64it/s]
+Made 2 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 51.83it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.76it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.69it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.26it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 81.96it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.31it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.10it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.41it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 107.31it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.06it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.40it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.49it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.17it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 102.17it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 119.01it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.10it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.90it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 47.93it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.61it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.38it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 124.37it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 75.75it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 54.53it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.43it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 44.54it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.02it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.74it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.17it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.31it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 50.22it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.00it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 56.08it/s]
+Made 12 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 69.73it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 66.16it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.05it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.66it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 98.70it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.81it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.65it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 88.02it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.68it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.74it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 82.08it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 59.28it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 87.80it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 115.82it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.40it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.62it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.26it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.78it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 71.55it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 96.67it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.87it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.01it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 55.76it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.60it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.37it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 80.77it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.89it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.02it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 83.11it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 116.89it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.72it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 103.16it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.74it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.07it/s]
+Made 13 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 70.48it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 76.72it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.90it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.92it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 64.14it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 144.79it/s]
+Made 3 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 67.41it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 63.62it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.05it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 68.94it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 77.29it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 65.12it/s]
+Made 10 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.32it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 58.51it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 91.07it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 57.41it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 78.95it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 109.21it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 60.56it/s]
+Made 7 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.57it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 62.52it/s]
+Made 11 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 72.22it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 85.02it/s]
+Made 4 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 102.56it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 53.53it/s]
+Made 8 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 86.73it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 79.40it/s]
+Made 9 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 84.46it/s]
+Made 5 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 74.39it/s]
+Made 6 sentences
+Splitting into sentences!
+Processing abstracts:   0%|          | 0/1 [00:00<?, ?it/s]Processing abstracts: 100%|██████████| 1/1 [00:00<00:00, 73.40it/s]
+Made 9 sentences
+[2025] 500 abstracts -> 3746 sentences
+[2025] scored model 0
+[2025] scored model 1
+[2025] scored model 2
+[2025] scored model 3
+[2025] scored model 4
+[pipeline] 2025 abstracts with mean P(human)>0.9: 82 / 500
+[pipeline] wrote 2025_pseudolabel.csv with 82 abstracts
+[pipeline] DONE
+==== STAGE 2: category join ====
+[categories] need 600 distinct abstract keys
+[categories] scanned 500000 records, matched 1/600
+[categories] scanned 1000000 records, matched 7/600
+[categories] scanned 1500000 records, matched 107/600
+[categories] scanned 2000000 records, matched 125/600
+[categories] matched 600/600 keys after 2399076 records
+[categories] wrote categories.parquet
+==== STAGE 3: analysis + figures ====
+[analyze] category match: 2020 100%  2025 100%
+[analyze] descriptive_stats.csv
+                                     group    n     mean      std      p10   median      p90  frac_gt_0_5  frac_gt_0_9
+2020 abstract P(LLM) [ground-truth human]  100 0.098169 0.089135 0.004268 0.076887 0.207212     0.000000     0.000000
+           2025 abstract P(LLM) [unknown]  500 0.391276 0.260251 0.047264 0.379462 0.751790     0.344000     0.026000
+                     2020 sentence P(LLM)  730 0.101291 0.209892 0.000999 0.004268 0.445128     0.089041     0.013699
+                     2025 sentence P(LLM) 3746 0.392883 0.398726 0.001899 0.218634 0.993095     0.384944     0.215430
+
+[analyze] words most predictive of HIGH P(LLM):
+        word  n_hi  n_lo  log_odds_hi_vs_lo
+    offering    18     1           3.331406
+     primary    10     1           2.758205
+     emerged    15     2           2.640716
+   threshold     8     1           2.545202
+      aligns     8     1           2.545202
+highlighting    18     3           2.483356
+   primarily    18     3           2.483356
+particularly    33     6           2.469848
+    insights    42     8           2.446601
+ specialized    12     2           2.423054
+     factual     7     1           2.419193
+       drift     7     1           2.419193
+     focuses     7     1           2.419193
+        offs    10     2           2.247003
+        cues     9     2           2.146072
+    tailored    12     3           2.086205
+    enhances    25     7           2.046609
+     address    67    20           2.046355
+    grounded     8     2           2.034000
+  optimizing     8     2           2.034000
+
+[analyze] words most predictive of LOW P(LLM) (human):
+      word  n_hi  n_lo  log_odds_hi_vs_lo
+  emission     0    16          -2.698315
+   popular     0    16          -2.698315
+   density     0    16          -2.698315
+considered     0    17          -2.757534
+  consider     0    19          -2.866505
+   coupled     0    19          -2.866505
+    github     1    62          -2.948229
+      good     0    21          -2.964902
+      uses     0    21          -2.964902
+      main     0    26          -3.175891
+ presented     0    28          -3.249410
+ important     0    28          -3.249410
+      find     0    38          -3.553973
+       com     0    54          -3.907640
+     https     0    66          -4.111260
+
+[analyze] P(LLM) by coarse subject group:
+ coarse_group  n_2020  mean_pllm_2020  n_2025  mean_pllm_2025  share_2020  share_2025
+       Other      24        0.119921      89        0.254651        0.24       0.178
+    Other CS      16        0.105716      78        0.386400        0.16       0.156
+       ML/DL      10        0.115351      76        0.419892        0.10       0.152
+      Vision      12        0.103352      75        0.517428        0.12       0.150
+Info/Systems      15        0.088599      45        0.368452        0.15       0.090
+         NLP       6        0.103108      44        0.499848        0.06       0.088
+        Math       8        0.066155      28        0.319680        0.08       0.056
+    Robotics       5        0.019747      26        0.461646        0.05       0.052
+    Security       2        0.081764      16        0.361827        0.02       0.032
+          AI       1        0.007590      14        0.425727        0.01       0.028
+      Theory       1        0.106856       9        0.093219        0.01       0.018
+
+[analyze] CONFOUNDER SUMMARY
+   mean_pllm_2020: 0.0982
+   mean_pllm_2025: 0.3913
+   overall_gap_2025_minus_2020: 0.2931
+   mean_pllm_2025_reweighted_to_2020_topicmix: 0.3734
+   category_adjusted_gap: 0.2752
+   fraction_of_gap_explained_by_subject_shift: 0.0611
+   mean_pllm_2020_DL_abstracts: 0.0931
+   mean_pllm_2020_nonDL_abstracts: 0.1014
+   n_DL_2020: 39
+   n_nonDL_2020: 61
+   corr_pllm_dlcount_2020: -0.0670
+   mean_pllm_2025_DL_abstracts: 0.4752
+   mean_pllm_2025_nonDL_abstracts: 0.3187
+   corr_pllm_dlcount_2025: 0.2246
+
+[analyze] wrote 4 figures to /home/kkr36/llm_detection/arxiv/temporal_human_analysis/figures
+[analyze] DONE
+==== ALL DONE ====

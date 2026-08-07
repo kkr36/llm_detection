@@ -44,7 +44,7 @@ from prepare_metrics import (
     balanced_cross_entropy_fn,
 )
 from estimator import BBE_estimator  # pure-numpy estimator
-from fastdetect import ScoreCache, TEXTS_BASE, model_slug
+from fastdetect import ScoreCache, TEXTS_BASE, model_slug, cache_slug, config_identity
 
 PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
 
@@ -221,7 +221,10 @@ def build_cell(cache, granularity, test_llm, seed):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--granularity", choices=["sentence", "abstract"], default="sentence")
-    ap.add_argument("--model", default="EleutherAI/gpt-neo-2.7B")
+    ap.add_argument("--model", default="EleutherAI/gpt-neo-2.7B", help="scoring model (p)")
+    ap.add_argument("--sampling-model", default=None,
+                    help="sampling model (q) for the two-model analytic pair; must match the "
+                         "--sampling-model used when the scores were cached by fastdetect.py")
     ap.add_argument("--llms", nargs="*", default=ALL_LLMS)
     ap.add_argument("--seeds", type=int, default=SEEDS)
     ap.add_argument("--variants", nargs="*", default=VARIANTS)
@@ -232,8 +235,9 @@ def main():
     output_csv = args.output or f"logging_accuracy_llm_fastdetect_{args.granularity}.csv"
     metrics_df = pd.read_csv(output_csv) if os.path.exists(output_csv) else pd.DataFrame()
 
-    cache = ScoreCache(args.model, args.granularity)
-    ref_model = args.model
+    cache = ScoreCache(cache_slug(args.model, args.sampling_model), args.granularity)
+    ref_model = config_identity(args.model, args.sampling_model)
+    ref_slug = cache_slug(args.model, args.sampling_model)  # path-safe for preds dirs
 
     # Platt params are per (source_llm, seed) and reused across every test column -- that
     # reuse is precisely what makes this baseline non-adaptive.
@@ -295,7 +299,7 @@ def main():
                     canon_2d = np.stack([-d_u, d_u], axis=1)
 
                     save_preds(
-                        f"{PREDS_BASE}/heatmap_fastdetect/{model_slug(ref_model)}/"
+                        f"{PREDS_BASE}/heatmap_fastdetect/{ref_slug}/"
                         f"{args.granularity}/{variant}/train_{slug(str(source_llm))}/"
                         f"test_{slug(test_llm)}/seed_{seed}.npz",
                         p_h, u_2d, tgt,

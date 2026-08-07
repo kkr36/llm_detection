@@ -1,0 +1,3 @@
+[make_2020_train] sampled 500 abstracts, 0 overlap with the 100 analyzed
+[make_2020_train] 500 abstracts -> 3558 sentences -> /home/kkr36/llm_detection/arxiv/pu/high_conf_human_analysis/data/2020_train.csv
+==== DONE ====

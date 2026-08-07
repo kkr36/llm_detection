@@ -1,0 +1,1 @@
+/var/spool/slurmd/job707406/slurm_script: line 15: 27273 Illegal instruction     $PY -u /home/kkr36/llm_detection/arxiv/pu/high_conf_human_analysis/scripts/make_2020_train.py

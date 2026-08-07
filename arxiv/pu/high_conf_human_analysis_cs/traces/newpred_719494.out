@@ -1,0 +1,46 @@
+==== node: samitha-compute-01.cee.cornell.edu  gpu: 0 ====
+NVIDIA RTX 6000 Ada Generation, 49140 MiB
+[predict] device=cuda
+[predict] new models:
+    TEDn_2025_DistilBert_0_3_1e-05_0.0005_0.0_0.6_20260803-144120.pt
+    TEDn_2025_DistilBert_1_3_1e-05_0.0005_0.0_0.6_20260803-144121.pt
+    TEDn_2025_DistilBert_2_3_1e-05_0.0005_0.0_0.6_20260803-144121.pt
+    TEDn_2025_DistilBert_3_3_1e-05_0.0005_0.0_0.6_20260803-144121.pt
+    TEDn_2025_DistilBert_4_3_1e-05_0.0005_0.0_0.6_20260803-144121.pt
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Some weights of DistilBertClassifier were not initialized from the model checkpoint at distilbert-base-uncased and are newly initialized: ['classifier.bias', 'classifier.weight', 'pre_classifier.bias', 'pre_classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+[sanity] new-model0 mean P(LLM): human=0.098  llm=0.999  (OK idx0=P(LLM))
+[2020_train] scored model 0
+[2020_train] scored model 1
+[2020_train] scored model 2
+[2020_train] scored model 3
+[2020_train] scored model 4
+[2020_train] wrote preds_2020_train.csv  (669 rows) mean P(LLM)=0.158  frac P(human)>0.9=0.625
+[2020_val] scored model 0
+[2020_val] scored model 1
+[2020_val] scored model 2
+[2020_val] scored model 3
+[2020_val] scored model 4
+[2020_val] wrote preds_2020_val.csv  (673 rows) mean P(LLM)=0.120  frac P(human)>0.9=0.692
+[2025_train] scored model 0
+[2025_train] scored model 1
+[2025_train] scored model 2
+[2025_train] scored model 3
+[2025_train] scored model 4
+[2025_train] wrote preds_2025_train.csv  (3941 rows) mean P(LLM)=0.330  frac P(human)>0.9=0.386
+[2025_val] scored model 0
+[2025_val] scored model 1
+[2025_val] scored model 2
+[2025_val] scored model 3
+[2025_val] scored model 4
+[2025_val] wrote preds_2025_val.csv  (3855 rows) mean P(LLM)=0.327  frac P(human)>0.9=0.378
+[predict] DONE
+==== DONE ====

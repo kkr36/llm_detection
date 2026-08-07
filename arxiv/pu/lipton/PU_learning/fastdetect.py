@@ -42,30 +42,68 @@ def model_slug(model_name):
     return model_name.replace("/", "__")
 
 
+def config_identity(scoring_model, sampling_model=None):
+    """Human-readable id for a scorer config; also the CSV `ref_model` value.
+
+    Single-model analytic (their white-box formula, run with a surrogate): just the model name.
+    Two-model analytic (their black-box: sampling != scoring, e.g. GPT-J samples, Neo scores):
+    "<sampling> -> <scoring>".
+    """
+    if not sampling_model or sampling_model == scoring_model:
+        return scoring_model
+    return f"{sampling_model} -> {scoring_model}"
+
+
+def cache_slug(scoring_model, sampling_model=None):
+    """Path-safe directory name for the score cache of a given config."""
+    if not sampling_model or sampling_model == scoring_model:
+        return model_slug(scoring_model)
+    return f"{model_slug(sampling_model)}__TO__{model_slug(scoring_model)}"
+
+
 def text_key(text):
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
 
 
 class FastDetectScorer:
-    """Analytic conditional-probability curvature with a single scoring model."""
+    """Analytic conditional-probability curvature (Fast-DetectGPT, arXiv:2310.05130).
 
-    def __init__(self, model_name, device="cuda", dtype=torch.bfloat16, max_length=512,
-                 batch_size=16, vocab_chunk=8192):
-        self.model_name = model_name
+    Single-model (sampling_model_name=None): sampling distribution q == scoring model p.
+    Two-model: q from `sampling_model_name` (e.g. gpt-j-6B), log p from `model_name` (scoring,
+    e.g. gpt-neo-2.7B). Faithful to get_sampling_discrepancy_analytic in the reference repo,
+    including the min-vocab alignment (GPT-J's logit width 50400 vs Neo's 50257).
+    """
+
+    def __init__(self, model_name, sampling_model_name=None, device="cuda",
+                 dtype=torch.bfloat16, max_length=512, batch_size=16, vocab_chunk=8192):
+        self.model_name = model_name                       # scoring model (p)
+        self.sampling_model_name = sampling_model_name      # sampling model (q); None => single
+        self.two_model = bool(sampling_model_name) and sampling_model_name != model_name
         self.device = device
         self.max_length = max_length
         self.batch_size = batch_size
         self.vocab_chunk = vocab_chunk
 
+        # tokenize with the scoring model's tokenizer and feed the same ids to both models.
+        # (GPT-J and Neo share the GPT-2 BPE vocab for the 50257 real tokens; assert it.)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        # right padding: we mask explicitly, and left padding would shift the causal context
-        self.tokenizer.padding_side = "right"
+        self.tokenizer.padding_side = "right"  # left padding would shift the causal context
 
         self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=dtype)
-        self.model.eval()
-        self.model.to(device)
+        self.model.eval().to(device)
+
+        self.sampling_model = None
+        if self.two_model:
+            probe = "The quick brown fox jumps over the lazy dog. Detection curvature test 123."
+            samp_tok = AutoTokenizer.from_pretrained(sampling_model_name)
+            assert samp_tok(probe)["input_ids"] == self.tokenizer(probe)["input_ids"], (
+                f"{sampling_model_name} and {model_name} do not share a tokenization; the "
+                f"two-model analytic estimate requires aligned token ids.")
+            self.sampling_model = AutoModelForCausalLM.from_pretrained(
+                sampling_model_name, torch_dtype=dtype)
+            self.sampling_model.eval().to(device)
 
     @torch.no_grad()
     def _score_batch(self, texts):
@@ -74,27 +112,38 @@ class FastDetectScorer:
         input_ids = enc["input_ids"].to(self.device)
         attn = enc["attention_mask"].to(self.device)
 
-        logits = self.model(input_ids=input_ids, attention_mask=attn).logits
-
-        # predict token t+1 from position t
-        logits = logits[:, :-1, :]
+        logits_score = self.model(input_ids=input_ids, attention_mask=attn).logits[:, :-1, :]
         labels = input_ids[:, 1:]
         mask = attn[:, 1:].to(torch.float32)
 
-        # reductions in fp32: bf16 loses too much precision in the sum over ~50k-152k vocab
-        log_probs = F.log_softmax(logits.to(torch.float32), dim=-1)
-        ll = log_probs.gather(-1, labels.unsqueeze(-1)).squeeze(-1)
+        if self.two_model:
+            logits_ref = self.sampling_model(input_ids=input_ids,
+                                             attention_mask=attn).logits[:, :-1, :]
+            # align to the smaller vocab (GPT-J 50400 vs Neo 50257), mirroring the reference impl
+            V = min(logits_score.size(-1), logits_ref.size(-1))
+            logits_score = logits_score[:, :, :V]
+            logits_ref = logits_ref[:, :, :V]
+        else:
+            logits_ref = None
+            V = logits_score.size(-1)
 
-        # sum_v p*logp and sum_v p*logp^2, chunked over vocab to bound peak memory
-        # (B x L x V is 152k-wide for Qwen2.5 and will OOM if materialised twice at once)
+        # reductions in fp32: bf16 loses too much precision summing over ~50k-152k vocab
+        lprobs_score = F.log_softmax(logits_score.to(torch.float32), dim=-1)
+        ll = lprobs_score.gather(-1, labels.unsqueeze(-1)).squeeze(-1)
+        # sampling log-probs q over the FULL vocab (must NOT be normalised per chunk). Single
+        # model: q == p, so reuse lprobs_score and never materialise a second full tensor.
+        lprobs_ref = F.log_softmax(logits_ref.to(torch.float32), dim=-1) if self.two_model else None
+
+        # mu = sum_v q(v)*log p(v), second = sum_v q(v)*log p(v)^2, chunked over vocab to bound
+        # peak memory (B x L x V is 152k-wide for Qwen2.5 and OOMs if materialised at once).
         mu = torch.zeros_like(ll)
         second = torch.zeros_like(ll)
-        V = log_probs.size(-1)
         for start in range(0, V, self.vocab_chunk):
-            lp = log_probs[:, :, start:start + self.vocab_chunk]
-            p = lp.exp()
-            mu += (p * lp).sum(-1)
-            second += (p * lp * lp).sum(-1)
+            sl = slice(start, start + self.vocab_chunk)
+            lp = lprobs_score[:, :, sl]
+            q = (lprobs_ref[:, :, sl].exp() if self.two_model else lp.exp())  # single-model: q==p
+            mu += (q * lp).sum(-1)
+            second += (q * lp * lp).sum(-1)
         sigma2 = second - mu * mu
 
         n_tok = mask.sum(-1)
@@ -122,10 +171,14 @@ class FastDetectScorer:
 
 
 class ScoreCache:
-    """sha1(text) -> score, persisted as a single npz per (model, granularity)."""
+    """sha1(text) -> score, persisted as a single npz per (config, granularity).
 
-    def __init__(self, model_name, granularity):
-        self.path = os.path.join(SCORES_BASE, model_slug(model_name), f"{granularity}.npz")
+    `slug` is a path-safe config id (see cache_slug): the scoring model for single-model, or
+    "<sampling>__TO__<scoring>" for the two-model analytic pair.
+    """
+
+    def __init__(self, slug, granularity):
+        self.path = os.path.join(SCORES_BASE, slug, f"{granularity}.npz")
         self.keys, self.vals = [], []
         self._map = {}
         if os.path.exists(self.path):
@@ -184,7 +237,12 @@ def collect_texts(granularity, llms):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--granularity", choices=["sentence", "abstract"], default="sentence")
-    ap.add_argument("--model", default="EleutherAI/gpt-neo-2.7B")
+    ap.add_argument("--model", default="EleutherAI/gpt-neo-2.7B",
+                    help="scoring model (p)")
+    ap.add_argument("--sampling-model", default=None,
+                    help="sampling model (q) for the two-model analytic pair; "
+                         "omit for the single-model variant (q == p). "
+                         "e.g. EleutherAI/gpt-j-6B with --model EleutherAI/gpt-neo-2.7B")
     ap.add_argument("--llms", nargs="*", default=None,
                     help="restrict to these test LLMs (default: everything dumped)")
     ap.add_argument("--batch-size", type=int, default=16)
@@ -194,12 +252,13 @@ def main():
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"device={device} model={args.model} granularity={args.granularity}")
+    ident = config_identity(args.model, args.sampling_model)
+    print(f"device={device} config='{ident}' granularity={args.granularity}")
 
     texts = collect_texts(args.granularity, args.llms)
     print(f"{len(texts)} distinct texts referenced")
 
-    cache = ScoreCache(args.model, args.granularity)
+    cache = ScoreCache(cache_slug(args.model, args.sampling_model), args.granularity)
     todo = cache.missing(texts)
     print(f"{len(todo)} need scoring ({len(texts)-len(todo)} cache hits)")
 
@@ -207,7 +266,8 @@ def main():
         print("nothing to do")
         return
 
-    scorer = FastDetectScorer(args.model, device=device, max_length=args.max_length,
+    scorer = FastDetectScorer(args.model, sampling_model_name=args.sampling_model,
+                              device=device, max_length=args.max_length,
                               batch_size=args.batch_size, vocab_chunk=args.vocab_chunk)
 
     for start in range(0, len(todo), args.save_every):
