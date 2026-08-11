@@ -5,7 +5,7 @@ from collections import defaultdict
 import concurrent.futures
 import pandas as pd
 from openai_api import openai_oss_query
-from strategy import rewrite_strategy_Z
+from strategy import rewrite_strategy_FD
 
 model_name = "GPT OSS 120b"
 
@@ -13,7 +13,11 @@ if __name__ == "__main__":
     subsample_size = 20000
     category = "cs."
     train_years = [2020]
-    strategies = [("Z", rewrite_strategy_Z)]
+    # FD = Fast-DetectGPT method (single-call "v1" humanizing rewrite); a different
+    # method family than the PU/PN Z-strategies, so it gets its own column and its own
+    # output parquet suffix ("_fd_") rather than writing into the xyz artifact.
+    strategies = [("FD", rewrite_strategy_FD)]
+    rewrite_col = "rewrite_FD"
 
     abstract_col = "human_abstract"
 
@@ -23,7 +27,7 @@ if __name__ == "__main__":
         arxiv_data = pd.read_parquet(arxiv_path)
 
         n = len(arxiv_data)
-        ai_writing_Z = [None] * n
+        ai_writing_FD = [None] * n
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
 
@@ -47,10 +51,10 @@ if __name__ == "__main__":
             for fut in iterator:
                 tag, idx = future_to_key[fut]
                 result = fut.result()
-                ai_writing_Z[idx] = result[0]
+                ai_writing_FD[idx] = result[0]
 
-        arxiv_data["rewrite_Z"] = ai_writing_Z
+        arxiv_data[rewrite_col] = ai_writing_FD
         # import pdb; pdb.set_trace()
-        arxiv_data.to_parquet(f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_xyz_{category}_{subsample_size//2}_fronthalf.parquet")
+        arxiv_data.to_parquet(f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_{year}_fd_{category}_{subsample_size//2}_fronthalf.parquet")
 
         print(f"saved for year {year}")

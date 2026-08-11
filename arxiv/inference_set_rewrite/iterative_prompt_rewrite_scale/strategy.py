@@ -32,6 +32,11 @@ def rewrite_strategy_Z_2_PU(prompt_model, abstract, model_name):
 def rewrite_strategy_Z_2_PN(prompt_model, abstract, model_name):
     raise NotImplementedError
 
+# FD method (Fast-DetectGPT / curvature-based) -- separate family from PU/PN.
+# Real implementation lives in strategy_private.py; this is the public stub.
+def rewrite_strategy_FD(prompt_model, abstract, model_name):
+    raise NotImplementedError
+
 try:
     from strategy_private import *
 except ImportError:

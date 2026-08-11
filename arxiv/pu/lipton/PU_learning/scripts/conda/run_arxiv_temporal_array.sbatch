@@ -16,7 +16,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=48G
-#SBATCH --time=01:30:00
+#SBATCH --time=03:00:00
 #SBATCH --requeue
 #SBATCH --array=0-29%15
 #SBATCH --output=/share/garg/arxiv_kaggle/ConDA_temporal_logs/conda_temporal_%A_%a.out
