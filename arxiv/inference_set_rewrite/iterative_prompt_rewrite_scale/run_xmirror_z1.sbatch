@@ -3,8 +3,9 @@
 # These are Bedrock-API / network-bound, so we ask for modest CPUs+RAM but a long
 # wall-time so the full 10k-row pass always finishes.
 #
-#   sbatch run_xmirror_z1.sbatch PU
-#   sbatch run_xmirror_z1.sbatch PN
+#   sbatch run_xmirror_z1.sbatch <PU|PN> [iteration]   # iteration defaults to 1
+#   sbatch run_xmirror_z1.sbatch PN 2                  # v2 adversarial mirror
+#   sbatch run_xmirror_z1.sbatch PU 2
 #
 #SBATCH --job-name=xmirror_z1
 #SBATCH --account=garg
@@ -20,7 +21,8 @@ export TOKENIZERS_PARALLELISM=false
 PY=/home/kkr36/.conda/envs/llm_master/bin/python
 cd /home/kkr36/llm_detection/arxiv/inference_set_rewrite/iterative_prompt_rewrite_scale
 
-METHOD=${1:?usage: sbatch run_xmirror_z1.sbatch <PU|PN>}
-echo "=== node $(hostname) | method=${METHOD} | start $(date) ==="
-$PY -u rewrite_x_mirror_z1.py "${METHOD}"
-echo "=== done method=${METHOD} | end $(date) ==="
+METHOD=${1:?usage: sbatch run_xmirror_z1.sbatch <PU|PN> [iteration]}
+ITER=${2:-1}
+echo "=== node $(hostname) | method=${METHOD} | iter=${ITER} | start $(date) ==="
+$PY -u rewrite_x_mirror_z1.py "${METHOD}" "${ITER}"
+echo "=== done method=${METHOD} | iter=${ITER} | end $(date) ==="

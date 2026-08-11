@@ -19,7 +19,7 @@ if __name__ == "__main__":
     strategies = [("FD", rewrite_strategy_FD)]
     rewrite_col = "rewrite_FD"
 
-    abstract_col = "human_abstract"
+    abstract_col = "rewrite_X"
 
     for year in tqdm(train_years):
 

@@ -358,7 +358,7 @@ def get_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_size, 
 
     elif data_type == "xy":
         llm_col = f"rewrite_{llm}"
-        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_v2_cs._10000_fronthalf.parquet"
         train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pu_train", sentence, alpha, gemini, flip, seed, llm_col)
         test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "pu_val", sentence, alpha, gemini, flip, seed, llm_col)
         if clean:
@@ -778,7 +778,7 @@ def get_dataset_val2(data_dir, data_type, net_type, device, alpha, beta, batch_s
 
     elif data_type == "xy":
         llm_col = f"rewrite_{llm}"
-        val_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        val_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_v2_cs._10000_fronthalf.parquet"
         # import pdb; pdb.set_trace()
         test_texts, test_labels = read_arxiv_split_xy(val_path, llm, "cal", sentence, alpha, gemini, flip, seed, llm_col)
         if clean:
@@ -956,7 +956,7 @@ def get_PN_dataset(data_dir, data_type,net_type, device,  alpha, beta, batch_siz
 
     elif data_type == "xy":
         llm_col = f"rewrite_{llm}"
-        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_v2_cs._10000_fronthalf.parquet"
         train_texts, train_labels = read_arxiv_split_xy(data_path, llm, "pn_train", sentence, alpha, gemini, flip, seed, llm_col)
         test_texts, test_labels = read_arxiv_split_xy(data_path, llm, "cal", sentence, 0, gemini, flip, seed, llm_col)
         if clean:

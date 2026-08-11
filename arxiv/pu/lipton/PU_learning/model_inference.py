@@ -44,6 +44,13 @@ data_dir = '/share/garg/arxiv_kaggle'
 
 _RAID_PATH = '/share/garg/arxiv_kaggle/raid_train.parquet'
 _RAID_EVAL_FRAC = 0.25
+
+# xy eval parquet: default keeps the original (old) file so every existing caller of
+# get_preds_xy / get_u_data_xy is unaffected; set XY_EVAL_PARQUET to opt in to v2 (or any
+# future iteration's regenerated parquet). Read at call time.
+_XY_EVAL_PARQUET_DEFAULT = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+def _xy_eval_parquet():
+    return os.environ.get("XY_EVAL_PARQUET", _XY_EVAL_PARQUET_DEFAULT)
 _RAID_N_POS = 1000  # rows reserved for confirmed-positive P-set
 
 _RAID_EVAL_CACHE: dict = {}
@@ -598,7 +605,7 @@ def get_u_data_llm(data_type, test_alpha, test_year, test_llm, sentence, clean, 
     return u_data_loader, u_texts, u_labels
 
 def get_u_data_xy(test_alpha, flip, seed, sentence, clean, llm_col):
-    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+    data_path = _xy_eval_parquet()
     arxiv_data = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
     cal_data = arxiv_data.iloc[-2000:].reset_index(drop=True)
 
@@ -667,7 +674,7 @@ def get_preds_llm(data_type, net, device, test_alpha, test_year, test_llm, sente
     return pos_probs, unlabeled_probs, unlabeled_targets
 
 def get_preds_xy(net, device, test_alpha, flip, seed, sentence, clean, llm_col):
-    data_path = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+    data_path = _xy_eval_parquet()
     arxiv_data = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
     cal_data = arxiv_data.iloc[-2000:].reset_index(drop=True)
 

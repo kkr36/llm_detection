@@ -16,7 +16,10 @@ if __name__ == "__main__":
 
             for seed in seeds:
                 lr = 0.00001
-                llm_vals = ["Y", "xz", "xzz", "xzzz", "X", "Z"][3:4] if train_method == "TEDn" else ["X", "Y", "xz", "xzz", "xzzz", "Z"][4:5]
+                # v2 parquet only carries iteration-1 mirror cols (rewrite_Z_1_{PU,PN});
+                # xzz -> [rewrite_X, rewrite_Z, rewrite_Z_1_{method}]. xzzz would need the
+                # absent rewrite_Z_2_* cols, so both methods train the single iter-1 value.
+                llm_vals = ["xzz"]
                 for llm_val in llm_vals:
                     cmd = f"python train_PU_one_year.py --lr={lr} --momentum=0 --data-type='xy' --train-method={train_method} --net-type='DistilBert' --epochs=3 --optimizer=AdamW --alpha={alpha} --beta=.6 --year={year} --log-dir=logging_accuracy_xy/normal_sentence/alpha_{alpha}/{seed}/{llm_val} --seed={seed} --clean --llm={llm_val} {'--flip' if train_method=='TEDn' else ''}"
 

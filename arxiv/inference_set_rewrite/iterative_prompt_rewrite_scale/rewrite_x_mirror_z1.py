@@ -1,24 +1,32 @@
 """
 rewrite_x_mirror_z1.py
 ----------------------
-Parallel driver (does NOT touch the xy / xyz / fd artifacts).
+In-place, single-parquet driver (same construction as rewrite_z_n_method.py):
+reads ONE target parquet, computes the Z adversarial mirror of the naive-AI column
+`rewrite_X` for a given (method, iteration), ADDS it as a new column
+`rewrite_Z_{iteration}_{method}`, and writes the parquet back to the SAME path.
+Existing columns are preserved; re-running a given (method, iteration) just
+overwrites that one column.
 
-Applies the Z adversarial strategy at ITERATION 1 to the naive-AI column
-`rewrite_X` (a "mirror" of rewrite_X), for a given method (PU or PN). This mirrors
-the tuning setup in iterative_prompt_rewrite_test_fastdetect_gpt, where the
-adversarial prompt was applied to AI text (mirror_0), not to human_abstract. The
-human side of the eventual training pair stays `human_abstract`, which is carried
-through unchanged.
+Reusable across iterations -- pass the iteration on the command line, so the same
+script generates the v2 adversarial mirrors once those Z_2 prompts exist:
 
-Method is taken from argv so PU and PN can be launched as two independent jobs that
-write to two separate files (no shared-write race):
+    python rewrite_x_mirror_z1.py PU        # method=PU, iteration=1 (default)
+    python rewrite_x_mirror_z1.py PN 1      # method=PN, iteration=1
+    python rewrite_x_mirror_z1.py PU 2      # method=PU, iteration=2 (v2 mirror)
+    python rewrite_x_mirror_z1.py PN 2
 
-    python rewrite_x_mirror_z1.py PU
-    python rewrite_x_mirror_z1.py PN
+NOTE: this is a read-modify-write on a single file, so run ONE (method, iteration)
+at a time. Do NOT run two invocations against the same parquet concurrently, or the
+later writer will clobber the other's freshly added column.
 
-Input : arxiv_{year}_xy_{category}_{half}_fronthalf.parquet   (read-only)
-Output: arxiv_{year}_xmirror_z1_{method}_{category}_{half}_fronthalf.parquet   (new)
-        adds column rewrite_Z_1_{method} = Z@iter1 applied to rewrite_X.
+Mirrors `rewrite_X` (naive AI text), NOT human_abstract -- matching the tuning
+setup where the adversarial prompt was applied to AI text. human_abstract is carried
+through untouched as the human side of the eventual training pair.
+
+Target (read + written in place):
+    arxiv_{year}_xyz_v2_{category}_{half}_fronthalf.parquet
+It must already exist and contain the `rewrite_X` column to mirror.
 """
 import sys
 import concurrent.futures
@@ -35,21 +43,29 @@ if __name__ == "__main__":
     category = "cs."
     train_years = [2020]
 
-    iteration = 1                       # "adversarial prompt Z at timestep 1"
     method = sys.argv[1] if len(sys.argv) > 1 else "PU"
+    iteration = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     assert method in ("PU", "PN"), f"method must be PU or PN, got {method!r}"
+    assert iteration in z_mapping[method], (
+        f"no Z strategy for method={method} iteration={iteration}; "
+        f"available iterations: {sorted(z_mapping[method])}"
+    )
     strategy_fn = z_mapping[method][iteration]
-    full_col_name = f"Z_{iteration}_{method}"      # -> column rewrite_Z_1_PU / rewrite_Z_1_PN
+    new_col = f"rewrite_Z_{iteration}_{method}"   # e.g. rewrite_Z_1_PU, rewrite_Z_2_PN
 
-    source_col = "rewrite_X"            # mirror the naive-AI column, NOT human_abstract
+    source_col = "rewrite_X"        # mirror the naive-AI column, NOT human_abstract
 
     for year in tqdm(train_years, desc="years"):
-        # Read the xy base (read-only). It carries human_abstract, rewrite_X, rewrite_Y.
-        in_path = (
+        # Single target parquet, read + written in place (same construction as
+        # rewrite_z_n_method.py). Must already exist and contain `source_col`.
+        target_path = (
             f"/share/garg/arxiv_kaggle/multillm/data_raw/"
-            f"arxiv_{year}_xy_{category}_{subsample_size//2}_fronthalf.parquet"
+            f"arxiv_{year}_xyz_v2_{category}_{subsample_size//2}_fronthalf.parquet"
         )
-        arxiv_data = pd.read_parquet(in_path)
+        arxiv_data = pd.read_parquet(target_path)
+        assert source_col in arxiv_data.columns, (
+            f"{target_path} has no '{source_col}' column to mirror"
+        )
 
         n = len(arxiv_data)
         rewrites = [None] * n
@@ -66,17 +82,12 @@ if __name__ == "__main__":
             for fut in tqdm(
                 concurrent.futures.as_completed(futures),
                 total=n,
-                desc=f"mirror rewrite_X -> rewrite_{full_col_name} ({method})",
+                desc=f"mirror {source_col} -> {new_col}",
             ):
                 i, new_text = fut.result()
                 rewrites[i] = new_text
 
-        arxiv_data[f"rewrite_{full_col_name}"] = rewrites
-
-        # Parallel, per-method output file. Never overwrites xy / xyz / fd.
-        out_path = (
-            f"/share/garg/arxiv_kaggle/multillm/data_raw/"
-            f"arxiv_{year}_xmirror_z{iteration}_{method}_{category}_{subsample_size//2}_fronthalf.parquet"
-        )
-        arxiv_data.to_parquet(out_path)
-        print(f"saved {out_path}")
+        # Add (or overwrite) just this one column, then write back to the SAME path.
+        arxiv_data[new_col] = rewrites
+        arxiv_data.to_parquet(target_path)
+        print(f"saved column {new_col} into {target_path}")
