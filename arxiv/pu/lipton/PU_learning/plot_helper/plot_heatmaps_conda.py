@@ -45,9 +45,15 @@ LLM_ORDER = ["GPT OSS 120b", "Gemini 3 Preview", "Llama 3.3 70b Instruct", "Qwen
 PLOT_METRICS = ["auc", "accuracy", "tpr", "tnr", "bce", "bbe", "plugin-int"]
 BINARY_METRICS = {"auc", "accuracy", "pos_prob", "neg_prob", "bce", "tpr", "tnr"}
 NAME_TO_NAME = {
-    "auc": "AUC", "accuracy": "Bal. Accuracy", "tpr": "TPR", "tnr": "TNR",
-    "bce": "Bal. Cross-Entropy", "bbe": "Bias", "plugin-int": "Bias Avg P(AI)",
+    "auc": "AUC", "accuracy": "Bal. Accuracy", "tpr": "Human Recall (TPR)",
+    "tnr": "AI Recall (TNR)", "pos_prob": "Avg. P(human | human)",
+    "neg_prob": "Avg. P(human | AI)", "bce": "Bal. Cross-Entropy",
+    "bbe": "Bias", "plugin-int": "Bias Avg P(AI)",
 }
+
+# Unseen-generalization grid: metrics averaged over the LLMs NOT seen in training.
+UNSEEN_CSV = "../logging_accuracy_llm_conda_unseen.csv"
+UNSEEN_METRICS = ["auc", "accuracy", "tpr", "tnr", "pos_prob", "neg_prob", "bce", "bbe", "plugin-int"]
 
 
 def fmt(v):
@@ -174,6 +180,97 @@ def make_heatmaps(df, metrics, title=True):
         print(f"Saved {save_path}")
 
 
+def _prep_unseen_df(path=UNSEEN_CSV):
+    """Load the unseen-eval CSV and normalize (same metric conventions as the base fig)."""
+    df = pd.read_csv(path)
+    df = add_accuracy_cols(df)
+    df = reverse_bias(reverse_plugin(df))
+    df["llm1_norm"] = df["train_llm"].str.split("|").str[0].map(TRAIN_TO_SPACE)
+    df["llm2_norm"] = df["train_llm"].str.split("|").str[1].map(TRAIN_TO_SPACE)
+    return df
+
+
+def _unseen_pivot(df, metric, ci_level=0.95):
+    """5x5 pivot (rows=source LLM1, cols=unlabeled LLM2); each cell = the metric
+    AVERAGED over the models' UNSEEN test LLMs (those != LLM1 and != LLM2).
+    Also returns averaged lower/upper CI bounds. Diagonal is left blank."""
+    lo_col, hi_col = f"{metric}_l_{ci_level}", f"{metric}_u_{ci_level}"
+    agg = {"point": (metric, "mean")}
+    if lo_col in df.columns:
+        agg["lo"] = (lo_col, "mean")
+    if hi_col in df.columns:
+        agg["hi"] = (hi_col, "mean")
+    g = df.groupby(["llm1_norm", "llm2_norm"]).agg(**agg).reset_index()
+
+    def piv(col):
+        if col not in g.columns:
+            return None
+        return g.pivot(index="llm1_norm", columns="llm2_norm", values=col).reindex(
+            index=LLM_ORDER, columns=LLM_ORDER)
+
+    return piv("point"), piv("lo"), piv("hi")
+
+
+def make_unseen_heatmap_grid(metrics=UNSEEN_METRICS, ci=True, title=True):
+    """Big grid of 5x5 heatmaps (one per metric). Each cell = mean metric over the
+    test LLMs unseen during that model's training. Saved as heatmap_unseen_grid.pdf."""
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+    df = _prep_unseen_df()
+
+    n = len(metrics)
+    ncols = 3
+    nrows = math.ceil(n / ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(11 * ncols, 9 * nrows), squeeze=False)
+    axf = axes.flatten()
+
+    for idx, metric in enumerate(metrics):
+        ax = axf[idx]
+        point, lower, upper = _unseen_pivot(df, metric)
+        plot_df = point.copy()
+        if metric == "bbe":
+            plot_df = plot_df - 0.5
+            if lower is not None: lower = lower - 0.5
+            if upper is not None: upper = upper - 0.5
+
+        annot = plot_df.copy().astype(object)
+        for i in range(plot_df.shape[0]):
+            for j in range(plot_df.shape[1]):
+                v = plot_df.iloc[i, j]
+                if pd.isna(v):
+                    annot.iloc[i, j] = ""
+                elif ci and lower is not None and upper is not None and not pd.isna(lower.iloc[i, j]):
+                    annot.iloc[i, j] = f"{fmt(v)}\n[{fmt(lower.iloc[i, j])}, {fmt(upper.iloc[i, j])}]"
+                else:
+                    annot.iloc[i, j] = fmt(v)
+
+        plot_df_r = plot_df.rename(index=DISPLAY, columns=DISPLAY)
+        annot_r = annot.rename(index=DISPLAY, columns=DISPLAY)
+        cmap, vmin, vmax, center = _cmap_settings(metric, plot_df_r)
+
+        sns.heatmap(plot_df_r, annot=annot_r, fmt="", cmap=cmap, center=center,
+                    vmin=vmin, vmax=vmax, ax=ax, annot_kws={"size": 15},
+                    cbar_kws={"shrink": 0.8})
+        ax.collections[0].colorbar.ax.yaxis.set_major_formatter(
+            matplotlib.ticker.FuncFormatter(lambda x, _: fmt(x)))
+        ax.set_title(NAME_TO_NAME.get(metric, metric), fontsize=22, fontweight="bold")
+        ax.set_xlabel("Unlabeled target LLM 2", fontsize=16, fontweight="bold")
+        ax.set_ylabel("Labeled source LLM 1", fontsize=16, fontweight="bold")
+        ax.tick_params(labelsize=13)
+
+    for k in range(n, len(axf)):
+        axf[k].set_visible(False)
+
+    if title:
+        fig.suptitle("ConDA generalization to UNSEEN LLMs — metric averaged over LLMs "
+                     "absent from both source & target", fontsize=24, fontweight="bold")
+    plt.tight_layout(rect=[0, 0, 1, 0.98] if title else None)
+    save_path = os.path.join(OUTPUT_FOLDER, "heatmap_unseen_grid.pdf")
+    plt.savefig(save_path, format="pdf", bbox_inches="tight")
+    plt.clf()
+    plt.close(fig)
+    print(f"Saved {save_path}")
+
+
 if __name__ == "__main__":
     present = [f for f in INPUT_FILES if os.path.exists(f)]
     df = pd.concat([pd.read_csv(f) for f in present], ignore_index=True)
@@ -184,3 +281,6 @@ if __name__ == "__main__":
     df["llm1_norm"] = df["llm1"].map(TRAIN_TO_SPACE)
     df["llm2_norm"] = df["llm2"].map(TRAIN_TO_SPACE)
     make_heatmaps(df, PLOT_METRICS, title=True)
+
+    # New: unseen-generalization grid (averaged over each model's unseen test LLMs)
+    make_unseen_heatmap_grid(UNSEEN_METRICS, ci=True, title=True)
