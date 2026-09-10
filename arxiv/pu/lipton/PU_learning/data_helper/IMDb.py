@@ -745,8 +745,8 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
     return final_texts, final_labels
 
 def _is_xz_col(llm_col):
-    """Returns True for llm_col values like 'rewrite_xz', 'rewrite_xzz', 'rewrite_xzzz', etc."""
-    return bool(re.match(r'^rewrite_xz+$', llm_col))
+    """Returns True for iterative xz modes and the strategy-Z iteration-0 mode."""
+    return llm_col == "rewrite_xz0" or bool(re.match(r'^rewrite_xz+$', llm_col))
 
 def _is_xz_float_col(llm_col):
     """Matches 'rewrite_xz_.5', 'rewrite_xz_0.5', 'rewrite_xz_1', 'rewrite_xz_1.', 'rewrite_xz_1.0', etc."""
@@ -796,8 +796,11 @@ def _interleave_xz_cols(df_slice, llm_col, method):
          'rewrite_xzz'  -> [rewrite_X, rewrite_Z, rewrite_Z_1_{method}]
          'rewrite_xzzz' -> [rewrite_X, rewrite_Z, rewrite_Z_1_{method}, rewrite_Z_2_{method}]
     """
-    n_zs = llm_col.count('z')
-    cols = ["rewrite_X", "rewrite_Z"] + [f"rewrite_Z_{t}_{method}" for t in range(1, n_zs)]
+    if llm_col == "rewrite_xz0":
+        cols = ["rewrite_X", "rewrite_strategy_Z_0"]
+    else:
+        n_zs = llm_col.count('z')
+        cols = ["rewrite_X", "rewrite_Z"] + [f"rewrite_Z_{t}_{method}" for t in range(1, n_zs)]
     k = len(cols)
     n = len(df_slice)
     chunk = n // k
@@ -1009,12 +1012,19 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
             labels = [1 for _ in range(len(positive_texts))] + [0 for _ in range(len(u_positive_texts) + len(u_negative_texts))]
         
     else:
-        assert(False)
-        # if "pn" in split or "cal" in split:
-        #     texts = human_writing + ai_writing
-        #     labels = [0 for _ in range(len(human_writing))] + [1 for _ in range(len(ai_writing))]
-        #     print(f"Pollution {split}: {len(wrong_labels_subset)} / {len(wrong_labels_subset)}+ {len(right_labels_subset)} = {len(wrong_labels_subset) / (len(right_labels_subset) + len(wrong_labels_subset))}")
-        # elif "pu" in split:
+        # abstract-level: whole abstracts, no sentence splitting.
+        if "pn" in split or "cal" in split:
+            # PN (alpha=0) / cal: balanced human (label 0) + AI (label 1) abstracts.
+            # For a plain llm_col (e.g. rewrite_X) human_writing and ai_writing are the
+            # same length (4000/4000 pn_train, 2000/2000 cal) => classes are balanced.
+            texts = human_writing + ai_writing
+            labels = [0 for _ in range(len(human_writing))] + [1 for _ in range(len(ai_writing))]
+            print(f"abstract-level {split}: {len(human_writing)} human + {len(ai_writing)} ai "
+                  f"(balanced={len(human_writing) == len(ai_writing)})")
+        elif "pu" in split:
+            raise NotImplementedError(
+                "abstract-level PU split is not implemented for read_arxiv_split_xy; "
+                "abstract-level is supported for PN (alpha=0) and cal only.")
 
     # import pdb; pdb.set_trace()
 

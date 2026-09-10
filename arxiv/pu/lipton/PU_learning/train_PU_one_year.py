@@ -25,8 +25,9 @@ import matplotlib
 from matplotlib import pyplot as plt
 matplotlib.rc('font', **font)
 
-from algorithm import * 
-from model_helper import * 
+from algorithm import *
+from algorithm_ttt import *
+from model_helper import *
 from helper import *
 from estimator import *
 from baselines import *
@@ -73,6 +74,9 @@ parser.add_argument('--lambda-p',  type=float, default=0.25, help='Loss weight f
 parser.add_argument('--lambda-n',  type=float, default=0.25, help='Loss weight for labeled negatives (PNU only)')
 parser.add_argument('--lambda-up', type=float, default=0.25, help='Loss weight for pseudo-positive unlabeled (PNU only)')
 parser.add_argument('--lambda-un', type=float, default=0.25, help='Loss weight for pseudo-negative unlabeled (PNU only)')
+
+# test-time-training args
+parser.add_argument('--mlm-weight', type=float, default=1.0, help='Weight of the auxiliary MLM self-supervision loss (PN_TTT only)')
 
 
 save_dir_cal = "/home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning/figs"
@@ -143,6 +147,7 @@ lambda_p  = args.lambda_p
 lambda_n  = args.lambda_n
 lambda_up = args.lambda_up
 lambda_un = args.lambda_un
+mlm_weight = args.mlm_weight
 
 # val_alphas = [0.01,.05,.1,.2,.3,.5]
 # val_alphas = [0, .1, .25, .5]
@@ -176,7 +181,7 @@ outfile= open(file_name, 'w')
 
 varied_vals = {}
 
-if train_method=='PN':
+if train_method in ('PN', 'PN_TTT'):
     # import pdb; pdb.set_trace()
     u_trainloader, u_validloader, net= get_PN_dataset(data_dir, data_type,net_type, device, alpha, beta, batch_size, year, sentence, ft, clean, gemini, flip, combine, add, seed, llm, codex=codex)
     # import pdb; pdb.set_trace()
@@ -915,13 +920,18 @@ elif train_method=='nnPU':
         outfile.write("{}, {}, {}\n".format(epoch, train_acc, valid_acc))
         outfile.flush()
 
-elif train_method=="PN": 
+elif train_method in ("PN", "PN_TTT"):
 
     for epoch in tqdm(list(range(epochs))):
         # import pdb; pdb.set_trace()
 
-        train_acc = train_PN(epoch, net, u_trainloader, \
-                optimizer=optimizer, criterion=criterion, device=device, show_bar=True)
+        if train_method == "PN_TTT":
+            train_acc = train_PN_ttt(epoch, net, u_trainloader, \
+                    optimizer=optimizer, criterion=criterion, device=device, \
+                    mlm_weight=mlm_weight, show_bar=True)
+        else:
+            train_acc = train_PN(epoch, net, u_trainloader, \
+                    optimizer=optimizer, criterion=criterion, device=device, show_bar=True)
 
         valid_acc = validate(epoch, net, u_validloader, \
                 criterion=criterion, device=device, threshold=0.5, show_bar=True)

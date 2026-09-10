@@ -1,26 +1,13 @@
-"""
-Iteration-parametrized re-evaluation of the two adversarial-mirror rows from
-logging_accuracy_xz.csv, on the v2 (regenerated) arXiv parquet.
+"""Evaluate the two requested detector rows on strategy-Z iteration 0.
 
-For a given rewrite iteration k (env REWRITE_ITER, default 1; also accepts argv[1]):
-  TEDn row: train_llm = "x" + "z"*(k+1), eval on rewrite_Z_{k}_PU   (alpha=0.25, flip=True)
-  PN   row: train_llm = "x" + "z"*k,     eval on rewrite_Z_{k}_PN   (alpha=0,    flip=False)
+Rows:
+  TEDn: train_llm=xz0, evaluated on rewrite_strategy_Z_0.
+  PN:   train_llm=X, evaluated on rewrite_strategy_Z_0.
 
-  k=1 -> (TEDn xzz -> rewrite_Z_1_PU), (PN xz  -> rewrite_Z_1_PN)
-  k=2 -> (TEDn xzzz-> rewrite_Z_2_PU), (PN xzz -> rewrite_Z_2_PN)   [needs Z_2 regenerated + models trained]
-
-The eval parquet is selected via the XY_EVAL_PARQUET env var (consumed inside model_inference's
-get_preds_xy / get_u_data_xy). Point it at the v2 parquet before running.
-
-Differences vs prepare_optimization.py (everything else — get_metrics, model loading, bootstrap
-CIs, n_bootstrap — is identical so numbers stay comparable):
-  * configs are built from the iteration k (not a hardcoded 9-entry list)
-  * output_csv = logging_accuracy_xz_v2.csv (appended; original csv untouched)
-  * prediction cache namespaced under predictions/optimization_v2/ (old optimization/ preserved)
-  * guardrails fail loudly if the eval column or the trained models are missing for this k
+Both use the v2 parquet, five seeds, and the same metrics/bootstrap settings as
+prepare_optimization.py. Results append directly to logging_accuracy_xz.csv.
 """
 import os
-import sys
 import pandas as pd
 from pathlib import Path
 import numpy as np
@@ -35,6 +22,9 @@ import torch
 
 
 PREDS_BASE = "/share/garg/arxiv_kaggle/predictions"
+V2_PARQUET = "/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_v2_cs._10000_fronthalf.parquet"
+os.environ["XY_EVAL_PARQUET"] = V2_PARQUET
+
 
 def save_preds(path, pos_probs, unlabeled_probs, unlabeled_targets):
     if os.path.exists(path):
@@ -93,44 +83,31 @@ seeds = [0, 1, 2, 3, 4]
 test_alpha = 0.5
 test_cis = [.9, .95, .99]
 
-# Rewrite iteration k (which rewrite_Z_{k}_{method} adversarial column to evaluate on).
-ITER = int(os.environ.get("REWRITE_ITER", sys.argv[1] if len(sys.argv) > 1 else 1))
-
-# Per-iteration configs (see module docstring / logging_accuracy_xz.csv rows 2 & 6 for k=1):
-#   TEDn train_llm has (k+1) z's; PN train_llm has k z's; both eval on rewrite_Z_{k}_{method}.
 configs = [
-    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "x" + "z" * (ITER + 1), "eval_cols": [f"rewrite_Z_{ITER}_PU"]},
-    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "x" + "z" * ITER,       "eval_cols": [f"rewrite_Z_{ITER}_PN"]},
+    {"train_method": "TEDn", "train_alpha": 0.25, "flip": True,  "llm": "xz0", "eval_cols": ["rewrite_strategy_Z_0"]},
+    {"train_method": "PN",   "train_alpha": 0,    "flip": False, "llm": "X",   "eval_cols": ["rewrite_strategy_Z_0"]},
 ]
 
 ### LOGIC ###
 
 eval_parquet = _xy_eval_parquet()
-print(f"[prepare_optimization_v2] iteration k={ITER} | eval parquet = {eval_parquet}")
+print(f"[prepare_optimization_v2] eval parquet = {eval_parquet}")
 print(f"[prepare_optimization_v2] configs = {configs}")
 
-# Guardrail 1: the eval columns for this iteration must exist in the eval parquet.
 available_cols = set(pq.read_schema(eval_parquet).names)
-for cfg in configs:
-    for col in cfg["eval_cols"]:
-        if col not in available_cols:
-            m = "PU" if col.endswith("_PU") else "PN"
-            raise SystemExit(
-                f"Eval column '{col}' not found in {eval_parquet}.\n"
-                f"Regenerate it first, e.g.:\n"
-                f"  sbatch arxiv/inference_set_rewrite/iterative_prompt_rewrite_scale/run_xmirror_z1.sbatch {m}\n"
-                f"  (or: python rewrite_x_mirror_z1.py {m} {ITER})\n"
-                f"then rerun this eval for iteration k={ITER}."
-            )
+required_cols = {"human_abstract", "rewrite_X", "rewrite_strategy_Z_0"}
+missing_cols = required_cols - available_cols
+if missing_cols:
+    raise SystemExit(f"Missing required columns in {eval_parquet}: {sorted(missing_cols)}")
 
-output_csv = "logging_accuracy_xz_v2.csv"
+output_csv = "logging_accuracy_xz.csv"
 
 if os.path.exists(output_csv):
     metrics_df = pd.read_csv(output_csv)
 else:
     metrics_df = pd.DataFrame()
 
-run_id = len(metrics_df)
+run_id = 0 if metrics_df.empty else int(pd.to_numeric(metrics_df["run_id"]).max()) + 1
 
 for cfg in configs:
     train_method = cfg["train_method"]
@@ -138,6 +115,17 @@ for cfg in configs:
     flip = cfg["flip"]
     llm = cfg["llm"]
 
+
+    if not metrics_df.empty:
+        duplicate_mask = (
+            metrics_df["learning_method"].eq(train_method)
+            & metrics_df["data_type"].eq("xy")
+            & metrics_df["train_llm"].eq(llm)
+            & metrics_df["eval_llm"].eq(cfg["eval_cols"][0])
+        )
+        if duplicate_mask.any():
+            print(f"Skipping existing row: {train_method}, {llm}, {cfg['eval_cols'][0]}")
+            continue
     nets = {}
     model_path = None
     for seed in seeds:
@@ -145,11 +133,8 @@ for cfg in configs:
         pts = ([p for p in alpha_dir.iterdir()
                 if p.is_file() and p.name.lower().endswith(".pt") and train_method in p.name]
                if alpha_dir.is_dir() else [])
-        # Guardrail 2: the trained models for this (method, llm) must exist for iteration k.
         assert len(pts) == 1, (
-            f"Expected 1 {train_method} .pt for seed {seed} in {alpha_dir}, found {len(pts)}.\n"
-            f"For iteration k={ITER} you must first train TEDn llm='x'+'z'*(k+1) and "
-            f"PN llm='x'+'z'*k on the v2 parquet (run_xy_v2_array.sbatch pattern)."
+            f"Expected 1 {train_method} .pt for seed {seed} in {alpha_dir}, found {len(pts)}."
         )
         model_path = pts[0]
 
@@ -192,8 +177,6 @@ for cfg in configs:
             "sentence": sentence,
             "epochs": epochs,
             "model_dir": str(alpha_dir),
-            "iteration": ITER,
-            "eval_parquet": eval_parquet,
             "run_id": run_id,
         }
 

@@ -4,6 +4,7 @@
 # wall-time so the full 10k-row pass always finishes.
 #
 #   sbatch run_xmirror_z1.sbatch <PU|PN> [iteration]   # iteration defaults to 1
+#   sbatch run_xmirror_z1.sbatch Z                     # plain rewrite_strategy_Z mirror
 #   sbatch run_xmirror_z1.sbatch PN 2                  # v2 adversarial mirror
 #   sbatch run_xmirror_z1.sbatch PU 2
 #
@@ -21,8 +22,12 @@ export TOKENIZERS_PARALLELISM=false
 PY=/home/kkr36/.conda/envs/llm_master/bin/python
 cd /home/kkr36/llm_detection/arxiv/inference_set_rewrite/iterative_prompt_rewrite_scale
 
-METHOD=${1:?usage: sbatch run_xmirror_z1.sbatch <PU|PN> [iteration]}
-ITER=${2:-1}
+METHOD=${1:?usage: sbatch run_xmirror_z1.sbatch <PU|PN|Z> [iteration]}
+if [[ ${METHOD} == Z && $# -lt 2 ]]; then
+  ITER=0
+else
+  ITER=${2:-1}
+fi
 echo "=== node $(hostname) | method=${METHOD} | iter=${ITER} | start $(date) ==="
 $PY -u rewrite_x_mirror_z1.py "${METHOD}" "${ITER}"
 echo "=== done method=${METHOD} | iter=${ITER} | end $(date) ==="

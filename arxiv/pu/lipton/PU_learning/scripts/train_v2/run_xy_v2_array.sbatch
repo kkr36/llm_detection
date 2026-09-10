@@ -33,7 +33,7 @@ cd /home/kkr36/llm_detection/arxiv/pu/lipton/PU_learning
 mkdir -p /share/garg/arxiv_kaggle/xy_v2_logs
 
 EPOCHS=3
-LLM=xzz
+LLM=${LLM:-xzz}
 
 # --- decode array task id into (train_method, seed) ---
 tid=$SLURM_ARRAY_TASK_ID

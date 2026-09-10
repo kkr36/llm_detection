@@ -23,6 +23,11 @@ arxiv/inference_set_rewrite/iterative_prompt_rewrite_test_pangram_z_1_failed/
 arxiv/inference_set_rewrite/iterative_prompt_rewrite_test_pangram_z_1_failed_2/
 arxiv/inference_set_rewrite/ngram_overlap_plots/
 arxiv/inference_set_rewrite/old_csvs/
+arxiv/inference_set_rewrite/iterative_prompt_rewrite_pangram_3_3_2/
+arxiv/inference_set_rewrite/iterative_prompt_rewrite_pangram_3_3_2_cs_indist_backup_20260831/
+arxiv/inference_set_rewrite/iterative_prompt_rewrite_pangram_3_3_2_swapped/
+arxiv/inference_set_rewrite/iterative_prompt_rewrite_pangram_4/
+arxiv/inference_set_rewrite/iterative_prompt_rewrite_pangram_4_gemini/
 arxiv/inference_set_rewrite/threshold_sensitivity_plots/
 
 # arxiv/pu/lipton subdirectories to ignore
@@ -33,6 +38,8 @@ arxiv/pu/lipton/PU_code/
 *strategy_private.py
 
 # file patterns
+*.jsonl
+*.out
 *.pdf
 *.csv
 *.png

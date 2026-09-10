@@ -20,6 +20,9 @@ def rewrite_strategy_Y(prompt_model, abstract, model_name):
 def rewrite_strategy_Z(prompt_model, abstract, model_name):
     raise NotImplementedError
 
+def rewrite_strategy_Z_332(prompt_model, abstract, model_name):
+    raise NotImplementedError
+
 def rewrite_strategy_Z_1_PU(prompt_model, abstract, model_name):
     raise NotImplementedError
 

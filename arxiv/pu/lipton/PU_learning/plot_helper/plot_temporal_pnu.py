@@ -265,6 +265,72 @@ def plot_temporal_combined(data, show_title=False):
     plt.clf()
 
 
+def plot_temporal_human_recall(data, show_title=False):
+    """Write the human-recall panel as a standalone figure."""
+    from matplotlib.lines import Line2D
+
+    rows_2010 = data[
+        (data["train_year"] == 2010)
+        & (data["train_alpha"] == 0)
+        & (data["test_alpha"] == 0.5)
+    ]
+    pn_2010 = rows_2010[rows_2010["learning_method"] == "PN"]
+
+    rows_retrain = data[data["train_year"] == data["test_year"]]
+    tedn_retrain = rows_retrain[rows_retrain["learning_method"] == "TEDn"]
+    pnu_retrain = rows_retrain[rows_retrain["learning_method"] == "PNU"]
+
+    series = [
+        ("Supervised 2010", pn_2010, "red", "--"),
+        ("PU + TTA", tedn_retrain, "steelblue", "-"),
+        ("PNU + TTA", pnu_retrain, "forestgreen", "-"),
+    ]
+    metric = "tnr"
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for _, subset, color, linestyle in series:
+        subset = subset.sort_values("test_year")
+        ax.plot(
+            subset["test_year"],
+            subset[metric],
+            linestyle=linestyle,
+            color=color,
+            linewidth=2.5,
+        )
+        ax.fill_between(
+            subset["test_year"],
+            subset[f"{metric}_l_0.95"],
+            subset[f"{metric}_u_0.95"],
+            alpha=0.2,
+            color=color,
+        )
+
+    ax.set_xticks([2010, 2015, 2020])
+    ax.set_xlabel(name_to_name["test_year"])
+    ax.set_ylabel(name_to_name[metric])
+
+    legend_handles = [
+        Line2D([0], [0], color=color, linestyle=linestyle, linewidth=2.5, label=label)
+        for label, _, color, linestyle in series
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center",
+        ncol=3,
+        bbox_to_anchor=(0.5, 1.15),
+        frameon=False,
+    )
+
+    if show_title:
+        fig.suptitle(name_to_name[metric], fontweight="bold")
+
+    plt.tight_layout()
+    save_folder = f"{output_folder}/titled" if show_title else output_folder
+    os.makedirs(save_folder, exist_ok=True)
+    plt.savefig(f"{save_folder}/human_recall.pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_temporal_alpha_grid(data, metrics, show_title=True):
     """Single PDF with one subplot per metric for the temporal_alpha line plots."""
     rows_2010 = data[(data["train_year"] == 2010) & (data["train_alpha"] == 0) & (data["test_alpha"] == 0.5)]
@@ -363,4 +429,5 @@ if __name__ == "__main__":
         # plot_temporal_alpha(data, plot_metrics, show_title=title)
         # plot_temporal_james(data, ["bbe"], show_title=title)
     plot_temporal_combined(data, show_title=False)
+    plot_temporal_human_recall(data, show_title=False)
     plot_temporal_alpha_grid(data, plot_metrics, False)
