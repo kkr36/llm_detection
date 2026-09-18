@@ -29,9 +29,15 @@ echo "=== node $(hostname) | GPUs: $(nvidia-smi --query-gpu=index,name --format=
 export TTT_TAG=${TTT_TAG:-abstract}
 export TTT_EPOCHS=${TTT_EPOCHS:-1}
 
-MODES=(none episodic online)
+# Modes to run (subset of none/episodic/online). Env-overridable via TTT_MODES; accepts
+# '+', ',' or space separators (e.g. TTT_MODES=none+online to skip episodic). One GPU per
+# mode -- size --gres to match the number of modes. Default: all three (back-compatible).
+_modes_str="${TTT_MODES:-none episodic online}"
+_modes_str="${_modes_str//[+,]/ }"
+read -r -a MODES <<< "$_modes_str"
+echo "modes: ${MODES[*]}"
 pids=()
-for i in 0 1 2; do
+for i in "${!MODES[@]}"; do
     m=${MODES[$i]}
     echo "launching mode=$m on local GPU $i"
     CUDA_VISIBLE_DEVICES=$i TTT_MODE=$m $PY -u eval_TEDn_X_rewrite_Z_ttt.py \

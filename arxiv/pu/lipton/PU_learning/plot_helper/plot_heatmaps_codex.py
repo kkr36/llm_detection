@@ -31,6 +31,8 @@ LLMS_CODEX = ["Llama 3.3 70b Instruct", "Gemini 3 Preview", "GPT OSS 120b", "Qwe
 # Grid panel order — identical to the reference gemini grid (plot_heatmaps.py's
 # gemini plot_metrics): includes AI Recall (tnr) as a panel.
 GRID_METRICS = ["auc", "accuracy", "pos_prob", "neg_prob", "bce", "tpr", "tnr", "bbe", "plugin-int"]
+# Same order, but excluding tnr -> 8 panels.
+GRID_METRICS_NO_TNR = [m for m in GRID_METRICS if m != "tnr"]
 
 label_rename_codex = {
     "GPT OSS 120b": "GPT",
@@ -166,8 +168,10 @@ def make_heatmap_codex(df, metrics, title=False):
         ax.axhline(y=sep_y - gap_h / 2, color="black", linewidth=1, zorder=4)
         ax.axhline(y=sep_y + gap_h / 2, color="black", linewidth=1, zorder=4)
 
-        # Bracket labeling the supervised rows (PN block + avg row)
-        n_supervised = n_llm + 1
+        # Bracket labeling only the supervised PN rows (Llama .. Codex), so the
+        # label wraps just the train-LLM block and does not intersect the
+        # "Avg. Supervised OOD" row text below it.
+        n_supervised = n_llm
         bracket_top = 1.0
         bracket_bot = 1.0 - n_supervised / n_total
         bx, tick = -0.3, 0.025
@@ -273,8 +277,10 @@ def make_heatmap_ci_codex(df, metrics, title=False, point_fontsize=30, ci_fontsi
         ax.axhline(y=sep_y - gap_h / 2, color="black", linewidth=1, zorder=4)
         ax.axhline(y=sep_y + gap_h / 2, color="black", linewidth=1, zorder=4)
 
-        # Bracket labeling the supervised rows (PN block + avg row)
-        n_supervised = n_llm + 1
+        # Bracket labeling only the supervised PN rows (Llama .. Codex), so the
+        # label wraps just the train-LLM block and does not intersect the
+        # "Avg. Supervised OOD" row text below it.
+        n_supervised = n_llm
         bracket_top = 1.0
         bracket_bot = 1.0 - n_supervised / n_total
         bx, tick = -0.3, 0.025
@@ -299,9 +305,9 @@ def make_heatmap_ci_codex(df, metrics, title=False, point_fontsize=30, ci_fontsi
         plt.clf()
 
 
-def make_heatmap_grid_codex(df, metrics, title=True):
+def make_heatmap_grid_codex(df, metrics, title=True, fname="heatmap_grid.pdf"):
     """Codex version of plot_heatmaps.make_heatmap_grid: one PDF with a subplot per
-    metric. No "all", no PNU row. Saves titled/heatmap_grid.pdf (title=True)."""
+    metric. No "all", no PNU row. Saves titled/<fname> (title=True)."""
     col_order = LLMS_CODEX
     n_llm = len(col_order)
 
@@ -387,7 +393,7 @@ def make_heatmap_grid_codex(df, metrics, title=True):
         save_folder = f"{output_folder}/titled" if title else output_folder
         os.makedirs(save_folder, exist_ok=True)
         plt.tight_layout()
-        plt.savefig(f"{save_folder}/heatmap_grid.pdf", format="pdf", bbox_inches="tight")
+        plt.savefig(f"{save_folder}/{fname}", format="pdf", bbox_inches="tight")
         plt.clf()
         plt.close(fig)
 
@@ -397,10 +403,18 @@ if __name__ == "__main__":
     data = add_accuracy_cols(data)
     data = reverse_bias(reverse_plugin(data))
 
-    # Figure 1: standalone AI-recall (tnr) heatmap, with per-cell CIs.
-    make_heatmap_ci_codex(data, ["tnr"], title=False)
-    # Figure 2: metric grid matching the reference gemini grid layout/order.
-    make_heatmap_grid_codex(data, GRID_METRICS, title=True)
+    # Non-grid figures, one per metric: a without-CI version (heatmap_{m}_ci.pdf)
+    # and a with-CI version (heatmap_{m}_with_ci.pdf). Both use the corrected
+    # bracket that wraps only the Llama..Codex train rows.
+    make_heatmap_codex(data, GRID_METRICS, title=False)     # point-estimate only
+    make_heatmap_ci_codex(data, GRID_METRICS, title=False)  # with per-cell CIs
+
+    # Grid figures: full 9-metric grid, plus an 8-metric grid excluding tnr.
+    make_heatmap_grid_codex(data, GRID_METRICS, title=True,
+                            fname="heatmap_grid.pdf")
+    make_heatmap_grid_codex(data, GRID_METRICS_NO_TNR, title=True,
+                            fname="heatmap_grid_no_tnr.pdf")
 
     print(f"wrote heatmaps to {output_folder}/ "
-          f"(heatmap_tnr_with_ci.pdf, titled/heatmap_grid.pdf)")
+          f"(heatmap_{{metric}}_ci.pdf, heatmap_{{metric}}_with_ci.pdf, "
+          f"titled/heatmap_grid.pdf, titled/heatmap_grid_no_tnr.pdf)")

@@ -89,6 +89,50 @@ def _make_inner_optimizer(params, inner_lr, optimizer_type):
     raise ValueError(f"Unknown inner optimizer: {optimizer_type}")
 
 
+def _mlm_loss(base, ids, attn, mlm_criterion, mlm_prob, n_mask_samples):
+    """Averaged masked-LM reconstruction loss over `n_mask_samples` maskings."""
+    loss = 0.0
+    for _ in range(n_mask_samples):
+        m_ids, m_lab = mask_tokens(ids, attn, mlm_prob=mlm_prob)
+        logits = base(pack_ids(m_ids, attn), task="mlm")
+        loss = loss + mlm_criterion(logits.reshape(-1, logits.size(-1)), m_lab.reshape(-1))
+    return loss / n_mask_samples
+
+
+def _entropy_loss(base, inputs):
+    """Mean prediction entropy of the classification head (Tent-style).
+
+    Unlike MLM, this signal is *task-aligned*: its gradient sharpens the existing
+    human/AI decision boundary (pushes each sample toward its predicted class)
+    rather than uniformly translating the feature cloud. The classifier head stays
+    frozen (requires_grad=False); gradients flow THROUGH it to the adapted trunk /
+    LayerNorm params, so it is used to define the loss but never updated."""
+    logits = base(inputs, task="cls")                 # (N, 2)
+    logp = torch.log_softmax(logits, dim=-1)
+    p = logp.exp()
+    return -(p * logp).sum(dim=-1).mean()
+
+
+def _adapt_loss(base, inputs, objective, mlm_criterion, mlm_prob, n_mask_samples):
+    """Self-supervised / unsupervised test-time adaptation loss.
+
+    objective='mlm'     -> masked-LM reconstruction (Sun et al.; distribution-fit,
+                           agnostic to the class boundary -> mostly shifts bias).
+    objective='entropy' -> classifier entropy minimization (Tent; task-aligned ->
+                           can improve separation, i.e. AUC).
+    objective='both'    -> mlm + entropy (equal weight)."""
+    ids = inputs[:, :, 0]
+    attn = inputs[:, :, 1]
+    if objective == "mlm":
+        return _mlm_loss(base, ids, attn, mlm_criterion, mlm_prob, n_mask_samples)
+    if objective == "entropy":
+        return _entropy_loss(base, inputs)
+    if objective == "both":
+        return (_mlm_loss(base, ids, attn, mlm_criterion, mlm_prob, n_mask_samples)
+                + _entropy_loss(base, inputs))
+    raise ValueError(f"Unknown adaptation objective: {objective}")
+
+
 def ttt_adapt_and_predict(net, device, u_loader, mode="episodic", inner_lr=1e-3,
                           n_steps=1, adapt_scope="trunk", mlm_prob=0.15,
                           n_mask_samples=1, optimizer_type="sgd", show_bar=True):
@@ -167,7 +211,8 @@ def ttt_adapt_and_predict(net, device, u_loader, mode="episodic", inner_lr=1e-3,
 
 def ttt_stream_predict(net, device, u_loader, mode="online", batch_size=32,
                        inner_lr=1e-3, n_steps=1, adapt_scope="trunk", mlm_prob=0.15,
-                       n_mask_samples=1, optimizer_type="sgd", show_bar=True):
+                       n_mask_samples=1, optimizer_type="sgd", objective="mlm",
+                       show_bar=True):
     """Per-sample streaming TTT for continual-learning curves.
 
     Processes the loader ONE SAMPLE AT A TIME (adaptation granularity = single
@@ -215,17 +260,11 @@ def ttt_stream_predict(net, device, u_loader, mode="online", batch_size=32,
 
             if adapting:
                 base.eval()  # dropout off for stable adaptation
-                ids = xi[:, :, 0]
-                attn = xi[:, :, 1]
                 for _step in range(n_steps):
                     opt.zero_grad()
-                    loss = 0.0
-                    for _ in range(n_mask_samples):
-                        m_ids, m_lab = mask_tokens(ids, attn, mlm_prob=mlm_prob)
-                        logits = base(pack_ids(m_ids, attn), task="mlm")
-                        loss = loss + mlm_criterion(
-                            logits.reshape(-1, logits.size(-1)), m_lab.reshape(-1))
-                    (loss / n_mask_samples).backward()
+                    loss = _adapt_loss(base, xi, objective, mlm_criterion,
+                                       mlm_prob, n_mask_samples)
+                    loss.backward()
                     opt.step()
 
             with torch.no_grad():
@@ -279,7 +318,8 @@ def _frozen_batch(base, device, u_loader, show_bar=True):
 
 def ttt_batch_stream_predict(net, device, u_loader, mode="online", batch_size=32,
                              inner_lr=1e-3, n_steps=3, adapt_scope="trunk", mlm_prob=0.15,
-                             n_mask_samples=1, optimizer_type="sgd", show_bar=True):
+                             n_mask_samples=1, optimizer_type="sgd", objective="mlm",
+                             show_bar=True):
     """Batch-level TTT: adapt on a WHOLE batch of test samples per MLM gradient step
     (much cleaner gradient than per-sample), then predict that batch. The loader yields
     the adaptation batches, so one loader batch == one batch_id.
@@ -312,16 +352,11 @@ def ttt_batch_stream_predict(net, device, u_loader, mode="online", batch_size=32
             opt = _make_inner_optimizer(adapt_params, inner_lr, optimizer_type)
 
         base.eval()  # dropout off for stable adaptation
-        ids = inputs[:, :, 0]
-        attn = inputs[:, :, 1]
         for _step in range(n_steps):
             opt.zero_grad()
-            loss = 0.0
-            for _ in range(n_mask_samples):
-                m_ids, m_lab = mask_tokens(ids, attn, mlm_prob=mlm_prob)
-                logits = base(pack_ids(m_ids, attn), task="mlm")
-                loss = loss + mlm_criterion(logits.reshape(-1, logits.size(-1)), m_lab.reshape(-1))
-            (loss / n_mask_samples).backward()
+            loss = _adapt_loss(base, inputs, objective, mlm_criterion,
+                               mlm_prob, n_mask_samples)
+            loss.backward()
             opt.step()
 
         with torch.no_grad():

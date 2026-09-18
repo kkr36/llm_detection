@@ -746,26 +746,33 @@ def read_arxiv_split_llm(split_dir, llm, split, sentence, alpha, gemini, flip, s
 
 def _is_xz_col(llm_col):
     """Returns True for iterative xz modes and the strategy-Z iteration-0 mode."""
-    return llm_col == "rewrite_xz0" or bool(re.match(r'^rewrite_xz+$', llm_col))
+    return llm_col in {"rewrite_xz0", "rewrite_xz332"} or bool(re.match(r'^rewrite_xz+$', llm_col))
 
 def _is_xz_float_col(llm_col):
     """Matches 'rewrite_xz_.5', 'rewrite_xz_0.5', 'rewrite_xz_1', 'rewrite_xz_1.', 'rewrite_xz_1.0', etc."""
     return bool(re.match(r'^rewrite_xz_(\d+(\.\d*)?|\.\d+)$', llm_col))
 
 def _is_xz_count_col(llm_col):
-    """Matches 'rewrite_xz_nx{N}_nz{M}_nh{H}' where N, M, H are non-negative integers."""
-    return bool(re.match(r'^rewrite_xz_nx\d+_nz\d+_nh\d+$', llm_col))
+    """Matches 'rewrite_xz_nx{N}_nz{M}_nh{H}' (or the 'xz332' variant, which sources
+    the adversarial column from rewrite_Z_332) where N, M, H are non-negative ints."""
+    return bool(re.match(r'^rewrite_xz(332)?_nx\d+_nz\d+_nh\d+$', llm_col))
+
+def _xz_count_zcol(llm_col):
+    """Adversarial source column for an xz-count llm string: rewrite_Z_332 for the
+    'xz332' variant, otherwise the default rewrite_Z."""
+    return "rewrite_Z_332" if "xz332" in llm_col else "rewrite_Z"
 
 def _parse_xz_counts(llm_col):
-    """Returns (n_x, n_z, n_h) parsed from 'rewrite_xz_nx{N}_nz{M}_nh{H}'."""
+    """Returns (n_x, n_z, n_h) parsed from 'rewrite_xz{332}_nx{N}_nz{M}_nh{H}'."""
     m = re.search(r'nx(\d+)_nz(\d+)_nh(\d+)', llm_col)
     return int(m.group(1)), int(m.group(2)), int(m.group(3))
 
-def _interleave_xz_cols_counts(df_slice, n_x_sents, n_z_sents):
-    """Sentence-splits rewrite_X and rewrite_Z from df_slice, takes n_x_sents from X
-    and n_z_sents from Z, and returns them interleaved proportionally."""
+def _interleave_xz_cols_counts(df_slice, n_x_sents, n_z_sents, z_col="rewrite_Z"):
+    """Sentence-splits rewrite_X and the adversarial column `z_col` from df_slice,
+    takes n_x_sents from X and n_z_sents from Z, and returns them interleaved
+    proportionally."""
     x_sents, _ = split_into_sentences(df_slice["rewrite_X"].tolist(), [0] * len(df_slice))
-    z_sents, _ = split_into_sentences(df_slice["rewrite_Z"].tolist(), [0] * len(df_slice))
+    z_sents, _ = split_into_sentences(df_slice[z_col].tolist(), [0] * len(df_slice))
     # import pdb; pdb.set_trace()
     x_sents = x_sents[:n_x_sents]
     z_sents = z_sents[:n_z_sents]
@@ -798,6 +805,8 @@ def _interleave_xz_cols(df_slice, llm_col, method):
     """
     if llm_col == "rewrite_xz0":
         cols = ["rewrite_X", "rewrite_strategy_Z_0"]
+    elif llm_col == "rewrite_xz332":
+        cols = ["rewrite_X", "rewrite_Z_332"]
     else:
         n_zs = llm_col.count('z')
         cols = ["rewrite_X", "rewrite_Z"] + [f"rewrite_Z_{t}_{method}" for t in range(1, n_zs)]
@@ -881,12 +890,13 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
             n_x_sents, n_z_sents, n_h_sents = _parse_xz_counts(llm_col)
             train_pool = arxiv_data.iloc[4000:7000].reset_index(drop=True)
             val_pool = arxiv_data.iloc[7000:8000].reset_index(drop=True)
+            z_col = _xz_count_zcol(llm_col)
             if "train" in split:
                 u_positive_texts = _get_human_sentences(train_pool, n_h_sents - n_h_sents // 4)
-                u_negative_texts = _interleave_xz_cols_counts(train_pool, n_x_sents - n_x_sents // 4, n_z_sents - n_z_sents // 4)
+                u_negative_texts = _interleave_xz_cols_counts(train_pool, n_x_sents - n_x_sents // 4, n_z_sents - n_z_sents // 4, z_col=z_col)
             elif "val" in split:
                 u_positive_texts = _get_human_sentences(val_pool, n_h_sents // 4)
-                u_negative_texts = _interleave_xz_cols_counts(val_pool, n_x_sents // 4, n_z_sents // 4)
+                u_negative_texts = _interleave_xz_cols_counts(val_pool, n_x_sents // 4, n_z_sents // 4, z_col=z_col)
             # import pdb; pdb.set_trace()
         elif "xyz" in llm_col:
             # assert(alpha == 1/3)
@@ -930,7 +940,7 @@ def read_arxiv_split_xy(split_dir, llm, split, sentence, alpha, gemini, flip, se
             is_count_format = True
             n_x_sents, n_z_sents, _ = _parse_xz_counts(llm_col)
             pn_slice = arxiv_data.iloc[4000:8000].reset_index(drop=True)
-            ai_writing = _interleave_xz_cols_counts(pn_slice, n_x_sents, n_z_sents)
+            ai_writing = _interleave_xz_cols_counts(pn_slice, n_x_sents, n_z_sents, z_col=_xz_count_zcol(llm_col))
         elif "xyz" in llm_col:
             pn_data = arxiv_data.iloc[4000:8000]
             n = len(pn_data)

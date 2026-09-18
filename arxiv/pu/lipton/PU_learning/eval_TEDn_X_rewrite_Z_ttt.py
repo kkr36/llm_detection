@@ -131,8 +131,15 @@ INNER_LR = float(os.environ.get("TTT_INNER_LR", "1e-3"))
 N_STEPS_EP = int(os.environ.get("TTT_NSTEPS_EP", "5"))
 N_STEPS_ON = int(os.environ.get("TTT_NSTEPS_ON", "1"))
 N_MASK = int(os.environ.get("TTT_NMASK", "4"))
-_adapt = dict(batch_size=STREAM_BATCH_SIZE, adapt_scope="trunk", optimizer_type="sgd",
-              adapt_granularity=ADAPT_GRAN, n_mask_samples=N_MASK, inner_lr=INNER_LR)
+# Which params to adapt: 'trunk' (whole encoder + MLM head), 'trunk_only', or
+# 'layernorm' (Tent-style; a few thousand affine params -> bounded drift).
+ADAPT_SCOPE = os.environ.get("TTT_ADAPT_SCOPE", "trunk")
+# Adaptation signal: 'mlm' (distribution-fit, mostly shifts the operating point),
+# 'entropy' (task-aligned; sharpens the decision boundary -> can raise AUC), 'both'.
+OBJECTIVE = os.environ.get("TTT_OBJECTIVE", "mlm")
+_adapt = dict(batch_size=STREAM_BATCH_SIZE, adapt_scope=ADAPT_SCOPE, optimizer_type="sgd",
+              adapt_granularity=ADAPT_GRAN, n_mask_samples=N_MASK, inner_lr=INNER_LR,
+              objective=OBJECTIVE)
 ttt_modes = {
     "none":     {"mode": "none", "batch_size": STREAM_BATCH_SIZE, "adapt_granularity": ADAPT_GRAN},
     "episodic": {"mode": "episodic", **_adapt, "n_steps": N_STEPS_EP},

@@ -128,7 +128,16 @@ def _build_gradual_order(seed, sentence, clean, growth, batch_size):
     ai_source{'human','X','Z'}, n_batches)."""
     data_path = _xy_eval_parquet()
     arxiv = pd.read_parquet(data_path).sample(frac=1, random_state=seed).reset_index(drop=True)
-    u = arxiv.iloc[-2000:].reset_index(drop=True).iloc[500:]
+    # Held-out block = last 2000 rows (disjoint from this seed's train rows [0:8000]).
+    # Default: reserve its first 500 rows for the frozen P-set calibration reference
+    # (get_preds_xy_ttt_stream reads cal_data.iloc[:500]) and stream only the rest (1500).
+    # TTT_FULL_HELDOUT=1 reclaims those 500 into the stream (~+33% batches). The P-set still
+    # reads those same held-out humans, so it stays unseen-by-training; the only effect is a
+    # small P-set/stream human overlap that touches just the FPR-5% threshold + BBE, not the
+    # AUC / accuracy / recall / P(AI|AI) / P(human|human) curves. Rows stay mutually exclusive
+    # from training either way.
+    u_block = arxiv.iloc[-2000:].reset_index(drop=True)
+    u = u_block if os.environ.get("TTT_FULL_HELDOUT", "0") == "1" else u_block.iloc[500:]
     human = u["human_abstract"].tolist()
     ax = u["rewrite_X"].tolist()
     az = u[os.environ.get("TTT_EVAL_COL", "rewrite_Z")].tolist()   # gradual target column (X -> this)
@@ -143,13 +152,28 @@ def _build_gradual_order(seed, sentence, clean, growth, batch_size):
         rng.shuffle(pool)
 
     half = batch_size // 2                    # per batch: `half` human + `half` AI
+    if half == 0:
+        raise ValueError(
+            f"batch_size={batch_size} is too small for _build_gradual_order: it needs "
+            "batch_size // 2 >= 1 so each batch can hold at least one human + one AI example."
+        )
     n_ai = min(len(human), len(ax), len(az))
     n_batches = n_ai // half
     texts, tt, src = [], [], []
     hi = xi = zi = 0
+    # Running-remainder (Bresenham-style) allocator: _frac_z is a smooth ramp, but each batch
+    # can only hold an integer count of Z slots. Naively rounding half*pz per batch collapses
+    # the ramp into 1-3 hard steps when `half` is small (e.g. half=1 is a single-batch flip from
+    # 0% to 100% adversarial). Instead we accumulate the smooth target and only emit a Z slot
+    # once the cumulative target crosses the next integer, so the total Z count still matches
+    # the _frac_z integral but individual batches near the transition are a mix of X/Z.
+    z_target_cum = 0.0
+    z_allocated = 0
     for b in range(n_batches):
         pz = _frac_z(b / n_batches, growth)
-        n_z = int(round(half * pz))
+        z_target_cum += half * pz
+        n_z = max(0, min(half, int(round(z_target_cum)) - z_allocated))
+        z_allocated += n_z
         n_x = half - n_z
         ai_items = ([(az[zi + k], "Z") for k in range(n_z)]
                     + [(ax[xi + k], "X") for k in range(n_x)])

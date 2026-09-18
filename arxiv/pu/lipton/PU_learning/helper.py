@@ -607,10 +607,12 @@ def get_PNU_dataset(data_dir, data_type, net_type, device, alpha, beta, batch_si
 
     elif data_type == "xy":
         llm_col = f"rewrite_{llm}"
-        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_xyz_cs._10000_fronthalf.parquet"
+        parquet_suffix = "xyz_v2" if llm == "Z_332" else "xyz"
+        data_path = f"/share/garg/arxiv_kaggle/multillm/data_raw/arxiv_2020_{parquet_suffix}_cs._10000_fronthalf.parquet"
 
+        val_split = "val" if llm == "Z_332" else "pu_val"
         train_texts, train_labels = read_arxiv_split_xy_PNU(data_path, llm, "train", sentence, alpha, gemini, flip, seed, llm_col, n_labeled=n_labeled)
-        test_texts,  test_labels  = read_arxiv_split_xy_PNU(data_path, llm, "pu_val", sentence, alpha, gemini, flip, seed, llm_col)
+        test_texts,  test_labels  = read_arxiv_split_xy_PNU(data_path, llm, val_split, sentence, alpha, gemini, flip, seed, llm_col)
         if clean:
             train_texts = clean_text(train_texts)
             test_texts  = clean_text(test_texts)

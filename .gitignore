@@ -58,6 +58,7 @@ virtualenv
 !README.md
 *.npz
 *.log
+*.parquet
 *.yml
 *.sh
 copy_data.py

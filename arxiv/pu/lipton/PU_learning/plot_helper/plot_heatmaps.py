@@ -775,8 +775,12 @@ def make_mle_heatmap(df, gemini, title=False):
     plt.clf()
 
 
-def make_heatmap_grid(df, metrics, gemini, title=True):
-    """Single PDF with one heatmap subplot per metric in metrics."""
+def make_heatmap_grid(df, metrics, gemini, title=True, fname="heatmap_grid.pdf", include_pnu=True):
+    """Single PDF with one heatmap subplot per metric in metrics.
+
+    include_pnu=False drops the PNU + TTA row, reproducing the original
+    pn-block / Avg. Supervised OOD / PU + TTA layout.
+    """
     llms_list = (
         ["Gemini 2.0 Flash-Lite", "Gemini 2.0 Flash", "Gemini 2.5 Flash", "Gemini 2.5 Pro", "Gemini 3 Preview"]
         if gemini else
@@ -861,10 +865,15 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
             pu_lower["all"] = pu_all_lower
             pu_upper["all"] = pu_all_upper
 
-        pnu_point_s, pnu_lower_s, pnu_upper_s = _get_pnu_row(metric, col_order, ci_level)
-        point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point, pnu_point_s.to_frame().T])
-        lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower, pnu_lower_s.to_frame().T])
-        upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper, pnu_upper_s.to_frame().T])
+        if include_pnu:
+            pnu_point_s, pnu_lower_s, pnu_upper_s = _get_pnu_row(metric, col_order, ci_level)
+            point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point, pnu_point_s.to_frame().T])
+            lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower, pnu_lower_s.to_frame().T])
+            upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper, pnu_upper_s.to_frame().T])
+        else:
+            point_df = pd.concat([pn_point, avg_point.to_frame().T, pu_point])
+            lower_df = pd.concat([pn_lower, avg_lower.to_frame().T, pu_lower])
+            upper_df = pd.concat([pn_upper, avg_upper.to_frame().T, pu_upper])
         return point_df, lower_df, upper_df
 
     n = len(metrics)
@@ -932,7 +941,11 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
 
             _n_total = len(plot_df_r)
             _n_cols_h = len(plot_df_r.columns)
-            _sep_y = _n_total - 2
+            # With PNU: rows = [PN][avg][PU][PNU]; white gap sits Avg|PU and the
+            # thick line PN|Avg. Without PNU: rows = [PN][avg][PU]; both shift one
+            # row down so the white gap stays Avg|PU and the thick line PN|Avg.
+            _sep_y = (_n_total - 2) if include_pnu else (_n_total - 1)
+            _thick_y = (_n_total - 3) if include_pnu else (_n_total - 2)
             _gap_h = 0.20
             ax.add_patch(plt.Rectangle(
                 (0, _sep_y - _gap_h / 2), _n_cols_h, _gap_h,
@@ -941,7 +954,7 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
             ))
             ax.axhline(y=_sep_y - _gap_h / 2, color="black", linewidth=0.8, zorder=4)
             ax.axhline(y=_sep_y + _gap_h / 2, color="black", linewidth=0.8, zorder=4)
-            ax.axhline(y=_n_total - 3, color="black", linewidth=2, zorder=4)
+            ax.axhline(y=_thick_y, color="black", linewidth=2, zorder=4)
             if "all" in llms_list:
                 ax.axvline(x=len(plot_df_r.columns) - 1, color="black", linewidth=2, zorder=4)
 
@@ -957,7 +970,7 @@ def make_heatmap_grid(df, metrics, gemini, title=True):
         os.makedirs(save_folder, exist_ok=True)
         plt.tight_layout()
         plt.savefig(
-            f"{save_folder}/heatmap_grid.pdf",
+            f"{save_folder}/{fname}",
             format="pdf", bbox_inches="tight"
         )
         plt.clf()
